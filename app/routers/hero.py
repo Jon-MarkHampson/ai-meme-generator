@@ -4,14 +4,9 @@ from typing import List, Optional
 
 from app.models.hero import Hero
 from app.schemas.hero import HeroCreate, HeroRead, HeroUpdate
-from app.db.database import engine
+from app.db.database import get_session
 
 router = APIRouter()
-
-
-def get_session():
-    with Session(engine) as session:
-        yield session
 
 
 @router.post("/heroes/", response_model=HeroRead)
@@ -84,34 +79,30 @@ def update_hero(
 
 @router.patch("/heroes/{hero_id}", response_model=HeroRead)
 def patch_hero(
-    hero_id: int,
-    hero_update: HeroUpdate,
-    session: Session = Depends(get_session)
+    hero_id: int, hero_update: HeroUpdate, session: Session = Depends(get_session)
 ):
     hero = session.get(Hero, hero_id)
     if not hero:
         raise HTTPException(status_code=404, detail="Hero not found")
-    
+
     hero_data = hero_update.model_dump(exclude_unset=True)
-    
+
     for key, value in hero_data.items():
         setattr(hero, key, value)
-        
+
     session.add(hero)
     session.commit()
     session.refresh(hero)
-    
+
     return hero
 
+
 @router.delete("/heroes/{hero_id}")
-def delete_hero(
-    hero_id: int,
-    session: Session = Depends(get_session)
-):
+def delete_hero(hero_id: int, session: Session = Depends(get_session)):
     hero = session.get(Hero, hero_id)
     if not hero:
         raise HTTPException(status_code=404, detail="Hero not found")
-    
+
     session.delete(hero)
     session.commit()
     return None
