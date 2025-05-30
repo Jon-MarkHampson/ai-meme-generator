@@ -175,5 +175,6 @@ cython_debug/
 
 .DS_Store
 .python-version
+.vscode
 
 meme-output/

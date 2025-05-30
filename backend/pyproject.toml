@@ -1,12 +1,18 @@
 [project]
-name = "ai-meme-generator"
+name = "backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "bcrypt>=4.3.0",
+    "email-validator>=2.2.0",
     "fastapi>=0.115.12",
+    "passlib>=1.7.4",
     "pillow>=11.2.1",
+    "pydantic-settings>=2.9.1",
+    "python-jose>=3.5.0",
+    "python-multipart>=0.0.20",
     "sqlmodel>=0.0.24",
     "uvicorn>=0.34.2",
 ]

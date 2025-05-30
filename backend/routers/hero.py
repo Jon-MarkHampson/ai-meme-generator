@@ -2,15 +2,16 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from typing import List, Optional
 
-from app.models.hero import Hero
-from app.schemas.hero import HeroCreate, HeroRead, HeroUpdate
-from app.db.database import get_session
+from models.hero import Hero
+from schemas.hero import HeroCreate, HeroRead, HeroUpdate
+from db.database import get_session
 
 router = APIRouter()
 
 
 @router.post("/heroes/", response_model=HeroRead)
 def create_hero(hero: HeroCreate, session: Session = Depends(get_session)):
+    """Create a new hero record and return it."""
     new_hero = Hero(**hero.model_dump())
     session.add(new_hero)
     session.commit()
@@ -27,6 +28,7 @@ def get_heros(
     sort_order: Optional[str] = Query(default="asc", pattern="^(asc|desc)$"),
     session: Session = Depends(get_session),
 ):
+    """Fetch a list of heroes, optionally filtered, searched, and sorted."""
     statement = select(Hero)
 
     if min_age is not None:
@@ -49,6 +51,7 @@ def get_heros(
 
 @router.get("/heroes/{hero_id}", response_model=HeroRead)
 def get_hero_by_id(hero_id: int, session: Session = Depends(get_session)):
+    """Retrieve a single hero by its ID or raise 404."""
     hero = session.get(Hero, hero_id)
     if not hero:
         raise HTTPException(status_code=404, detail="Hero not found")
@@ -61,6 +64,7 @@ def update_hero(
     updated_hero: HeroCreate,
     session: Session = Depends(get_session),
 ):
+    """Replace an existing hero's data or raise 404."""
     existing_hero = session.get(Hero, hero_id)
 
     if not existing_hero:
@@ -81,6 +85,7 @@ def update_hero(
 def patch_hero(
     hero_id: int, hero_update: HeroUpdate, session: Session = Depends(get_session)
 ):
+    """Apply partial updates to a hero or raise 404."""
     hero = session.get(Hero, hero_id)
     if not hero:
         raise HTTPException(status_code=404, detail="Hero not found")
@@ -99,6 +104,7 @@ def patch_hero(
 
 @router.delete("/heroes/{hero_id}")
 def delete_hero(hero_id: int, session: Session = Depends(get_session)):
+    """Delete a hero by ID or raise 404."""
     hero = session.get(Hero, hero_id)
     if not hero:
         raise HTTPException(status_code=404, detail="Hero not found")
