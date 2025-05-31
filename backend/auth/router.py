@@ -26,7 +26,10 @@ def signup(
     # check if user exists
     exists = session.exec(select(User).where(User.username == user_in.username)).first()
     if exists:
-        raise HTTPException(status_code=400, detail="Username taken")
+        # avoid revealing username validity
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
     # hash + create
     hashed = get_password_hash(user_in.password)
     user = User(username=user_in.username, email=user_in.email, hashed_password=hashed)

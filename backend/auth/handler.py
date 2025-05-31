@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
+from jose import JWTError, ExpiredSignatureError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session
 
@@ -52,7 +52,15 @@ def get_current_user(
         if subject is None:
             raise credentials_exc
         token_data = TokenData(user_id=int(subject))
+    except ExpiredSignatureError:
+        # token was valid but expired
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except (JWTError, ValueError):
+        # invalid token
         raise credentials_exc
 
     user = session.get(User, token_data.user_id)
