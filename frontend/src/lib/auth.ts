@@ -12,9 +12,15 @@ export async function signup(username: string, email: string, password: string) 
 }
 
 export async function login(username: string, password: string) {
+  const body = new URLSearchParams({
+    grant_type: 'password',
+    username,
+    password,
+  }).toString()
+
   const resp = await API.post<{ access_token: string; token_type: string }>(
     '/auth/login',
-    new URLSearchParams({ username, password }).toString(),
+    body,
     { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
   )
   return resp.data

@@ -2,7 +2,7 @@ import axios from 'axios'
 import Cookies from 'js-cookie'
 
 const API = axios.create({
-  baseURL: 'http://localhost:8000', // adjust if your backend lives elsewhere
+  baseURL: 'http://localhost:8000', // Adjust to production backend endpoint
 })
 
 // Automatically attach JWT if present
