@@ -11,3 +11,9 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )
+
+    def __repr__(self):
+        return f"User(id={self.id}, username={self.username}, email={self.email})"
+
+    def __str__(self):
+        return f"User: {self.username} <{self.email}> (ID: {self.id})"
