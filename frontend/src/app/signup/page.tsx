@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 /**
  * 1) Add confirmPassword to the schema
@@ -77,7 +78,10 @@ export default function SignupPage() {
 
         <CardContent>
           {formError && (
-            <p className="mb-4 text-center text-sm text-red-600">{formError}</p>
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
           )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
