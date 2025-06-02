@@ -1,9 +1,10 @@
+from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
 
 
 class User(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+    id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     username: str = Field(index=True, nullable=False, unique=True)
     email: str = Field(index=True, nullable=False, unique=True)
     hashed_password: str = Field(nullable=False)

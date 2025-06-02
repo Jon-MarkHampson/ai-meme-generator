@@ -25,7 +25,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    subject: str | int,
+    subject: str,
     expires_delta: timedelta,
 ) -> str:
     """Create a JWT access token for a subject with expiration."""
@@ -51,7 +51,7 @@ def get_current_user(
         subject = payload.get("sub")
         if subject is None:
             raise credentials_exc
-        token_data = TokenData(user_id=int(subject))
+        token_data = TokenData(user_id=subject)
     except ExpiredSignatureError:
         # token was valid but expired
         raise HTTPException(
