@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from schemas.user import UserRead
 
 
 class Token(BaseModel):
@@ -9,3 +10,9 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: Optional[int] = None
+
+
+class SignupResponse(BaseModel):
+    user: UserRead
+    access_token: str
+    token_type: str
