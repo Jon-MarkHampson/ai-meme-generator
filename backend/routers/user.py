@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, Body, status
+from fastapi import APIRouter, Depends, Body, HTTPException, status
 from sqlmodel import Session
 
 from models.user import User
-from schemas.user import UserUpdate, UserRead
+from schemas.user import UserUpdate, UserRead, DeleteRequest
 from db.database import get_session
 from config import settings
-from auth.handler import get_current_user, get_password_hash
+from auth.handler import get_current_user, get_password_hash, pwd_context
 
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -40,14 +40,23 @@ def update_me(
 @router.delete(
     "/me",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete current user account",
+    summary="Delete current user account (requires password)",
 )
 def delete_me(
+    delete_in: DeleteRequest,                  # <-- only needs `password`
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete the current user's account and return no content."""
+    """
+    Delete the current user's account, but only if the provided password is correct.
+    """
+    # Verify that the supplied password matches this user’s hashed password
+    if not pwd_context.verify(delete_in.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password, cannot delete account.",
+        )
+
     session.delete(current_user)
     session.commit()
-    # FastAPI will send back an empty response with 204
-    return
+    return  # 204 No Content

@@ -24,3 +24,6 @@ class UserRead(BaseModel):
 
     class Config:
         from_attributes = True
+        
+class DeleteRequest(BaseModel):
+    password: str

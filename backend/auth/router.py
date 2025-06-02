@@ -12,31 +12,51 @@ from auth.handler import (
 from config import settings
 from db.database import get_session
 from models.user import User
-from schemas.user import UserCreate, UserRead
-from schemas.auth import Token
+from schemas.user import UserCreate
+from schemas.auth import Token, SignupResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/signup", response_model=UserRead)
+@router.post("/signup", response_model=SignupResponse)
 def signup(
     user_in: UserCreate,
     session: Session = Depends(get_session),
 ):
-    # check if user exists
-    exists = session.exec(select(User).where(User.username == user_in.username)).first()
+    # 1) Check if username already exists
+    exists = session.exec(
+        select(User).where(User.username == user_in.username)
+    ).first()
     if exists:
-        # avoid revealing username validity
+        # To avoid leaking which usernames exist, return a generic error
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
         )
-    # hash + create
+
+    # 2) Hash the password and create the User
     hashed = get_password_hash(user_in.password)
-    user = User(username=user_in.username, email=user_in.email, hashed_password=hashed)
+    user = User(
+        username=user_in.username,
+        email=user_in.email,
+        hashed_password=hashed
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
-    return user
+
+    # 3) Generate a JWT for the new user
+    access_token = create_access_token(
+        subject=user.id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    # 4) Return both user data and token
+    return SignupResponse(
+        user=user,
+        access_token=access_token,
+        token_type="bearer"
+    )
 
 
 @router.post("/login", response_model=Token)
