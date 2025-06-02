@@ -15,15 +15,28 @@ import {
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+
 export default function LoginPage() {
   const { login } = useContext(AuthContext)
   const router = useRouter()
   const [form, setForm] = useState({ username: '', password: '' })
+  const [error, setError] = useState<string>('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await login(form.username, form.password)
-    router.push('/profile')
+    setError('')
+    setIsSubmitting(true)
+    try {
+      await login(form.username, form.password)
+      router.push('/profile')
+    } catch (err) {
+      // you can inspect err to give more specific feedback
+      setError('Invalid username or password')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -38,6 +51,13 @@ export default function LoginPage() {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             {/* Username Field */}
             <div className="space-y-1">
               <Label htmlFor="username">Username</Label>
@@ -70,7 +90,11 @@ export default function LoginPage() {
 
             {/* Submit Button */}
             <div className="flex justify-center pt-4">
-              <Button type="submit" className="w-full">
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting}
+              >
                 Log In
               </Button>
             </div>

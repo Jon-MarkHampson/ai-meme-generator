@@ -20,6 +20,7 @@ import {
   FormLabel,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 /**
  * 1) username/email: optional (if blank, won’t be sent to backend)
@@ -180,9 +181,10 @@ export default function EditProfilePage() {
 
         <CardContent>
           {updateError && (
-            <p className="mb-4 text-center text-sm text-red-600">
-              {updateError}
-            </p>
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{updateError}</AlertDescription>
+            </Alert>
           )}
 
           {/*
