@@ -1,0 +1,62 @@
+from fastapi import HTTPException, status
+from sqlmodel import Session
+
+from entities.user import User
+from .models import UserUpdate, DeleteRequest
+from features.auth.service import get_password_hash, pwd_context
+
+
+def read_current_user(current_user: User) -> User:
+    """
+    Simply return the current_user ORM object. The controller will let FastAPI
+    apply `response_model=UserRead` and convert to Pydantic for us.
+    """
+    return current_user
+
+
+def update_current_user(
+    user_update: UserUpdate,
+    session: Session,
+    current_user: User,
+) -> User:
+    """
+    Take only the fields provided in user_update (exclude unset),
+    re-hash the password if present, then commit+refresh the ORM object.
+    Return the updated ORM User.
+    """
+    data = user_update.model_dump(exclude_unset=True)
+
+    # If the client provided "password", hash it and set on the ORM model:
+    if "password" in data:
+        raw_pw = data.pop("password")
+        current_user.hashed_password = get_password_hash(raw_pw)
+
+    # Apply any other changed fields (username / email)
+    for field_name, value in data.items():
+        setattr(current_user, field_name, value)
+
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user
+
+
+def delete_current_user(
+    delete_in: DeleteRequest,
+    session: Session,
+    current_user: User,
+) -> None:
+    """
+    Verify that delete_in.password matches current_user.hashed_password.
+    If not, raise 401. If it matches, delete and commit.
+    """
+    if not pwd_context.verify(delete_in.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password, cannot delete account.",
+        )
+
+    session.delete(current_user)
+    session.commit()
+    # Return None; controller will return a 204 No Content automatically.
+    return

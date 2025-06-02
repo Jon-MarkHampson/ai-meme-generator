@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from sqlmodel import SQLModel, Session, create_engine
-from models.user import User
+from entities.user import User
 
 
 # SQL file-based DB: use absolute path to ensure correct location

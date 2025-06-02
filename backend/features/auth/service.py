@@ -6,9 +6,9 @@ from passlib.context import CryptContext
 from sqlmodel import Session
 
 from config import settings
-from db.database import get_session
-from models.user import User
-from schemas.auth import Token, TokenData
+from database.core import get_session
+from entities.user import User
+from .models import Token, TokenData
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")  # points at auth router
