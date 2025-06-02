@@ -288,13 +288,20 @@ export default function EditProfilePage() {
               />
 
               {/* Save Changes Button */}
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6 flex flex-col space-y-2 justify-center">
                 <Button
                   type="submit"
                   className="w-full"
                   disabled={isUpdating}
                 >
                   {isUpdating ? 'Saving…' : 'Save Changes'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => router.push('/profile')}
+                  className="w-full"
+                >
+                  Cancel
                 </Button>
               </div>
             </form>
@@ -304,14 +311,11 @@ export default function EditProfilePage() {
 
         {/* — Delete Account Section — */}
         <CardContent className="border-t border-gray-200 dark:border-gray-700">
-          <h3 className="text-center text-sm font-semibold text-red-600 mt-2 mb-2">
-            Danger Zone
-          </h3>
 
           {!confirmDelete ? (
             <div className="flex justify-center">
               <Button
-                className='w-full'
+                className='w-full mt-6'
                 variant="destructive"
                 onClick={() => {
                   setConfirmDelete(true)
