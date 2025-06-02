@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
-from schemas.user import UserRead
+from ..users.models import UserRead
+
 
 
 class Token(BaseModel):
