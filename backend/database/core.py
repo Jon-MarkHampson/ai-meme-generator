@@ -18,7 +18,6 @@ def create_db_and_tables():
 
 # Shared session dependency
 def get_session():
-    """Yield a SQLModel session and handle commit/rollback automatically."""
     """
     FastAPI dependency that yields a new SQLModel Session
     and commits/rolls back automatically when the request ends.
