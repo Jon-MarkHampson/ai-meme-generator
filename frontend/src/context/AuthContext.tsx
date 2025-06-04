@@ -2,6 +2,7 @@
 
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react'
 import Cookies from 'js-cookie'
+import API from '@/lib/api'
 import { apiLogin, apiSignup, fetchProfile, User , apiUpdateProfile} from '@/lib/auth'
 
 interface AuthContextType {
@@ -10,7 +11,12 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>
   signup: (username: string, email: string, password: string) => Promise<void>
   logout: () => void
-  updateProfile: (payload: { username?: string; email?: string; password?: string }) => Promise<User>
+  updateProfile: (payload: {
+    current_password: string
+    username?: string
+    email?: string
+    password?: string
+  }) => Promise<void>
 }
 
 
@@ -75,14 +81,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
+  // ─── updateProfile: PATCH /users/me then re‐fetch /users/me ───
   const updateProfile = async (payload: {
+    current_password: string
     username?: string
     email?: string
     password?: string
-  }): Promise<User> => {
-    const resp = await apiUpdateProfile(payload)
+  }) => {
+    // 1) PATCH /users/me (backend requires current_password in body)
+    await API.patch("/users/me", payload)
+
+    // 2) Re‐fetch the user’s profile so we update React state
+    const resp = await fetchProfile()
     setUser(resp.data)
-    return resp.data
   }
 
   return (
