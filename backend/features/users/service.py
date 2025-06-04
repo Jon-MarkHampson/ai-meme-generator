@@ -25,15 +25,26 @@ def update_current_user(
     Return the updated ORM User.
     """
     data = user_update.model_dump(exclude_unset=True)
+    
+    # 1) Pull out and verify `current_password`:
+    supplied_old_pw = data.pop("current_password", None)
+    # (always non‐None because Pydantic demands it)
+    if not pwd_context.verify(supplied_old_pw, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect."
+        )
 
-    # If the client provided "password", hash it and set on the ORM model:
+    # 2) If the client sent a new `password`, hash+store it:
     if "password" in data:
-        raw_pw = data.pop("password")
-        current_user.hashed_password = get_password_hash(raw_pw)
+        new_pw = data.pop("password")
+        current_user.hashed_password = get_password_hash(new_pw)
 
-    # Apply any other changed fields (username / email)
-    for field_name, value in data.items():
-        setattr(current_user, field_name, value)
+    # 3) Update username/email if present:
+    if "username" in data:
+        current_user.username = data["username"]
+    if "email" in data:
+        current_user.email = data["email"]
 
     session.add(current_user)
     session.commit()
