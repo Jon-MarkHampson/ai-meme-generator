@@ -29,7 +29,7 @@ def create_access_token(
     expires_delta: timedelta,
 ) -> str:
     """Create a JWT access token for a subject with expiration."""
-    to_encode = {"sub": str(subject)}
+    to_encode = {"sub": subject}
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
