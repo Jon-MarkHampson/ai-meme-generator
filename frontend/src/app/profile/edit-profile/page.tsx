@@ -1,42 +1,39 @@
-'use client'
+// src/app/(protected)/edit-profile/page.tsx
 
-import React, { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-
-import { useAuth } from '@/context/AuthContext'
-import { apiDeleteAccount } from '@/lib/auth'
-
-// Shadcn/UI imports:
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+"use client"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { useAuth } from "@/context/AuthContext"
+import { apiDeleteAccount } from "@/lib/auth"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
 
 /**
- * 1) username/email: optional (if blank, won’t be sent to backend)
- * 2) password: if it’s a nonempty string, it must have length ≥ 6
- * 3) confirmPassword: only checked if password is nonempty
- * 4) ensure at least one of username/email/password is actually changed
+ * 1) current_password is REQUIRED whenever submitting changes.
+ * 2) username/email: optional, only if changed.
+ * 3) password: if nonempty, must be ≥6. confirmPassword must match it.
+ * 4) Must change at least one of { username, email, password }.
  */
 const formSchema = z
   .object({
-    username: z
+    current_password: z
       .string()
-      .min(2, { message: "Username must be at least 2 characters." })
-      .optional(),
+      .min(1, { message: "You must enter your current password to save changes." }),
 
-    // 1) We first transform "" → undefined
-    // 2) If it is non‐undefined, then it must pass the email check
+    username: z.string().min(2, { message: "Username must be at least 2 characters." }).optional(),
+
     email: z
       .string()
       .transform((val) => (val === "" ? undefined : val))
@@ -60,6 +57,7 @@ const formSchema = z
   })
   .refine(
     (data) => {
+      // If they typed a new password, confirmPassword must match
       if (data.password !== undefined) {
         return data.confirmPassword !== undefined && data.password === data.confirmPassword
       }
@@ -72,7 +70,7 @@ const formSchema = z
   )
   .refine(
     (data) => {
-      // Make sure at least one of username/email/password is provided
+      // Must change at least one of username/email/password (besides current_password)
       return data.username !== undefined || data.email !== undefined || data.password !== undefined
     },
     {
@@ -81,38 +79,37 @@ const formSchema = z
     }
   )
 
-// Infer the TS type
 type FormValues = z.infer<typeof formSchema>
 
 export default function EditProfilePage() {
   const router = useRouter()
   const { user, loading, updateProfile, logout } = useAuth()
 
-  // State for “Update Profile”
+  // ─── Update Profile state ───
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
 
-  // State for “Delete Account”
+  // ─── Delete Account state (omitted here) ───
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deletePassword, setDeletePassword] = useState('')
+  const [deletePassword, setDeletePassword] = useState("")
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // If not logged in, redirect to /login
+  // Redirect to /login if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login')
+      router.push("/login")
     }
   }, [loading, user, router])
 
-  // Initialize React Hook Form
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: user?.username || '',
-      email: user?.email || '',
-      password: '',
-      confirmPassword: '',
+      current_password: "",
+      username: user?.username || "",
+      email: user?.email || "",
+      password: "",
+      confirmPassword: "",
     },
   })
 
@@ -121,8 +118,15 @@ export default function EditProfilePage() {
     setIsUpdating(true)
 
     try {
-      // Build “only changed fields” payload
-      const payload: { username?: string; email?: string; password?: string } = {}
+      // Build payload (always include current_password)
+      const payload: {
+        current_password: string
+        username?: string
+        email?: string
+        password?: string
+      } = {
+        current_password: values.current_password,
+      }
       if (values.username && values.username !== user?.username) {
         payload.username = values.username
       }
@@ -133,16 +137,24 @@ export default function EditProfilePage() {
         payload.password = values.password
       }
 
-      if (Object.keys(payload).length === 0) {
-        // Nothing changed; nothing to do
+      // If nothing changed, do nothing:
+      if (
+        payload.username === undefined &&
+        payload.email === undefined &&
+        payload.password === undefined
+      ) {
         setIsUpdating(false)
         return
       }
 
+      // ─── CALL updateProfile FROM CONTEXT ───
       await updateProfile(payload)
-      router.push('/profile')
+
+      // Since updateProfile() calls `fetchProfile()` and `setUser(…)`,
+      // the React context still has a non‐null `user`, so you stay logged in.
+      router.push("/profile")
     } catch (err: any) {
-      setUpdateError(err.response?.data?.detail || 'Failed to update profile.')
+      setUpdateError(err.response?.data?.detail || "Failed to update profile.")
     } finally {
       setIsUpdating(false)
     }
@@ -151,31 +163,30 @@ export default function EditProfilePage() {
   async function handleDeleteAccount() {
     setDeleteError(null)
     setIsDeleting(true)
-
     try {
       await apiDeleteAccount(deletePassword)
-      logout() // clear cookie + user state
-      router.push('/')
+      logout()
+      router.push("/")
     } catch (err: any) {
-      setDeleteError(err.response?.data?.detail || 'Incorrect password.')
+      setDeleteError(err.response?.data?.detail || "Incorrect password.")
     } finally {
       setIsDeleting(false)
     }
   }
 
   if (!user) {
-    // Optionally a spinner while loading === true
-    return null
+    return null // or a spinner
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
-        {/* — Update Profile Section — */}
         <CardHeader>
           <CardTitle className="text-center">Update Your Account</CardTitle>
           <p className="text-center text-sm text-gray-500">
-            (Leave fields blank to keep unchanged)
+            You can update your username, email, or password here.
+            <br />
+            (Current password is required to save changes.)
           </p>
         </CardHeader>
 
@@ -187,19 +198,32 @@ export default function EditProfilePage() {
             </Alert>
           )}
 
-          {/*
-            ============
-            IMPORTANT: wrap your <form> inside Shadcn/UI’s <Form>
-            so that every <FormField> / <FormLabel> / <FormControl> 
-            has a valid RHF context.
-            ============
-          */}
           <Form {...methods}>
-            <form
-              onSubmit={methods.handleSubmit(onSubmit)}
-              className="space-y-8"
-            >
-              {/* Username */}
+            <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Current Password */}
+              <FormField
+                control={methods.control}
+                name="current_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        placeholder="Type your current password"
+                        {...field}
+                      />
+                    </FormControl>
+                    {methods.formState.errors.current_password && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {methods.formState.errors.current_password.message}
+                      </p>
+                    )}
+                  </FormItem>
+                )}
+              />
+
+              {/* Username (optional) */}
               <FormField
                 control={methods.control}
                 name="username"
@@ -218,7 +242,7 @@ export default function EditProfilePage() {
                 )}
               />
 
-              {/* Email */}
+              {/* Email (optional) */}
               <FormField
                 control={methods.control}
                 name="email"
@@ -241,7 +265,7 @@ export default function EditProfilePage() {
                 )}
               />
 
-              {/* New Password */}
+              {/* New Password (optional) */}
               <FormField
                 control={methods.control}
                 name="password"
@@ -264,7 +288,7 @@ export default function EditProfilePage() {
                 )}
               />
 
-              {/* Confirm New Password */}
+              {/* Confirm New Password (optional) */}
               <FormField
                 control={methods.control}
                 name="confirmPassword"
@@ -287,18 +311,14 @@ export default function EditProfilePage() {
                 )}
               />
 
-              {/* Save Changes Button */}
+              {/* Save Changes & Cancel Buttons */}
               <div className="mt-6 flex flex-col space-y-2 justify-center">
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? 'Saving…' : 'Save Changes'}
+                <Button type="submit" className="w-full" disabled={isUpdating}>
+                  {isUpdating ? "Saving…" : "Save Changes"}
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => router.push('/profile')}
+                  onClick={() => router.push("/profile")}
                   className="w-full"
                 >
                   Cancel
@@ -306,20 +326,18 @@ export default function EditProfilePage() {
               </div>
             </form>
           </Form>
-          { /* ^^^ Everything above is safely inside <Form> so useFormContext() is never null. */}
         </CardContent>
 
-        {/* — Delete Account Section — */}
+        {/* Delete Account Section (unchanged) */}
         <CardContent className="border-t border-gray-200 dark:border-gray-700">
-
           {!confirmDelete ? (
-            <div className="flex justify-center">
+            <div className="flex justify-center mt-4">
               <Button
-                className='w-full mt-6'
                 variant="destructive"
+                className="w-full"
                 onClick={() => {
                   setConfirmDelete(true)
-                  setDeletePassword('')
+                  setDeletePassword("")
                   setDeleteError(null)
                 }}
               >
@@ -327,13 +345,16 @@ export default function EditProfilePage() {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 mt-4">
               <p className="text-sm text-red-700 text-center">
                 Enter your password to confirm deletion
               </p>
 
               <div className="space-y-1">
-                <label htmlFor="delete-password" className="block text-sm font-medium text-red-700">
+                <label
+                  htmlFor="delete-password"
+                  className="block text-sm font-medium text-red-700"
+                >
                   Password
                 </label>
                 <Input
@@ -355,17 +376,17 @@ export default function EditProfilePage() {
                 <Button
                   variant="destructive"
                   onClick={handleDeleteAccount}
-                  disabled={isDeleting || deletePassword === ''}
+                  disabled={isDeleting || deletePassword === ""}
                   className="flex-1 mr-2"
                 >
-                  {isDeleting ? 'Deleting…' : 'Confirm Delete'}
+                  {isDeleting ? "Deleting…" : "Confirm Delete"}
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={() => {
                     setConfirmDelete(false)
                     setDeleteError(null)
-                    setDeletePassword('')
+                    setDeletePassword("")
                   }}
                   className="flex-1 ml-2"
                 >
