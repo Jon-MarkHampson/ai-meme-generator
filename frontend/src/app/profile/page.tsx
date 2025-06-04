@@ -41,11 +41,11 @@ export default function ProfilePage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Username */}
+          {/* Full Name */}
           <div className="space-y-1">
-            <Label htmlFor="username">Username</Label>
-            <p id="username" className="text-lg font-medium">
-              {user.username}
+            <Label htmlFor="full-name">Full Name</Label>
+            <p id="full-name" className="text-lg font-medium">
+              {user.first_name} {user.last_name}
             </p>
           </div>
 
@@ -63,7 +63,7 @@ export default function ProfilePage() {
         <CardFooter className="flex flex-col space-y-2 pt-4">
           <Button
             variant="secondary"
-            onClick={() => router.push('profile/edit-profile')}
+            onClick={() => router.push('/profile/edit-profile')}
             className="w-full"
           >
             Edit Profile

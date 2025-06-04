@@ -40,9 +40,11 @@ def update_current_user(
         new_pw = data.pop("password")
         current_user.hashed_password = get_password_hash(new_pw)
 
-    # 3) Update username/email if present:
-    if "username" in data:
-        current_user.username = data["username"]
+    # 3) Update first_name/last_name/email if present:
+    if "first_name" in data:
+        current_user.first_name = data["first_name"]
+    if "last_name" in data:
+        current_user.last_name = data["last_name"]
     if "email" in data:
         current_user.email = data["email"]
 

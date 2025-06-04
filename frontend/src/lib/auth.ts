@@ -6,14 +6,15 @@ import Cookies from "js-cookie";
  */
 export interface User {
   id: string;
-  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
 }
 
 /**
  * Shape of the response from POST /auth/signup:
  * {
- *   user: { id, username, email },
+ *   user: { id, first_name, last_name, email },
  *   access_token: string,
  *   token_type: string
  * }
@@ -29,12 +30,14 @@ interface SignupResponse {
  * Now /auth/signup returns both the created User and a JWT.
  */
 export async function apiSignup(
-  username: string,
+  firstName: string,
+  lastName: string,
   email: string,
   password: string
 ): Promise<SignupResponse> {
   const resp = await API.post<SignupResponse>("/auth/signup", {
-    username,
+    first_name: firstName,
+    last_name: lastName,
     email,
     password,
   });
@@ -46,12 +49,12 @@ export async function apiSignup(
  * POST /auth/login responds with { access_token, token_type }.
  */
 export async function apiLogin(
-  username: string,
+  email: string,
   password: string
 ): Promise<{ access_token: string; token_type: string }> {
   const resp = await API.post<{ access_token: string; token_type: string }>(
     "/auth/login",
-    new URLSearchParams({ username, password }).toString(),
+    new URLSearchParams({ username: email, password }).toString(),
     {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     }

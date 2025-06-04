@@ -3,7 +3,8 @@ from typing import Optional
 
 
 class UserCreate(BaseModel):
-    username: str
+    first_name: str
+    last_name: str
     email: EmailStr
     password: str  # raw password in -> hash
 
@@ -13,7 +14,8 @@ class UserUpdate(BaseModel):
     current_password: str
 
     # These three are optional—but if any are present, we will verify `current_password` first.
-    username: Optional[str]    = None
+    first_name: Optional[str]    = None
+    last_name: Optional[str]     = None
     email:    Optional[EmailStr] = None
     password: Optional[str]    = None # New password
 
@@ -23,7 +25,8 @@ class UserUpdate(BaseModel):
 
 class UserRead(BaseModel):
     id: str
-    username: str
+    first_name: str
+    last_name: str
     email: EmailStr
 
     class Config:

@@ -3,17 +3,18 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react'
 import Cookies from 'js-cookie'
 import API from '@/lib/api'
-import { apiLogin, apiSignup, fetchProfile, User , apiUpdateProfile} from '@/lib/auth'
+import { apiLogin, apiSignup, fetchProfile, User, apiUpdateProfile } from '@/lib/auth'
 
 interface AuthContextType {
   user: User | null
-  loading: boolean   
-  login: (username: string, password: string) => Promise<void>
-  signup: (username: string, email: string, password: string) => Promise<void>
+  loading: boolean
+  login: (email: string, password: string) => Promise<void>
+  signup: (firstName: string, lastName: string, email: string, password: string) => Promise<void>
   logout: () => void
   updateProfile: (payload: {
-    current_password: string
-    username?: string
+    currentPassword: string
+    firstName?: string
+    lastName?: string
     email?: string
     password?: string
   }) => Promise<void>
@@ -28,7 +29,7 @@ export const AuthContext = createContext<AuthContextType>(null!)
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true) 
+  const [loading, setLoading] = useState(true)
 
   // On mount, if a 'token' cookie exists, fetch /users/me
   useEffect(() => {
@@ -53,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * login: calls /auth/login, stores JWT cookie, then fetches profile
    */
-  const login = async (username: string, password: string) => {
-    const { access_token } = await apiLogin(username, password)
+  const login = async (email: string, password: string) => {
+    const { access_token } = await apiLogin(email, password)
     Cookies.set('token', access_token)
     const profile = await fetchProfile()
     setUser(profile.data)
@@ -63,9 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * signup: calls /auth/signup (gets user + token), stores cookie, and sets user
    */
-  const signup = async (username: string, email: string, password: string) => {
+  const signup = async (firstName: string, lastName: string, email: string, password: string) => {
     const { user: newUser, access_token } = await apiSignup(
-      username,
+      firstName,
+      lastName,
       email,
       password
     )
@@ -83,15 +85,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ─── updateProfile: PATCH /users/me then re‐fetch /users/me ───
   const updateProfile = async (payload: {
-    current_password: string
-    username?: string
+    currentPassword: string
+    firstName?: string
+    lastName?: string
     email?: string
     password?: string
   }) => {
-    // 1) PATCH /users/me (backend requires current_password in body)
-    await API.patch("/users/me", payload)
+    const { currentPassword, firstName, lastName, email, password } = payload
+    const body: any = { current_password: currentPassword }
+    if (firstName !== undefined) body.first_name = firstName
+    if (lastName !== undefined) body.last_name = lastName
+    if (email !== undefined) body.email = email
+    if (password !== undefined) body.password = password
 
-    // 2) Re‐fetch the user’s profile so we update React state
+    await API.patch("/users/me", body)
     const resp = await fetchProfile()
     setUser(resp.data)
   }

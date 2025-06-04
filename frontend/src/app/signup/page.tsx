@@ -25,7 +25,8 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
  */
 const formSchema = z
   .object({
-    username: z.string().min(2, { message: 'Username must be at least 2 characters.' }),
+    firstName: z.string().min(1, { message: 'First name is required.' }),
+    lastName: z.string().min(1, { message: 'Last name is required.' }),
     email: z.string().email({ message: 'Please enter a valid email address.' }),
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
     confirmPassword: z.string().min(6, { message: 'Please retype your password.' }),
@@ -46,7 +47,8 @@ export default function SignupPage() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: '',
+      firstName: '',
+      lastName: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -58,7 +60,12 @@ export default function SignupPage() {
     setIsSubmitting(true)
 
     try {
-      await signup(values.username, values.email, values.password)
+      await signup(
+        values.firstName,
+        values.lastName,
+        values.email,
+        values.password
+      )
       router.push('/profile')
     } catch (err: any) {
       const message =
@@ -85,19 +92,38 @@ export default function SignupPage() {
           )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {/* Username Field */}
+              {/* First Name Field */}
               <FormField
                 control={form.control}
-                name="username"
+                name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your username" {...field} />
+                      <Input placeholder="Enter your first name" {...field} />
                     </FormControl>
-                    {form.formState.errors.username && (
+                    {form.formState.errors.firstName && (
                       <p className="mt-1 text-sm text-red-600">
-                        {form.formState.errors.username.message}
+                        {form.formState.errors.firstName.message}
+                      </p>
+                    )}
+                  </FormItem>
+                )}
+              />
+
+              {/* Last Name Field */}
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your last name" {...field} />
+                    </FormControl>
+                    {form.formState.errors.lastName && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {form.formState.errors.lastName.message}
                       </p>
                     )}
                   </FormItem>

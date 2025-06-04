@@ -1,41 +1,45 @@
-'use client'
-import { useState, useContext } from 'react'
-import { AuthContext } from '@/context/AuthContext'
-import { useRouter } from 'next/navigation'
+'use client';
 
-// Shadcn/UI imports
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
+import { useContext, useState } from 'react';
+import { AuthContext } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+
+const formSchema = z.object({
+  email: z.string().email({ message: 'Enter a valid email.' }),
+  password: z.string().min(1, { message: 'Enter your password.' }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
-  const { login } = useContext(AuthContext)
-  const router = useRouter()
-  const [form, setForm] = useState({ username: '', password: '' })
-  const [error, setError] = useState<string>('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { login } = useContext(AuthContext);
+  const router = useRouter();
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setIsSubmitting(true)
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  async function onSubmit(values: FormValues) {
+    setFormError(null);
+    setIsSubmitting(true);
     try {
-      await login(form.username, form.password)
-      router.push('/profile')
-    } catch (err) {
-      // you can inspect err to give more specific feedback
-      setError('Invalid username or password')
+      await login(values.email, values.password);
+      router.push('/profile');
+    } catch (err: any) {
+      setFormError(err.response?.data?.detail || 'Login failed.');
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -44,63 +48,61 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center">Log In</CardTitle>
-          <CardDescription className="text-center text-muted-foreground">
-            Enter your credentials to continue
-          </CardDescription>
         </CardHeader>
-
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {/* Username Field */}
-            <div className="space-y-1">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                required
-                placeholder="Username"
-                value={form.username}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, username: e.target.value }))
-                }
+          {formError && (
+            <p className="mb-4 text-center text-sm text-red-600">{formError}</p>
+          )}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Email */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="john@example.com" {...field} />
+                    </FormControl>
+                    {form.formState.errors.email && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {form.formState.errors.email.message}
+                      </p>
+                    )}
+                  </FormItem>
+                )}
               />
-            </div>
 
-            {/* Password Field */}
-            <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                placeholder="Password"
-                value={form.password}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, password: e.target.value }))
-                }
+              {/* Password */}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    {form.formState.errors.password && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {form.formState.errors.password.message}
+                      </p>
+                    )}
+                  </FormItem>
+                )}
               />
-            </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-center pt-4">
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isSubmitting}
-              >
-                Log In
-              </Button>
-            </div>
-          </form>
+              {/* Submit Button */}
+              <div className="mt-4 flex flex-col space-y-2">
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? 'Logging In…' : 'Log In'}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -1,20 +1,15 @@
-from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
+from datetime import timedelta
 
-from .service import (
-    get_password_hash,
-    verify_password,
-    create_access_token,
-    get_current_user,
-)
-from config import settings
-from database.core import get_session
-from entities.user import User
 from .models import Token, SignupResponse
 from ..users.models import UserCreate
-
+from entities.user import User
+from .service import verify_password, get_password_hash, create_access_token
+from database.core import get_session
+from config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -24,27 +19,35 @@ def signup(
     user_in: UserCreate,
     session: Session = Depends(get_session),
 ):
-    # 1) Check if username already exists
-    exists = session.exec(
-        select(User).where(User.username == user_in.username)
+    # 1) Check if a user with this email already exists
+    existing = session.exec(
+        select(User).where(User.email == user_in.email)
     ).first()
-    if exists:
-        # To avoid leaking which usernames exist, return a generic error
+    if existing:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
 
-    # 2) Hash the password and create the User
+    # 2) Hash the password and create the new User
     hashed = get_password_hash(user_in.password)
     user = User(
-        username=user_in.username,
+        first_name=user_in.first_name,
+        last_name=user_in.last_name,
         email=user_in.email,
         hashed_password=hashed
     )
+
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    try:
+        session.commit()
+        session.refresh(user)
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered."
+        )
 
     # 3) Generate a JWT for the new user
     access_token = create_access_token(
@@ -52,7 +55,7 @@ def signup(
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
-    # 4) Return both user data and token
+    # 4) Return both the newly minted user data and the token
     return SignupResponse(
         user=user,
         access_token=access_token,
@@ -65,14 +68,27 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session),
 ):
-    user = session.exec(select(User).where(User.username == form_data.username)).first()
+    """
+    Authenticate using email + password (FastAPI’s OAuth2 form still calls it “username”,
+    so we treat form_data.username as the user’s email). Return a JWT if valid.
+    """
+    # 1) Look up user by email
+    user = session.exec(
+        select(User).where(User.email == form_data.username)
+    ).first()
+
+    # 2) Verify password
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
         )
 
-    token = create_access_token(
+    # 3) Create a new JWT
+    access_token = create_access_token(
         subject=user.id,
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    return {"access_token": token, "token_type": "bearer"}
+
+    # 4) Return it
+    return {"access_token": access_token, "token_type": "bearer"}
