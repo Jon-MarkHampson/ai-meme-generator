@@ -1,13 +1,13 @@
-import API from './api'
-import Cookies from 'js-cookie'
+import API from "./api";
+import Cookies from "js-cookie";
 
 /**
  * Matches FastAPI UserRead model exactly:
  */
 export interface User {
-  id: number
-  username: string
-  email: string
+  id: string;
+  username: string;
+  email: string;
 }
 
 /**
@@ -19,9 +19,9 @@ export interface User {
  * }
  */
 interface SignupResponse {
-  user: User
-  access_token: string
-  token_type: string
+  user: User;
+  access_token: string;
+  token_type: string;
 }
 
 /**
@@ -33,12 +33,12 @@ export async function apiSignup(
   email: string,
   password: string
 ): Promise<SignupResponse> {
-  const resp = await API.post<SignupResponse>('/auth/signup', {
+  const resp = await API.post<SignupResponse>("/auth/signup", {
     username,
     email,
     password,
-  })
-  return resp.data
+  });
+  return resp.data;
 }
 
 /**
@@ -50,13 +50,13 @@ export async function apiLogin(
   password: string
 ): Promise<{ access_token: string; token_type: string }> {
   const resp = await API.post<{ access_token: string; token_type: string }>(
-    '/auth/login',
+    "/auth/login",
     new URLSearchParams({ username, password }).toString(),
     {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
     }
-  )
-  return resp.data
+  );
+  return resp.data;
 }
 
 /**
@@ -64,7 +64,7 @@ export async function apiLogin(
  * Thanks to the interceptor, API will auto-attach the cookie JWT.
  */
 export async function fetchProfile(): Promise<{ data: User }> {
-  return API.get<User>('/users/me')
+  return API.get<User>("/users/me");
 }
 
 /**
@@ -74,11 +74,13 @@ export async function fetchProfile(): Promise<{ data: User }> {
  * Backend returns the updated user object.
  */
 export async function apiUpdateProfile(payload: {
-  username?: string
-  email?: string
-  password?: string
-}): Promise<{ data: User }> {
-  return API.patch<User>('/users/me', payload)
+  current_password: string;
+  username?: string;
+  email?: string;
+  password?: string;
+}): Promise<User> {
+  const resp = await API.patch<User>("/users/me", payload);
+  return resp.data;
 }
 
 /**
@@ -87,5 +89,5 @@ export async function apiUpdateProfile(payload: {
  */
 export async function apiDeleteAccount(password: string): Promise<void> {
   // Bypass TS checking by casting the config object to "any"
-  await API.delete<void>('/users/me', { data: { password } } as any)
+  await API.delete<void>("/users/me", { data: { password } } as any);
 }
