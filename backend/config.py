@@ -20,8 +20,13 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # you can also put DB_URL here later
-    # DATABASE_URL: str = "sqlite:///./database.db"
+    # Load the database URL from .env
+    DATABASE_URL: str
+    
+    # Supabase credentials (if/when needed elsewhere)
+    SUPABASE_URL: str
+    SUPABASE_PASSWORD: str
+    SUPABASE_API_KEY: str
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

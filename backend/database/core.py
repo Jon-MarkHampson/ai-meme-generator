@@ -2,13 +2,13 @@ from pathlib import Path
 
 from sqlmodel import SQLModel, Session, create_engine
 from entities.user import User
+from config import settings
 
-
-# SQL file-based DB: use absolute path to ensure correct location
-base_dir = Path(__file__).resolve().parent.parent  # backend/db -> backend
-db_file = base_dir / "database.db"
-DATABASE_URL = f"sqlite:///{db_file}"
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(
+    settings.DATABASE_URL,
+    echo=True,
+    connect_args={"sslmode": "require"},  # enforce SSL for Supabase
+)
 
 
 def create_db_and_tables():
