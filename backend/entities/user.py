@@ -5,7 +5,8 @@ from sqlmodel import SQLModel, Field
 
 class User(SQLModel, table=True):
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
-    username: str = Field(index=True, nullable=False, unique=True)
+    first_name: str = Field(index=True, nullable=False)
+    last_name: str = Field(index=True, nullable=False)
     email: str = Field(index=True, nullable=False, unique=True)
     hashed_password: str = Field(nullable=False)
     created_at: datetime = Field(
@@ -13,7 +14,7 @@ class User(SQLModel, table=True):
     )
 
     def __repr__(self):
-        return f"User(id={self.id}, username={self.username}, email={self.email}, password=****, created_at={self.created_at})"
+        return f"User(id={self.id}, first_name={self.first_name}, last_name={self.last_name}, email={self.email}, password=****, created_at={self.created_at})"
 
     def __str__(self):
-        return f"User: {self.username} <{self.email}> (ID: {self.id})"
+        return f"User: {self.first_name} {self.last_name} <{self.email}> (ID: {self.id})"

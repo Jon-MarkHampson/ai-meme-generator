@@ -1,67 +1,68 @@
-// src/app/(protected)/edit-profile/page.tsx
+'use client';
 
-"use client"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { useAuth } from "@/context/AuthContext"
-import { apiDeleteAccount } from "@/lib/auth"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+import { useAuth } from "@/context/AuthContext";
+import { apiDeleteAccount } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 /**
- * 1) current_password is REQUIRED whenever submitting changes.
- * 2) username/email: optional, only if changed.
- * 3) password: if nonempty, must be ≥6. confirmPassword must match it.
- * 4) Must change at least one of { username, email, password }.
+ * 1) currentPassword is REQUIRED (always sent as current_password to backend).
+ * 2) firstName, lastName, email, password, confirmPassword are all optional.
+ * 3) If password is non‐empty, confirmPassword must match.
+ * 4) At least one of (firstName, lastName, email, password) must be present.
  */
 const formSchema = z
   .object({
-    current_password: z
+    currentPassword: z
       .string()
-      .min(1, { message: "You must enter your current password to save changes." }),
+      .min(1, { message: "Current password is required." }),
 
-    username: z.string().min(2, { message: "Username must be at least 2 characters." }).optional(),
+    firstName: z
+      .string()
+      .min(1, { message: "First name must be at least 1 character." })
+      .optional(),
+
+    lastName: z
+      .string()
+      .min(1, { message: "Last name must be at least 1 character." })
+      .optional(),
 
     email: z
       .string()
-      .transform((val) => (val === "" ? undefined : val))
-      .refine((val) => val === undefined || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
-        message: "Please enter a valid email address.",
+      .transform((v) => (v === "" ? undefined : v))
+      .refine((v) => v === undefined || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v), {
+        message: "Please enter a valid email.",
       })
       .optional(),
 
     password: z
       .string()
-      .transform((val) => (val === "" ? undefined : val))
-      .refine((val) => val === undefined || val.length >= 6, {
-        message: "Password must be at least 6 characters.",
+      .transform((v) => (v === "" ? undefined : v))
+      .refine((v) => v === undefined || v.length >= 6, {
+        message: "New password must be at least 6 characters.",
       })
       .optional(),
 
     confirmPassword: z
       .string()
-      .transform((val) => (val === "" ? undefined : val))
+      .transform((v) => (v === "" ? undefined : v))
       .optional(),
   })
   .refine(
     (data) => {
-      // If they typed a new password, confirmPassword must match
       if (data.password !== undefined) {
-        return data.confirmPassword !== undefined && data.password === data.confirmPassword
+        return data.confirmPassword !== undefined && data.password === data.confirmPassword;
       }
-      return true
+      return true;
     },
     {
       message: "Passwords do not match.",
@@ -70,121 +71,132 @@ const formSchema = z
   )
   .refine(
     (data) => {
-      // Must change at least one of username/email/password (besides current_password)
-      return data.username !== undefined || data.email !== undefined || data.password !== undefined
+      // Make sure at least one of firstName/lastName/email/password was provided
+      return (
+        data.firstName !== undefined ||
+        data.lastName !== undefined ||
+        data.email !== undefined ||
+        data.password !== undefined
+      );
     },
     {
       message: "Please change at least one field.",
       path: [],
     }
-  )
+  );
 
-type FormValues = z.infer<typeof formSchema>
+type FormValues = z.infer<typeof formSchema>;
 
 export default function EditProfilePage() {
-  const router = useRouter()
-  const { user, loading, updateProfile, logout } = useAuth()
+  const router = useRouter();
+  const { user, loading, updateProfile, logout } = useAuth();
 
-  // ─── Update Profile state ───
-  const [updateError, setUpdateError] = useState<string | null>(null)
-  const [isUpdating, setIsUpdating] = useState(false)
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  // ─── Delete Account state (omitted here) ───
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deletePassword, setDeletePassword] = useState("")
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Redirect to /login if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login")
+      router.push("/login");
     }
-  }, [loading, user, router])
+  }, [loading, user, router]);
 
+  // Initialize React Hook Form with camelCase defaults,
+  // but defaultValues pull from user.first_name / user.last_name
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      current_password: "",
-      username: user?.username || "",
+      currentPassword: "",
+      firstName: user?.first_name || "",
+      lastName: user?.last_name || "",
       email: user?.email || "",
       password: "",
       confirmPassword: "",
     },
-  })
+  });
 
   async function onSubmit(values: FormValues) {
-    setUpdateError(null)
-    setIsUpdating(true)
+    setUpdateError(null);
+    setIsUpdating(true);
+
+    // Build a *camelCase* payload to match the TS signature of `updateProfile`.
+    const payloadForAuthContext: {
+      currentPassword: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      password?: string;
+    } = {
+      currentPassword: values.currentPassword,
+    };
+
+    if (values.firstName && values.firstName !== user?.first_name) {
+      payloadForAuthContext.firstName = values.firstName;
+    }
+    if (values.lastName && values.lastName !== user?.last_name) {
+      payloadForAuthContext.lastName = values.lastName;
+    }
+    if (values.email && values.email !== user?.email) {
+      payloadForAuthContext.email = values.email;
+    }
+    if (values.password) {
+      payloadForAuthContext.password = values.password;
+    }
+
+    // If no other field changed, simply bail
+    if (
+      payloadForAuthContext.firstName === undefined &&
+      payloadForAuthContext.lastName === undefined &&
+      payloadForAuthContext.email === undefined &&
+      payloadForAuthContext.password === undefined
+    ) {
+      setIsUpdating(false);
+      return;
+    }
 
     try {
-      // Build payload (always include current_password)
-      const payload: {
-        current_password: string
-        username?: string
-        email?: string
-        password?: string
-      } = {
-        current_password: values.current_password,
-      }
-      if (values.username && values.username !== user?.username) {
-        payload.username = values.username
-      }
-      if (values.email && values.email !== user?.email) {
-        payload.email = values.email
-      }
-      if (values.password) {
-        payload.password = values.password
-      }
-
-      // If nothing changed, do nothing:
-      if (
-        payload.username === undefined &&
-        payload.email === undefined &&
-        payload.password === undefined
-      ) {
-        setIsUpdating(false)
-        return
-      }
-
-      // ─── CALL updateProfile FROM CONTEXT ───
-      await updateProfile(payload)
-
-      // Since updateProfile() calls `fetchProfile()` and `setUser(…)`,
-      // the React context still has a non‐null `user`, so you stay logged in.
-      router.push("/profile")
+      // Now pass the correct camelCase object.  AuthContext.updateProfile
+      // is responsible for internally converting camelCase → snake_case
+      await updateProfile(payloadForAuthContext);
+      router.push("/profile");
     } catch (err: any) {
-      setUpdateError(err.response?.data?.detail || "Failed to update profile.")
+      setUpdateError(err.response?.data?.detail || "Failed to update profile.");
     } finally {
-      setIsUpdating(false)
+      setIsUpdating(false);
     }
   }
 
   async function handleDeleteAccount() {
-    setDeleteError(null)
-    setIsDeleting(true)
+    setDeleteError(null);
+    setIsDeleting(true);
     try {
-      await apiDeleteAccount(deletePassword)
-      logout()
-      router.push("/")
+      await apiDeleteAccount(deletePassword);
+      logout();
+      router.push("/");
     } catch (err: any) {
-      setDeleteError(err.response?.data?.detail || "Incorrect password.")
+      setDeleteError(err.response?.data?.detail || "Incorrect password.");
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
   }
 
   if (!user) {
-    return null // or a spinner
+    return null; // or a loading spinner
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
+        {/* — Update Profile Section — */}
         <CardHeader>
           <CardTitle className="text-center">Update Your Account</CardTitle>
           <p className="text-center text-sm text-gray-500">
-            You can update your username, email, or password here.
+            Optionally update your name email, or password.
             <br />
             (Current password is required to save changes.)
           </p>
@@ -198,51 +210,71 @@ export default function EditProfilePage() {
             </Alert>
           )}
 
+          {/* ========= Wrap <form> inside Shadcn/UI’s <Form> for RHF context ========= */}
           <Form {...methods}>
             <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Current Password */}
+              {/* — Current Password (always required) — */}
               <FormField
                 control={methods.control}
-                name="current_password"
+                name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Current Password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
-                        placeholder="Type your current password"
+                        placeholder="Enter your current password"
                         {...field}
                       />
                     </FormControl>
-                    {methods.formState.errors.current_password && (
+                    {methods.formState.errors.currentPassword && (
                       <p className="mt-1 text-sm text-red-600">
-                        {methods.formState.errors.current_password.message}
+                        {methods.formState.errors.currentPassword.message}
                       </p>
                     )}
                   </FormItem>
                 )}
               />
 
-              {/* Username (optional) */}
+              {/* — First Name (optional) — */}
               <FormField
                 control={methods.control}
-                name="username"
+                name="firstName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder={user.username} {...field} />
+                      <Input placeholder={user.first_name} {...field} />
                     </FormControl>
-                    {methods.formState.errors.username && (
+                    {methods.formState.errors.firstName && (
                       <p className="mt-1 text-sm text-red-600">
-                        {methods.formState.errors.username.message}
+                        {methods.formState.errors.firstName.message}
                       </p>
                     )}
                   </FormItem>
                 )}
               />
 
-              {/* Email (optional) */}
+              {/* — Last Name (optional) — */}
+              <FormField
+                control={methods.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder={user.last_name} {...field} />
+                    </FormControl>
+                    {methods.formState.errors.lastName && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {methods.formState.errors.lastName.message}
+                      </p>
+                    )}
+                  </FormItem>
+                )}
+              />
+
+              {/* — Email (optional) — */}
               <FormField
                 control={methods.control}
                 name="email"
@@ -250,11 +282,7 @@ export default function EditProfilePage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input
-                        type="email"
-                        placeholder={user.email}
-                        {...field}
-                      />
+                      <Input type="email" placeholder={user.email} {...field} />
                     </FormControl>
                     {methods.formState.errors.email && (
                       <p className="mt-1 text-sm text-red-600">
@@ -265,7 +293,7 @@ export default function EditProfilePage() {
                 )}
               />
 
-              {/* New Password (optional) */}
+              {/* — New Password (optional) — */}
               <FormField
                 control={methods.control}
                 name="password"
@@ -288,7 +316,7 @@ export default function EditProfilePage() {
                 )}
               />
 
-              {/* Confirm New Password (optional) */}
+              {/* — Confirm New Password (optional) — */}
               <FormField
                 control={methods.control}
                 name="confirmPassword"
@@ -311,7 +339,7 @@ export default function EditProfilePage() {
                 )}
               />
 
-              {/* Save Changes & Cancel Buttons */}
+              {/* — Buttons: Save / Cancel — */}
               <div className="mt-6 flex flex-col space-y-2 justify-center">
                 <Button type="submit" className="w-full" disabled={isUpdating}>
                   {isUpdating ? "Saving…" : "Save Changes"}
@@ -328,7 +356,7 @@ export default function EditProfilePage() {
           </Form>
         </CardContent>
 
-        {/* Delete Account Section (unchanged) */}
+        {/* — Delete Account Section — */}
         <CardContent className="border-t border-gray-200 dark:border-gray-700">
           {!confirmDelete ? (
             <div className="flex justify-center mt-4">
@@ -336,9 +364,9 @@ export default function EditProfilePage() {
                 variant="destructive"
                 className="w-full"
                 onClick={() => {
-                  setConfirmDelete(true)
-                  setDeletePassword("")
-                  setDeleteError(null)
+                  setConfirmDelete(true);
+                  setDeletePassword("");
+                  setDeleteError(null);
                 }}
               >
                 Delete My Account
@@ -384,9 +412,9 @@ export default function EditProfilePage() {
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    setConfirmDelete(false)
-                    setDeleteError(null)
-                    setDeletePassword("")
+                    setConfirmDelete(false);
+                    setDeleteError(null);
+                    setDeletePassword("");
                   }}
                   className="flex-1 ml-2"
                 >
@@ -398,5 +426,5 @@ export default function EditProfilePage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
