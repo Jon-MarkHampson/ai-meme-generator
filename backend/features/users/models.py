@@ -9,9 +9,13 @@ class UserCreate(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    email: Optional[EmailStr] = None
-    password: Optional[str] = None  # raw new password
+    # REQUIRED: always supply the existing password if you want to change anything
+    current_password: str
+
+    # These three are optional—but if any are present, we will verify `current_password` first.
+    username: Optional[str]    = None
+    email:    Optional[EmailStr] = None
+    password: Optional[str]    = None # New password
 
     class Config:
         from_attributes = True
