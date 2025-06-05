@@ -1,4 +1,4 @@
-[ai-meme-generator]
+[project]
 name = "backend"
 version = "0.1.0"
 description = "AI Meme Generator Backend"
@@ -17,5 +17,6 @@ dependencies = [
     "python-jose>=3.5.0",
     "python-multipart>=0.0.20",
     "sqlmodel>=0.0.24",
+    "supabase>=2.15.2",
     "uvicorn>=0.34.2",
 ]
