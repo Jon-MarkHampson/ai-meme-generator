@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from features.auth.controller import router as auth_router
 from features.users.controller import router as user_router
+from features.upload_image.controller import router as upload_image_router
 
 
 def register_routers(app: FastAPI):
@@ -18,3 +19,4 @@ def register_routers(app: FastAPI):
     """
     app.include_router(auth_router)
     app.include_router(user_router)
+    app.include_router(upload_image_router)
