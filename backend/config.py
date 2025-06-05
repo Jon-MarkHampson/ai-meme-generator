@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str
     SUPABASE_PASSWORD: str
     SUPABASE_API_KEY: str
+    SUPABASE_SERVICE_ROLE_KEY: str
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
