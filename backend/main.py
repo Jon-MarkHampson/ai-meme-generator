@@ -16,7 +16,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-origins = ["http://localhost:3000"]  # Add additional allowed origins here, such as the production frontend URL
+
+# Health check at root URL
+@app.get("/", summary="Health check")
+async def health_check():
+    return {"Health Check - status": "ok"}
+
+
+origins = [
+    "http://localhost:3000"
+]  # Add additional allowed origins here, such as the production frontend URL
 
 app.add_middleware(
     CORSMiddleware,
