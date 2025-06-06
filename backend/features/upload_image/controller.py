@@ -15,9 +15,9 @@ router = APIRouter(prefix="/upload-image", tags=["upload-image"])
     summary="Upload an image for the authenticated user",
 )
 async def upload_image(
+    storage_bucket: str,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    storage_bucket: str = "memes",
 ):
     """
     1) This endpoint is /upload-image/ (POST)
@@ -42,7 +42,7 @@ async def upload_image(
     logger.debug(f"Read {len(contents)} bytes from '{file.filename}'")
 
     try:
-        public_url = upload_image_to_supabase(contents, file.filename, storage_bucket)
+        public_url = upload_image_to_supabase(storage_bucket, contents, file.filename)
     except Exception:
         logger.exception("Failed to upload image to Supabase")
         raise HTTPException(
