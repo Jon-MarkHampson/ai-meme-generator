@@ -1,8 +1,11 @@
 import os
+import logging
 from PIL import Image, ImageDraw, ImageFont
 import datetime
 
-# It would be great to have data stored with the image such as the best location(s) to place the textsource
+
+logger = logging.getLogger(__name__)
+
 
 # 1. Load your template
 img = Image.open("meme-text-over-image/coffee.png")
