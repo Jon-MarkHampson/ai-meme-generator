@@ -28,10 +28,15 @@ def parse_args():
     p.add_argument(
         "--token", "-t", required=True, help="Your JWT access token (Bearer token)"
     )
+    p.add_argument(
+        "--storage-bucket", "-b", default="memes", help="The storage bucket to use"
+    )
     return p.parse_args()
 
 
-def upload_image(file_path: str, api_url: str, token: str):
+def upload_image(
+    file_path: str, api_url: str, token: str, storage_bucket: str = "memes"
+):
     if not os.path.isfile(file_path):
         logger.error(f"Error: file does not exist: {file_path}")
         sys.exit(1)

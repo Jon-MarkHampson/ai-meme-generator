@@ -7,10 +7,12 @@ from supabase_client import supabase
 logger = logging.getLogger(__name__)
 
 
-def upload_image_to_supabase(contents: bytes, original_filename: str) -> str:
+def upload_image_to_supabase(
+    contents: bytes, original_filename: str, storage_bucket: str
+) -> str:
     """
-    1) Build a unique file path under “memes/” using a UUID + original extension.
-    2) Call supabase.storage.from_("memes").upload(...). If it fails, StorageApiError is raised.
+    1) Build a unique file path under “<storage_bucket>/” using a UUID + original extension.
+    2) Call supabase.storage.from_("<storage_bucket>").upload(...). If it fails, StorageApiError is raised.
     3) Call get_public_url(...) which may return either:
        - a plain string, or
        - a dict containing {"publicURL": "<url>"}.
@@ -22,13 +24,13 @@ def upload_image_to_supabase(contents: bytes, original_filename: str) -> str:
         suffix = original_filename.rsplit(".", 1)[1].lower()
     except Exception:
         suffix = "png"
-    object_path = f"memes/{uuid.uuid4().hex}.{suffix}"
+    object_path = f"{storage_bucket}/{uuid.uuid4().hex}.{suffix}"
     logger.info(f"Generated object path: {object_path}")
 
     # Step 2: Attempt the upload
     try:
         logger.info(f"Uploading {original_filename} to Supabase at {object_path}")
-        supabase.storage.from_("memes").upload(object_path, contents)
+        supabase.storage.from_(storage_bucket).upload(object_path, contents)
         logger.info(f"Upload successful for {object_path}")
     except StorageApiError as e:
         msg = str(e)
@@ -40,7 +42,7 @@ def upload_image_to_supabase(contents: bytes, original_filename: str) -> str:
 
     # Step 3: Retrieve the public URL
     logger.info(f"Retrieving public URL for {object_path}")
-    url_resp = supabase.storage.from_("memes").get_public_url(object_path)
+    url_resp = supabase.storage.from_(storage_bucket).get_public_url(object_path)
 
     # Step 4: Normalize whatever get_public_url returned into a single string
     if isinstance(url_resp, str):
