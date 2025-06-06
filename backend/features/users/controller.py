@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, Body, status
 from sqlmodel import Session
 
@@ -10,6 +11,8 @@ from .service import (
     update_current_user,
     delete_current_user,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -26,6 +29,7 @@ def read_me(
     Controller for GET /users/me
     Simply calls the service to fetch “current_user” and returns it.
     """
+    logger.info(f"GET /users/me - user_id={current_user.id}")
     return read_current_user(current_user)
 
 
@@ -43,6 +47,9 @@ def update_me(
     Controller for PATCH /users/me
     Delegates to service.update_current_user(...)
     """
+    logger.info(
+        f"PATCH /users/me - user_id={current_user.id}, update={user_update.model_dump()}"
+    )
     return update_current_user(
         user_update=user_update,
         session=session,
@@ -64,6 +71,7 @@ def delete_me(
     Controller for DELETE /users/me
     Delegates to service.delete_current_user(...). Returns 204 on success.
     """
+    logger.info(f"DELETE /users/me - user_id={current_user.id}")
     delete_current_user(
         delete_in=delete_in,
         session=session,

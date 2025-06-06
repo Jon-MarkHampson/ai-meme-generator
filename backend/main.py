@@ -1,9 +1,23 @@
+import os
+import logging
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
+from logging_config import configure_logging, LogLevels
 from database.core import create_db_and_tables
 from api import register_routers
+
+load_dotenv()
+
+
+# Read desired level from env (default to "INFO" if not provided)
+raw_level = os.getenv("LOG_LEVEL", LogLevels.info)
+configure_logging(raw_level)
+
+# (Optional) Silence overly‐chatty modules, e.g. SQLAlchemy
+# logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
 
 @asynccontextmanager

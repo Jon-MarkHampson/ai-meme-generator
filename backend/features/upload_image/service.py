@@ -6,12 +6,13 @@ from supabase_client import supabase
 
 logger = logging.getLogger(__name__)
 
+
 def upload_image_to_supabase(contents: bytes, original_filename: str) -> str:
     """
     1) Build a unique file path under “memes/” using a UUID + original extension.
     2) Call supabase.storage.from_("memes").upload(...). If it fails, StorageApiError is raised.
     3) Call get_public_url(...) which may return either:
-       - a plain string, or 
+       - a plain string, or
        - a dict containing {"publicURL": "<url>"}.
     4) Normalize and return a string URL, or raise HTTPException if something went wrong.
     """
@@ -22,34 +23,39 @@ def upload_image_to_supabase(contents: bytes, original_filename: str) -> str:
     except Exception:
         suffix = "png"
     object_path = f"memes/{uuid.uuid4().hex}.{suffix}"
+    logger.info(f"Generated object path: {object_path}")
 
     # Step 2: Attempt the upload
     try:
+        logger.info(f"Uploading {original_filename} to Supabase at {object_path}")
         supabase.storage.from_("memes").upload(object_path, contents)
+        logger.info(f"Upload successful for {object_path}")
     except StorageApiError as e:
         msg = str(e)
         logger.error(f"Supabase upload failed: {msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Supabase storage upload failed: {msg}"
+            detail=f"Supabase storage upload failed: {msg}",
         )
 
     # Step 3: Retrieve the public URL
+    logger.info(f"Retrieving public URL for {object_path}")
     url_resp = supabase.storage.from_("memes").get_public_url(object_path)
 
     # Step 4: Normalize whatever get_public_url returned into a single string
     if isinstance(url_resp, str):
-        # Newer versions of supabase-py simply return the URL string
         public_url = url_resp
+        logger.debug(f"get_public_url returned string: {public_url}")
     else:
-        # Older versions returned a dict, e.g. {"publicURL": "..."}
         public_url = url_resp.get("publicURL") if isinstance(url_resp, dict) else None
+        logger.debug(f"get_public_url returned dict: {url_resp!r}")
 
     if not public_url:
         logger.error(f"Could not retrieve public URL after upload: {url_resp!r}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Could not retrieve public URL after upload."
+            detail="Could not retrieve public URL after upload.",
         )
 
+    logger.info(f"Returning public URL: {public_url}")
     return public_url
