@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def upload_image_to_supabase(
-    contents: bytes, original_filename: str, storage_bucket: str
+    storage_bucket: str, contents: bytes, original_filename: str
 ) -> str:
     """
     1) Build a unique file path under “<storage_bucket>/” using a UUID + original extension.
@@ -24,14 +24,14 @@ def upload_image_to_supabase(
         suffix = original_filename.rsplit(".", 1)[1].lower()
     except Exception:
         suffix = "png"
-    object_path = f"{storage_bucket}/{uuid.uuid4().hex}.{suffix}"
-    logger.info(f"Generated object path: {object_path}")
+    file_name = f"{uuid.uuid4().hex}.{suffix}"
+    logger.info(f"Generated object file name: {file_name}")
 
     # Step 2: Attempt the upload
     try:
-        logger.info(f"Uploading {original_filename} to Supabase at {object_path}")
-        supabase.storage.from_(storage_bucket).upload(object_path, contents)
-        logger.info(f"Upload successful for {object_path}")
+        logger.info(f"Uploading {original_filename} to Supabase at {file_name}")
+        supabase.storage.from_(storage_bucket).upload(file_name, contents)
+        logger.info(f"Upload successful for {file_name}")
     except StorageApiError as e:
         msg = str(e)
         logger.error(f"Supabase upload failed: {msg}")
@@ -41,8 +41,8 @@ def upload_image_to_supabase(
         )
 
     # Step 3: Retrieve the public URL
-    logger.info(f"Retrieving public URL for {object_path}")
-    url_resp = supabase.storage.from_(storage_bucket).get_public_url(object_path)
+    logger.info(f"Retrieving public URL for {file_name}")
+    url_resp = supabase.storage.from_(storage_bucket).get_public_url(file_name)
 
     # Step 4: Normalize whatever get_public_url returned into a single string
     if isinstance(url_resp, str):

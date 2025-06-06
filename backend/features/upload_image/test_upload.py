@@ -14,6 +14,9 @@ def parse_args():
         description="Upload a local image to the FastAPI `/upload-image` endpoint."
     )
     p.add_argument(
+        "--storage-bucket", "-b", required=True, help="The storage bucket to use"
+    )
+    p.add_argument(
         "--file-path",
         "-f",
         required=True,
@@ -28,15 +31,10 @@ def parse_args():
     p.add_argument(
         "--token", "-t", required=True, help="Your JWT access token (Bearer token)"
     )
-    p.add_argument(
-        "--storage-bucket", "-b", default="memes", help="The storage bucket to use"
-    )
     return p.parse_args()
 
 
-def upload_image(
-    file_path: str, api_url: str, token: str, storage_bucket: str = "memes"
-):
+def upload_image(storage_bucket: str, file_path: str, api_url: str, token: str):
     if not os.path.isfile(file_path):
         logger.error(f"Error: file does not exist: {file_path}")
         sys.exit(1)
@@ -90,4 +88,4 @@ def upload_image(
 
 if __name__ == "__main__":
     args = parse_args()
-    upload_image(args.file_path, args.api_url, args.token)
+    upload_image(args.storage_bucket, args.file_path, args.api_url, args.token)
