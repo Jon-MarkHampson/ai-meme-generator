@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from datetime import timedelta
 
 from .models import Token, SignupResponse
-from users.models import UserCreate
+from ..users.models import UserCreate
 from entities.user import User
 from .service import verify_password, get_password_hash, create_access_token
 from database.core import get_session
