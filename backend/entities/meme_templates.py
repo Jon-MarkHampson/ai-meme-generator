@@ -1,6 +1,12 @@
+from enum import Enum
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
+
+
+class TemplateSource(str, Enum):
+    CLASSIC = "CLASSIC"
+    AI_GENERATED = "AI_GENERATED"
 
 
 class MemeTemplate(SQLModel, table=True):
@@ -15,6 +21,7 @@ class MemeTemplate(SQLModel, table=True):
     keywords: list[str] = Field(
         default_factory=list, nullable=False
     )  # ability to store e.g. ['leo','diCaprio','wine']
+    source: TemplateSource = Field(default=TemplateSource.CLASSIC, nullable=True)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -31,6 +38,7 @@ class MemeTemplate(SQLModel, table=True):
             f"text_box_count={self.text_box_count}, "
             f"text_box_coords={self.text_box_coords!r}, "
             f"keywords={self.keywords!r}, "
+            f"source={self.source!r}, "
             f"created_at={self.created_at!r}"
             f")"
         )
