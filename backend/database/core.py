@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from sqlmodel import SQLModel, Session, create_engine
 from entities.user import User
 from config import settings
