@@ -16,16 +16,15 @@ load_dotenv()
 raw_level = os.getenv("LOG_LEVEL", LogLevels.info)
 configure_logging(raw_level)
 
-# (Optional) Silence overly‐chatty modules, e.g. SQLAlchemy
-# logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: create tables
+    logger.info("Application startup: creating database tables")
     create_db_and_tables()
     yield
-    # Shutdown: nothing (yet)
+    logger.info("Application shutdown: cleanup complete")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -34,6 +33,7 @@ app = FastAPI(lifespan=lifespan)
 # Health check at root URL
 @app.get("/", summary="Health check")
 async def health_check():
+    logger.info("Health check endpoint called")
     return {"Health Check - status": "ok"}
 
 
@@ -50,3 +50,4 @@ app.add_middleware(
 )
 
 register_routers(app)
+logger.info("Routers registered and application setup complete")
