@@ -1,6 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
-from ..auth.service import get_current_user
+from auth.service import get_current_user
 from entities.user import User
 from .service import upload_image_to_supabase
 
