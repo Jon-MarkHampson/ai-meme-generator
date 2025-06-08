@@ -7,8 +7,16 @@ class UserMeme(SQLModel, table=True):
     __tablename__ = "user_memes"
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
-    user_id: str = Field(foreign_key="users.id", nullable=False)
-    meme_template_id: str = Field(foreign_key="meme_templates.id", nullable=False)
+    user_id: str = Field(
+        foreign_key="users.id",
+        nullable=False,
+        sa_column_kwargs={"ondelete": "CASCADE"},
+    )
+    meme_template_id: str = Field(
+        foreign_key="meme_templates.id",
+        nullable=False,
+        sa_column_kwargs={"ondelete": "CASCADE"},
+    )
     image_url: str = Field(nullable=False)
     is_favorite: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(

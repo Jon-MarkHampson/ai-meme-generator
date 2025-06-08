@@ -9,7 +9,11 @@ class CaptionVariant(SQLModel, table=True):
     __tablename__ = "caption_variants"
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
-    request_id: str = Field(foreign_key="caption_requests.id", nullable=False)
+    request_id: str = Field(
+        foreign_key="caption_requests.id",
+        nullable=False,
+        sa_column_kwargs={"ondelete": "CASCADE"},
+    )
     variant_rank: int = Field(default=0, nullable=False)
     caption_text: list[str] = Field(
         default_factory=list, sa_column=Column(ARRAY(String), nullable=False)
