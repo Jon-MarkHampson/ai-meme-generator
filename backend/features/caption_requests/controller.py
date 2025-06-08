@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 from database.core import get_session
 from entities.user import User
