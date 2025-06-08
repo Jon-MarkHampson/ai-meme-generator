@@ -1,5 +1,3 @@
-# backend/features/caption_requests/controller.py
-
 import logging
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlmodel import Session
