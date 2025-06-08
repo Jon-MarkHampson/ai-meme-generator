@@ -1,7 +1,6 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
-from typing import List
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import ARRAY
 
@@ -12,7 +11,7 @@ class CaptionVariant(SQLModel, table=True):
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     request_id: str = Field(foreign_key="caption_requests.id", nullable=False)
     variant_rank: int = Field(default=0, nullable=False)
-    caption_text: List[str] = Field(
+    caption_text: list[str] = Field(
         default_factory=list, sa_column=Column(ARRAY(String), nullable=False)
     )
     model_name: str = Field(default="", nullable=False)

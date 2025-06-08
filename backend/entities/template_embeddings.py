@@ -1,7 +1,6 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
-from typing import List
 from sqlalchemy import Column, Float
 from sqlalchemy.dialects.postgresql import ARRAY
 
@@ -11,7 +10,7 @@ class TemplateEmbedding(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     template_id: str = Field(index=True, nullable=False)
-    embedding: List[float] = Field(
+    embedding: list[float] = Field(
         default_factory=list, sa_column=Column(ARRAY(Float), nullable=False)
     )
     # Whether the embedding has been indexed in the vector database
