@@ -94,4 +94,4 @@ def get_current_user(
         raise credentials_exc
 
     logger.info("Authenticated user %s", user.id)
-    return user
+    return User.model_validate(user)
