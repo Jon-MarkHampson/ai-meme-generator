@@ -8,7 +8,10 @@ class ImageVariant(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     caption_variant_id: str = Field(
-        foreign_key="caption_variants.id", nullable=False, index=True
+        foreign_key="caption_variants.id",
+        nullable=False,
+        index=True,
+        sa_column_kwargs={"ondelete": "CASCADE"},
     )
     image_url: str = Field(nullable=False)
     variant_rank: int = Field(default=0, nullable=False)
