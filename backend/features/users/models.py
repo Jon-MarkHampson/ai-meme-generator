@@ -14,10 +14,10 @@ class UserUpdate(BaseModel):
     current_password: str
 
     # These three are optional—but if any are present, we will verify `current_password` first.
-    first_name: Optional[str]    = None
-    last_name: Optional[str]     = None
-    email:    Optional[EmailStr] = None
-    password: Optional[str]    = None # New password
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None  # New password
 
     class Config:
         from_attributes = True
@@ -31,6 +31,7 @@ class UserRead(BaseModel):
 
     class Config:
         from_attributes = True
-        
-class DeleteRequest(BaseModel):
+
+
+class UserDelete(BaseModel):
     password: str
