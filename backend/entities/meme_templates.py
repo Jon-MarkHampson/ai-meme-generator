@@ -1,7 +1,10 @@
 from enum import Enum
 from uuid import uuid4
 from datetime import datetime, timezone
+from typing import List, Dict
 from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, String
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 
 
 class TemplateSource(str, Enum):
@@ -10,6 +13,8 @@ class TemplateSource(str, Enum):
 
 
 class MemeTemplate(SQLModel, table=True):
+    __tablename__ = "meme_templates"
+
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     name: str = Field(index=True, nullable=False, unique=True)
     description: str = Field(default="", nullable=True)
@@ -17,11 +22,13 @@ class MemeTemplate(SQLModel, table=True):
     resolution_width: int = Field(default=500, nullable=False)
     resolution_height: int = Field(default=500, nullable=False)
     text_box_count: int = Field(default=2, nullable=False)
-    text_box_coords: list[dict] = Field(default_factory=list, nullable=False)
-    keywords: list[str] = Field(
-        default_factory=list, nullable=False
+    text_box_coords: List[Dict[str, int]] = Field(
+        default_factory=list, sa_column=Column(JSONB, nullable=False)
+    )
+    keywords: List[str] = Field(
+        default_factory=list, sa_column=Column(ARRAY(String), nullable=False)
     )  # ability to store e.g. ['leo','diCaprio','wine']
-    source: TemplateSource = Field(default=TemplateSource.CLASSIC, nullable=True)
+    source: TemplateSource = Field(default=TemplateSource.CLASSIC, nullable=False)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )

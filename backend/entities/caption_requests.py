@@ -2,6 +2,7 @@ from enum import Enum
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
+from typing import Optional
 
 
 class RequestMethod(str, Enum):
@@ -11,13 +12,17 @@ class RequestMethod(str, Enum):
 
 
 class CaptionRequest(SQLModel, table=True):
+    __tablename__ = "caption_requests"
+
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     user_id: str = Field(nullable=False)
-    meme_template_id: str = Field(foreign_key="meme_templates.id", nullable=False)
+    meme_template_id: Optional[str] = Field(
+        foreign_key="meme_templates.id", default=None, nullable=True
+    )
     request_method: RequestMethod = Field(default=RequestMethod.DIRECT, nullable=False)
     prompt_text: str = Field(nullable=False)
-    chosen_variant_id: str = Field(
-        foreign_key="caption_variants.id", default="", nullable=True
+    chosen_variant_id: Optional[str] = Field(
+        foreign_key="caption_variants.id", default=None, nullable=True
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
