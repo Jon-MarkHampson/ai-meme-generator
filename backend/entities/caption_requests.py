@@ -2,6 +2,7 @@ from enum import Enum
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, ForeignKey
 from typing import Optional
 
 
@@ -17,18 +18,18 @@ class CaptionRequest(SQLModel, table=True):
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     user_id: str = Field(nullable=False)
     meme_template_id: Optional[str] = Field(
-        foreign_key="meme_templates.id",
         default=None,
-        nullable=True,
-        sa_column_kwargs={"ondelete": "CASCADE"},
+        sa_column=Column(
+            ForeignKey("meme_templates.id", ondelete="CASCADE"), nullable=True
+        ),
     )
     request_method: RequestMethod = Field(default=RequestMethod.DIRECT, nullable=False)
     prompt_text: str = Field(nullable=False)
     chosen_variant_id: Optional[str] = Field(
-        foreign_key="caption_variants.id",
         default=None,
-        nullable=True,
-        sa_column_kwargs={"ondelete": "CASCADE"},
+        sa_column=Column(
+            ForeignKey("caption_variants.id", ondelete="CASCADE"), nullable=True
+        ),
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False

@@ -1,6 +1,7 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, ForeignKey
 
 
 class UserMeme(SQLModel, table=True):
@@ -8,14 +9,12 @@ class UserMeme(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     user_id: str = Field(
-        foreign_key="users.id",
-        nullable=False,
-        sa_column_kwargs={"ondelete": "CASCADE"},
+        sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
     )
     meme_template_id: str = Field(
-        foreign_key="meme_templates.id",
-        nullable=False,
-        sa_column_kwargs={"ondelete": "CASCADE"},
+        sa_column=Column(
+            ForeignKey("meme_templates.id", ondelete="CASCADE"), nullable=False
+        ),
     )
     image_url: str = Field(nullable=False)
     is_favorite: bool = Field(default=False, nullable=False)

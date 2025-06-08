@@ -1,6 +1,7 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
+from sqlalchemy import Column, ForeignKey
 
 
 class ImageVariant(SQLModel, table=True):
@@ -8,10 +9,11 @@ class ImageVariant(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     caption_variant_id: str = Field(
-        foreign_key="caption_variants.id",
-        nullable=False,
-        index=True,
-        sa_column_kwargs={"ondelete": "CASCADE"},
+        sa_column=Column(
+            ForeignKey("caption_variants.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
     )
     image_url: str = Field(nullable=False)
     variant_rank: int = Field(default=0, nullable=False)
