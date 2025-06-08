@@ -5,7 +5,7 @@ from sqlmodel import Session
 from database.core import get_session
 from entities.user import User
 from features.auth.service import get_current_user
-from .models import UserUpdate, UserRead, DeleteRequest
+from .models import UserUpdate, UserRead, UserDelete
 from .service import (
     read_current_user,
     update_current_user,
@@ -63,7 +63,7 @@ def update_me(
     summary="Delete current user account (requires password).",
 )
 def delete_me(
-    delete_in: DeleteRequest,
+    delete_in: UserDelete,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ):

@@ -3,7 +3,7 @@ from fastapi import HTTPException, status
 from sqlmodel import Session
 
 from entities.user import User
-from .models import UserUpdate, DeleteRequest
+from .models import UserUpdate, UserDelete
 from features.auth.service import get_password_hash, pwd_context
 
 
@@ -67,7 +67,7 @@ def update_current_user(
 
 
 def delete_current_user(
-    delete_in: DeleteRequest,
+    delete_in: UserDelete,
     session: Session,
     current_user: User,
 ) -> None:
@@ -87,4 +87,4 @@ def delete_current_user(
     session.delete(current_user)
     session.commit()
     # Return None; controller will return a 204 No Content automatically.
-    return
+    return None
