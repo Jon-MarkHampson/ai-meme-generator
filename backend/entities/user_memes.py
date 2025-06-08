@@ -3,7 +3,9 @@ from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
 
 
-class UserMemes(SQLModel, table=True):
+class UserMeme(SQLModel, table=True):
+    __tablename__ = "user_memes"
+
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     user_id: str = Field(foreign_key="users.id", nullable=False)
     meme_template_id: str = Field(foreign_key="meme_templates.id", nullable=False)

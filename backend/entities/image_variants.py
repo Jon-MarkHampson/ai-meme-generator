@@ -4,6 +4,8 @@ from sqlmodel import SQLModel, Field
 
 
 class ImageVariant(SQLModel, table=True):
+    __tablename__ = "image_variants"
+
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     caption_variant_id: str = Field(
         foreign_key="caption_variants.id", nullable=False, index=True
