@@ -15,7 +15,7 @@ def read_current_user(current_user: User) -> User:
     Simply return the current_user ORM object. The controller will let FastAPI
     apply `response_model=UserRead` and convert to Pydantic for us.
     """
-    return current_user
+    return User.model_validate(current_user)
 
 
 def update_current_user(
@@ -63,7 +63,7 @@ def update_current_user(
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
-    return current_user
+    return User.model_validate(current_user)
 
 
 def delete_current_user(
