@@ -1,7 +1,7 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, String
+from sqlalchemy import Column, ForeignKey, String
 from sqlalchemy.dialects.postgresql import ARRAY
 
 
@@ -10,9 +10,9 @@ class CaptionVariant(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     request_id: str = Field(
-        foreign_key="caption_requests.id",
-        nullable=False,
-        sa_column_kwargs={"ondelete": "CASCADE"},
+        sa_column=Column(
+            ForeignKey("caption_requests.id", ondelete="CASCADE"), nullable=False
+        ),
     )
     variant_rank: int = Field(default=0, nullable=False)
     caption_text: list[str] = Field(
