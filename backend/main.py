@@ -16,6 +16,11 @@ load_dotenv()
 raw_level = os.getenv("LOG_LEVEL", LogLevels.info)
 configure_logging(raw_level)
 
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("hpack").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 
