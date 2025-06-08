@@ -8,7 +8,6 @@ from .models import (
     CaptionRequestCreate,
     CaptionRequestRead,
     CaptionRequestUpdate,
-    CaptionRequestDelete,
     CaptionRequestList,
 )
 from .service import (

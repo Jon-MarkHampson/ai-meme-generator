@@ -30,14 +30,6 @@ class CaptionRequestUpdate(BaseModel):
     chosen_variant_id: Optional[str] = None
 
 
-class CaptionRequestDelete(BaseModel):
-    id: str
-    user_id: str
-
-    class Config:
-        from_attributes = True  # Allows reading from SQLModel attributes
-
-
 class CaptionRequestList(BaseModel):
     requests: list[CaptionRequestRead]
 

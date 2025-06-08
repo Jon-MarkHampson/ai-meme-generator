@@ -9,7 +9,6 @@ from .models import (
     CaptionRequestCreate,
     CaptionRequestRead,
     CaptionRequestUpdate,
-    CaptionRequestDelete,
     CaptionRequestList,
 )
 
@@ -37,7 +36,7 @@ def create_caption_request(
     session.refresh(cr)
 
     logger.info(f"CaptionRequest {cr.id} created by User {current_user.id}")
-    return CaptionRequestRead.model_validate(cr)
+    return cr
 
 
 def read_caption_request(
@@ -52,7 +51,7 @@ def read_caption_request(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     logger.info(f"CaptionRequest {cr.id} read by User {current_user.id}")
-    return CaptionRequestRead.model_validate(cr)
+    return cr
 
 
 def update_caption_request(
@@ -75,10 +74,10 @@ def update_caption_request(
     if "meme_template_id" in updates:
         meme_template_id = updates["meme_template_id"]
         if meme_template_id is not None:
-            exists = session.exec(
+            template_exists = session.exec(
                 select(MemeTemplate.id).where(MemeTemplate.id == meme_template_id)
             ).first()
-            if not exists:
+            if not template_exists:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"MemeTemplate {meme_template_id!r} not found",
@@ -89,10 +88,10 @@ def update_caption_request(
     if "chosen_variant_id" in updates:
         chosen_variant_id = updates["chosen_variant_id"]
         if chosen_variant_id is not None:
-            exists = session.exec(
+            variant_exists = session.exec(
                 select(CaptionVariant.id).where(CaptionVariant.id == chosen_variant_id)
             ).first()
-            if not exists:
+            if not variant_exists:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"CaptionVariant {chosen_variant_id!r} not found",
@@ -103,7 +102,7 @@ def update_caption_request(
     session.refresh(cr)
 
     logger.info(f"CaptionRequest {cr.id} updated by User {current_user.id}")
-    return CaptionRequestRead.model_validate(cr)
+    return cr
 
 
 def delete_caption_request(
