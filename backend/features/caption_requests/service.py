@@ -1,5 +1,3 @@
-# backend/features/caption_requests/service.py
-
 import logging
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
