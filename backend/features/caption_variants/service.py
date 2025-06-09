@@ -18,10 +18,34 @@ def create_caption_variant(
     session: Session,
     current_user: User,
 ) -> CaptionVariantRead:
-    variant = CaptionVariant(**data.model_dump(), user_id=current_user.id)
+    # Extract the caption_request_id from the payload
+    payload = data.model_dump()
+    request_id = payload["request_id"]
+
+    if not request_id:
+        logger.warning(
+            f"User {current_user.id} attempted to create CaptionVariant without request ID"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Request ID is required"
+        )
+    # Ensure the request_id exists in CaptionRequest
+    statement = select(CaptionRequest).where(
+        CaptionRequest.id == request_id, CaptionRequest.user_id == current_user.id
+    )
+    if not session.exec(statement).first():
+        logger.warning(
+            f"User {current_user.id} attempted to create CaptionVariant with non-existent CaptionRequest {request_id}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"CaptionRequest {request_id!r} not found",
+        )
+    # Create the CaptionVariant object
+    variant = CaptionVariant(**payload)
 
     if not variant.caption_text:
-        logger.exception(
+        logger.warning(
             f"User {current_user.id} attempted to create CaptionVariant without caption text"
         )
         raise HTTPException(
@@ -29,7 +53,7 @@ def create_caption_variant(
         )
 
     if variant.variant_rank < 0:
-        logger.exception(
+        logger.warning(
             f"User {current_user.id} attempted to create CaptionVariant with negative variant rank"
         )
         raise HTTPException(
@@ -38,7 +62,7 @@ def create_caption_variant(
         )
 
     if not variant.request_id:
-        logger.exception(
+        logger.warning(
             f"User {current_user.id} attempted to create CaptionVariant without request ID"
         )
         raise HTTPException(
@@ -50,7 +74,7 @@ def create_caption_variant(
         select(CaptionRequest).where(CaptionRequest.id == variant.request_id)
     ).first()
     if not request_exists:
-        logger.exception(
+        logger.warning(
             f"CaptionRequest {variant.request_id} not found for CaptionVariant creation"
         )
         raise HTTPException(
@@ -80,7 +104,7 @@ def read_caption_variant(
     )
     variant = session.exec(statement).one_or_none()
     if not variant:
-        logger.exception(f"CaptionVariant {variant_id} not found")
+        logger.warning(f"CaptionVariant {variant_id} not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     logger.info(f"CaptionVariant {variant.id} read by User {current_user.id}")
@@ -102,7 +126,7 @@ def delete_caption_variant(
     )
     variant = session.exec(statement).one_or_none()
     if not variant:
-        logger.exception(f"CaptionVariant {variant_id} not found")
+        logger.warning(f"CaptionVariant {variant_id} not found")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     session.delete(variant)
@@ -116,11 +140,11 @@ def list_caption_variants(
     session: Session,
     current_user: User,
 ) -> CaptionVariantList:
-    rows = session.exec(
+    variants = session.exec(
         select(CaptionVariant)
         .join(CaptionRequest, CaptionVariant.request_id == CaptionRequest.id)
         .where(CaptionRequest.user_id == current_user.id)
     ).all()
 
-    logger.info(f"Listing {len(rows)} caption variants for User {current_user.id}")
-    return CaptionVariantList(variants=rows)
+    logger.info(f"Listing {len(variants)} caption variants for User {current_user.id}")
+    return CaptionVariantList(variants=variants)
