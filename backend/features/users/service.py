@@ -35,7 +35,7 @@ def update_current_user(
 
     # (always non‐None because Pydantic demands it)
     if not pwd_context.verify(supplied_old_pw, current_user.hashed_password):
-        logger.exception(
+        logger.warning(
             f"User {current_user.id} attempted to update profile with incorrect password."
         )
         raise HTTPException(
@@ -76,7 +76,7 @@ def delete_current_user(
     If not, raise 401. If it matches, delete and commit.
     """
     if not pwd_context.verify(delete_in.password, current_user.hashed_password):
-        logger.exception(
+        logger.warning(
             f"User {current_user.id} attempted to delete account with incorrect password."
         )
         raise HTTPException(
