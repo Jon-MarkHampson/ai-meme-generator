@@ -44,7 +44,7 @@ async def upload_image(
     try:
         public_url = upload_image_to_supabase(storage_bucket, contents, file.filename)
     except Exception:
-        logger.exception("Failed to upload image to Supabase")
+        logger.warning("Failed to upload image to Supabase")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to upload image. Please try again later.",
