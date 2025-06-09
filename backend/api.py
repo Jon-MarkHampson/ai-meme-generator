@@ -11,6 +11,7 @@ from features.users.controller import router as user_router
 from features.upload_image.controller import router as upload_image_router
 from features.caption_requests.controller import router as caption_requests_router
 from features.caption_variants.controller import router as caption_variants_router
+from features.image_variants.controller import router as image_variants_router
 
 
 def register_routers(app: FastAPI):
@@ -24,3 +25,4 @@ def register_routers(app: FastAPI):
     app.include_router(upload_image_router)
     app.include_router(caption_requests_router)
     app.include_router(caption_variants_router)
+    app.include_router(image_variants_router)
