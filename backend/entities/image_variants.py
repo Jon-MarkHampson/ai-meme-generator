@@ -1,11 +1,16 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, CheckConstraint
 
 
 class ImageVariant(SQLModel, table=True):
     __tablename__ = "image_variants"
+    __table_args__ = (
+        CheckConstraint(
+            "variant_rank >= 0", name="ck_image_variants_variant_rank_non_negative"
+        ),
+    )
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     caption_variant_id: str = Field(
