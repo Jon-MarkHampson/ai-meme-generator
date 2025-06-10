@@ -1,6 +1,7 @@
 from enum import Enum
 from uuid import uuid4
 from datetime import datetime, timezone
+from typing import Optional
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, String
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
@@ -28,6 +29,9 @@ class MemeTemplate(SQLModel, table=True):
         default_factory=list, sa_column=Column(ARRAY(String), nullable=False)
     )  # ability to store e.g. ['leo','diCaprio','wine']
     source: TemplateSource = Field(default=TemplateSource.CLASSIC, nullable=False)
+    ai_image_variant_id: Optional[str] = Field(
+        default=None, nullable=True
+    )  # Optional field for AI-generated sources
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), nullable=False
     )
