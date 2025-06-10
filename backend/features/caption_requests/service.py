@@ -1,6 +1,7 @@
 import logging
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
+
 from entities.caption_requests import CaptionRequest
 from entities.meme_templates import MemeTemplate
 from entities.caption_variants import CaptionVariant
@@ -20,28 +21,14 @@ def create_caption_request(
     session: Session,
     current_user: User,
 ) -> CaptionRequestRead:
-
+    """
+    Create and persist a new CaptionRequest for the current user.
+    """
     cr = CaptionRequest(**data.model_dump(), user_id=current_user.id)
-    if not cr.prompt_text:
-        logger.warning(
-            f"User {current_user.id} attempted to create CaptionRequest without prompt text"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt text is required"
-        )
-    if not cr.request_method:
-        logger.warning(
-            f"User {current_user.id} attempted to create CaptionRequest without request method"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Request method is required"
-        )
-
     session.add(cr)
     session.commit()
     session.refresh(cr)
-
-    logger.info(f"CaptionRequest {cr.id} created by User {current_user.id}")
+    logger.info("CaptionRequest %s created by User %s", cr.id, current_user.id)
     return cr
 
 
@@ -50,17 +37,14 @@ def read_caption_request(
     session: Session,
     current_user: User,
 ) -> CaptionRequestRead:
+    """
+    Return the given CaptionRequest, if it exists and belongs to current_user.
+    """
     cr = session.get(CaptionRequest, request_id)
     if not cr:
-        logger.warning(f"CaptionRequest {request_id} not found")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caption request not found")
     if cr.user_id != current_user.id:
-        logger.warning(
-            f"User {current_user.id} not authorized to read CaptionRequest {request_id}"
-        )
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-
-    logger.info(f"CaptionRequest {cr.id} read by User {current_user.id}")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted")
     return cr
 
 
@@ -70,58 +54,51 @@ def update_caption_request(
     session: Session,
     current_user: User,
 ) -> CaptionRequestRead:
-    cr = session.get(CaptionRequest, request_id)
-    if not cr:
-        logger.warning(f"CaptionRequest {request_id} not found")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="CaptionRequest not found"
-        )
+    """
+    Patch fields on an existing CaptionRequest.
+    Validates that any new meme_template_id or chosen_variant_id actually exists.
+    """
+    cr = session.get(CaptionRequest, request_id) or HTTPException(
+        status.HTTP_404_NOT_FOUND, "Caption request not found"
+    )
     if cr.user_id != current_user.id:
-        logger.warning(
-            f"User {current_user.id} not authorized to update CaptionRequest {request_id}"
-        )
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted")
 
     updates = data.model_dump(exclude_unset=True)
 
-    # validate meme_template_id FK
+    # If they're changing the base template, make sure it exists
     if "meme_template_id" in updates:
-        meme_template_id = updates["meme_template_id"]
-        if meme_template_id is not None:
-            template_exists = session.exec(
-                select(MemeTemplate.id).where(MemeTemplate.id == meme_template_id)
+        mt = updates["meme_template_id"]
+        if (
+            mt is not None
+            and not session.exec(
+                select(MemeTemplate.id).where(MemeTemplate.id == mt)
             ).first()
-            if not template_exists:
-                logger.warning(
-                    f"MemeTemplate {meme_template_id} not found for CaptionRequest {request_id}"
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"MemeTemplate {meme_template_id!r} not found",
-                )
-        cr.meme_template_id = meme_template_id
+        ):
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                f"MemeTemplate {mt!r} not found",
+            )
+        cr.meme_template_id = mt
 
-    # validate chosen_variant_id FK
+    # If they're picking a variant, make sure it exists
     if "chosen_variant_id" in updates:
-        chosen_variant_id = updates["chosen_variant_id"]
-        if chosen_variant_id is not None:
-            variant_exists = session.exec(
-                select(CaptionVariant.id).where(CaptionVariant.id == chosen_variant_id)
+        cv = updates["chosen_variant_id"]
+        if (
+            cv is not None
+            and not session.exec(
+                select(CaptionVariant.id).where(CaptionVariant.id == cv)
             ).first()
-            if not variant_exists:
-                logger.warning(
-                    f"CaptionVariant {chosen_variant_id} not found for CaptionRequest {request_id}"
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"CaptionVariant {chosen_variant_id!r} not found",
-                )
-        cr.chosen_variant_id = chosen_variant_id
+        ):
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                f"CaptionVariant {cv!r} not found",
+            )
+        cr.chosen_variant_id = cv
 
     session.commit()
     session.refresh(cr)
-
-    logger.info(f"CaptionRequest {cr.id} updated by User {current_user.id}")
+    logger.info("CaptionRequest %s updated by User %s", cr.id, current_user.id)
     return cr
 
 
@@ -130,29 +107,28 @@ def delete_caption_request(
     session: Session,
     current_user: User,
 ) -> None:
+    """
+    Delete an existing CaptionRequest if it belongs to current_user.
+    """
     cr = session.get(CaptionRequest, request_id)
     if not cr:
-        logger.warning(f"CaptionRequest {request_id} not found")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Caption request not found")
     if cr.user_id != current_user.id:
-        logger.warning(
-            f"User {current_user.id} not authorized to delete CaptionRequest {request_id}"
-        )
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not permitted")
     session.delete(cr)
     session.commit()
-
-    logger.info(f"CaptionRequest {request_id} deleted by User {current_user.id}")
-    return None
+    logger.info("CaptionRequest %s deleted by User %s", request_id, current_user.id)
 
 
 def list_caption_requests(
     session: Session,
     current_user: User,
 ) -> CaptionRequestList:
-    requests = session.exec(
+    """
+    Return a list of all CaptionRequests for the current user.
+    """
+    rows = session.exec(
         select(CaptionRequest).where(CaptionRequest.user_id == current_user.id)
     ).all()
-    logger.info(f"Listing {len(requests)} caption requests for User {current_user.id}")
-    return CaptionRequestList(requests=requests)
+    logger.info("Listing %d caption requests for User %s", len(rows), current_user.id)
+    return CaptionRequestList(requests=rows)
