@@ -1,12 +1,17 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, ForeignKey, String
+from sqlalchemy import Column, ForeignKey, String, CheckConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 
 
 class CaptionVariant(SQLModel, table=True):
     __tablename__ = "caption_variants"
+    __table_args__ = (
+        CheckConstraint(
+            "variant_rank >= 0", name="ck_image_variants_variant_rank_non_negative"
+        ),
+    )
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     request_id: str = Field(
