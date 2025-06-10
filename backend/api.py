@@ -8,7 +8,7 @@ from fastapi import FastAPI
 
 from features.auth.controller import router as auth_router
 from features.users.controller import router as user_router
-from features.upload_image.controller import router as upload_image_router
+from features.image_storage.controller import router as upload_image_router
 from features.caption_requests.controller import router as caption_requests_router
 from features.caption_variants.controller import router as caption_variants_router
 from features.image_variants.controller import router as image_variants_router
