@@ -1,4 +1,5 @@
 from uuid import uuid4
+from typing import Optional
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, ForeignKey
@@ -9,12 +10,25 @@ class UserMeme(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     user_id: str = Field(
-        sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-    )
-    meme_template_id: str = Field(
         sa_column=Column(
-            ForeignKey("meme_templates.id", ondelete="CASCADE"), nullable=False
+            ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
         ),
+    )
+    meme_template_id: Optional[str] = (
+        Field(  # Remove optional once meme templates table is created
+            sa_column=Column(
+                ForeignKey("meme_templates.id", ondelete="SET NULL"),
+                nullable=True,
+                index=True,
+            ),
+        )
+    )
+    caption_variant_id: Optional[str] = Field(
+        sa_column=Column(
+            ForeignKey("caption_variants.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        )
     )
     image_url: str = Field(nullable=False)
     is_favorite: bool = Field(default=False, nullable=False)
