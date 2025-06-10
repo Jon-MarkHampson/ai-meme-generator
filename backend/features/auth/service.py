@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, ExpiredSignatureError, jwt
@@ -9,54 +10,63 @@ from sqlmodel import Session
 from config import settings
 from database.core import get_session
 from entities.user import User
-from .models import Token, TokenData
+from .models import TokenData
 
 logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")  # points at auth router
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """Verify a plaintext password against its hashed version."""
-    logger.debug("Verifying password against hash")
-    is_valid = pwd_context.verify(plain, hashed)
-    logger.debug("Password verification result: %s", is_valid)
-    return is_valid
+    """
+    Verify a plaintext password against its hashed counterpart.
+    Returns True if they match, False otherwise.
+    """
+    return pwd_context.verify(plain, hashed)
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a plaintext password using bcrypt."""
-    logger.debug("Hashing password")
-    hashed = pwd_context.hash(password)
-    logger.debug("Generated password hash")
-    return hashed
+    """
+    Hash a plaintext password using bcrypt.
+    Returns the resulting hash.
+    """
+    return pwd_context.hash(password)
 
 
 def create_access_token(
     subject: str,
     expires_delta: timedelta,
 ) -> str:
-    """Create a JWT access token for a subject with expiration."""
-    logger.debug(
-        "Creating access token for subject=%s with expires_delta=%s",
-        subject,
-        expires_delta,
-    )
+    """
+    Create a JWT access token for a given subject (user ID), with the specified expiration delta.
+    Embeds 'sub' and 'exp' claims, signs with our secret, and returns the token string.
+    """
     to_encode = {"sub": subject}
     expire = datetime.now(timezone.utc) + expires_delta
-    to_encode.update({"exp": expire})
-    logger.debug("Token payload prepared: %s", to_encode)
-    token = jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
-    logger.info("Access token created for subject=%s, expires at=%s", subject, expire)
+    to_encode["exp"] = expire
+    token = jwt.encode(
+        to_encode,
+        settings.JWT_SECRET,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+    logger.info("Issued token for %s, expires at %s", subject, expire)
     return token
-    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme), session: Session = Depends(get_session)
+    token: str = Depends(oauth2_scheme),
+    session: Session = Depends(get_session),
 ) -> User:
-    """Extract and return the current user from the JWT token, or raise HTTP 401."""
+    """
+    Dependency that:
+      1) Extracts the Bearer token,
+      2) Decodes and validates the JWT,
+      3) Fetches the corresponding User from the DB,
+      4) Raises 401 if anything fails.
+
+    Returns the authenticated User instance.
+    """
     credentials_exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -64,34 +74,26 @@ def get_current_user(
     )
 
     try:
-        logger.debug("Decoding JWT token for authentication")
         payload = jwt.decode(
-            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
         )
-        logger.debug("Token decoded successfully: %s", payload)
-
-        subject = payload.get("sub")
-        if subject is None:
-            logger.error("JWT payload missing 'sub' claim")
+        user_id: str = payload.get("sub")
+        if not user_id:
             raise credentials_exc
-
-        token_data = TokenData(user_id=subject)
-
     except ExpiredSignatureError:
-        logger.warning("JWT token has expired: %s", token)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has expired",
+            detail="Token expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    except (JWTError, ValueError) as e:
-        logger.error("Error decoding JWT token: %s", e)
+    except JWTError:
         raise credentials_exc
 
-    user = session.get(User, token_data.user_id)
+    user = session.get(User, user_id)
     if not user:
-        logger.error("User not found for id: %s", token_data.user_id)
         raise credentials_exc
 
     logger.info("Authenticated user %s", user.id)
-    return User.model_validate(user)
+    return user
