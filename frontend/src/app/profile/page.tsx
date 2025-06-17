@@ -15,6 +15,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 
+
 export default function ProfilePage() {
   const { user, logout } = useContext(AuthContext)
   const router = useRouter()
