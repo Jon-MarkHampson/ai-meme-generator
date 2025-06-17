@@ -177,3 +177,4 @@ cython_debug/
 .vscode
 
 meme-output/
+backend/classic_meme_templates/
