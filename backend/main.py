@@ -1,5 +1,6 @@
 import os
 import logging
+import logfire
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
@@ -16,10 +17,12 @@ load_dotenv()
 raw_level = os.getenv("LOG_LEVEL", LogLevels.info)
 configure_logging(raw_level)
 
+
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("hpack").setLevel(logging.WARNING)
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# configure logfire
+logfire.configure()
+logfire.instrument_httpx()
+logfire.instrument_pydantic()
+logfire.instrument_pydantic_ai()
+logfire.instrument_fastapi(app, capture_headers=True)
+# logfire.instrument_psycopg(enable_commenter=True)
 
 
 # Health check at root URL
