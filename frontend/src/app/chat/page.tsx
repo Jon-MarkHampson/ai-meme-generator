@@ -14,24 +14,30 @@ import { ChatSidebar } from "@/components/ChatSidebar";
 
 export default function ChatPage() {
     const [convId, setConvId] = useState<string | null>(null);
-    const [msgs, setMsgs] = useState<ChatMessage[]>([]);
+    const [msgs, setMsgs] = useState<ChatMessage[]>([
+        {
+            role: "model",
+            content: "👋 Hey there! Ask me anything or request a meme.",
+            timestamp: new Date().toISOString(),
+        },
+    ]);
     const abortRef = useRef<(() => void) | undefined>(undefined);
     const endRef = useRef<HTMLDivElement>(null);
 
     // 1) on mount, start a conversation
-    useEffect(() => {
-        createConversation()
-            .then((c) => setConvId(c.id))
-            .catch(() =>
-                setMsgs([
-                    {
-                        role: "model",
-                        content: "⚠ Could not start conversation.",
-                        timestamp: new Date().toISOString(),
-                    },
-                ])
-            );
-    }, []);
+    // useEffect(() => {
+    //     createConversation()
+    //         .then((c) => setConvId(c.id))
+    //         .catch(() =>
+    //             setMsgs([
+    //                 {
+    //                     role: "model",
+    //                     content: "⚠ Could not start conversation.",
+    //                     timestamp: new Date().toISOString(),
+    //                 },
+    //             ])
+    //         );
+    // }, []);
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,7 +49,7 @@ export default function ChatPage() {
         if (!convId) return;
         listMessages(convId)
             .then((history) => {
-                setMsgs(history);
+                if (history.length) setMsgs(history);
                 // after loading, scroll to bottom:
                 setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
             })
@@ -55,35 +61,49 @@ export default function ChatPage() {
 
     // 2) on user send
     const handleSend = async (text: string): Promise<void> => {
-        if (!convId) return;
         // 1) show the user's bubble immediately
         setMsgs((prev) => [
             ...prev,
             { role: "user", content: text, timestamp: new Date().toISOString() },
         ]);
 
-        // 2) stream the AI response
+        // 2) If this is the very first message, create the conversation now:
+        let id = convId;
+        if (!id) {
+            try {
+                const conv = await createConversation();
+                id = conv.id;
+                setConvId(id);
+            } catch (err) {
+                // if we couldn't even make a conversation, show an error and bail
+                setMsgs((prev) => [
+
+                    ...prev,
+                    {
+                        role: "model",
+                        content: "⚠️ Sorry, I couldn't start our chat. Please try again.",
+                        timestamp: new Date().toISOString(),
+                    },
+                ]);
+                return;
+            }
+        }
+
+        // 3) stream the AI response
         abortRef.current = streamChat(
-            convId,
+            id,
             text,
             (msg) => {
-                if (msg.role !== "model") return; // only handle model messages
+                if (msg.role !== "model") return; // only handle model messages not user
                 setMsgs((prev) => {
                     // if the last bubble is already from the model, overwrite it
                     if (prev.length && prev[prev.length - 1].role === "model") {
                         const copy = [...prev];
-                        copy[copy.length - 1] = {
-                            role: "model",
-                            content: msg.content,
-                            timestamp: msg.timestamp,
-                        };
+                        copy[copy.length - 1] = msg;
                         return copy;
                     }
                     // otherwise append a new model bubble
-                    return [
-                        ...prev,
-                        { role: "model", content: msg.content, timestamp: msg.timestamp },
-                    ];
+                    return [...prev, msg];
                 });
             },
             () => {
@@ -116,7 +136,7 @@ export default function ChatPage() {
         */}
                     <div className="flex absolute justify-center inset-x-0 bottom-0 h-[calc(100vh-6rem)]">
                         {/* ─── Sidebar ─── */}
-                        <div>
+                        <div className="shrink-0">
                             {/* pass a handler down into the sidebar */}
                             <ChatSidebar
                                 onSelectConversation={(id) => {
@@ -128,7 +148,7 @@ export default function ChatPage() {
                                             setMsgs([
                                                 {
                                                     role: "model",
-                                                    content: "⚠ Couldn’t load that conversation.",
+                                                    content: "⚠ Couldn't load that conversation.",
                                                     timestamp: new Date().toISOString(),
                                                 },
                                             ]);
@@ -141,10 +161,11 @@ export default function ChatPage() {
                         <div className="flex flex-col flex-1 min-h-0 max-w-[1200px]">
                             <div className="p-2">
                                 <SidebarTrigger />
+                                History
                             </div>
 
                             {/* Only this scrolls */}
-                            <ScrollArea className="flex-1 overflow-auto p-4 border-2 border-border rounded-lg">
+                            <ScrollArea className="flex-1 overflow-auto py-4 border-2 border-border rounded-lg">
                                 <div className="space-y-2">
                                     {msgs.map((m, i) => (
                                         <ChatBubble
@@ -153,7 +174,7 @@ export default function ChatPage() {
                                             isUser={m.role === "user"}
                                         />
                                     ))}
-                                    {/* ← our invisible anchor */}
+                                    {/* invisible anchor */}
                                     <div ref={endRef} />
                                 </div>
                             </ScrollArea>
