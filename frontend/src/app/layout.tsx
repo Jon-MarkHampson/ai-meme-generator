@@ -10,7 +10,6 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "AI Meme Generator",
   description: "Interactively create memes powered by AI",
-  viewport: "width=device-width, initial-scale=1",
   openGraph: {
     title: "AI Meme Generator",
     description: "Interactively create memes powered by AI",
@@ -35,6 +34,11 @@ export const metadata: Metadata = {
   },
 };
 
+export function generateViewport() {
+  return {
+    viewport: "width=device-width, initial-scale=1",
+  };
+}
 
 export default function RootLayout({
   children,
