@@ -8,24 +8,43 @@ import {
 
 export function ChatSidebar() {
   return (
-    <Sidebar collapsible="icon" className="h-full bg-muted">
+    <Sidebar
+      className="h-full bg-muted mt-14"
+    >
       <SidebarContent>
-        <ul className="space-y-2">
-          <li className="flex items-center p-2">Alice</li>
-          <li className="flex items-center p-2">Bob</li>
-          <li className="flex items-center p-2">Charlie</li>
-          <li className="flex items-center p-2">David</li>
-          <li className="flex items-center p-2">Eve</li>
-          <li className="flex items-center p-2">Frank</li>
-          <li className="flex items-center p-2">Grace</li>
-          <li className="flex items-center p-2">Heidi</li>
-          <li className="flex items-center p-2">Ivan</li>
-          <li className="flex items-center p-2">Judy</li>
-          <li className="flex items-center p-2">Karl</li>
-          <li className="flex items-center p-2">Liam</li>
-          <li className="flex items-center p-2">Mallory</li>
-          <li className="flex items-center p-2">Nina</li>
-          <li className="flex items-center p-2">Oscar</li>
+        <ul className="space-y-2 p-4">
+          {/* TODO: map your real conversations here */}
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 1
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 2
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 3
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 4
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 5
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 6
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 7
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 8
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 9
+          </li>
+          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
+            Conversation 10
+          </li>
+          {/* … */}
         </ul>
       </SidebarContent>
     </Sidebar>
