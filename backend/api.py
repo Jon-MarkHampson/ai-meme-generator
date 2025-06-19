@@ -13,6 +13,7 @@ from features.caption_requests.controller import router as caption_requests_rout
 from features.caption_variants.controller import router as caption_variants_router
 from features.image_variants.controller import router as image_variants_router
 from features.user_memes.controller import router as user_memes_router
+from features.chat.controller import router as chat_router
 
 
 def register_routers(app: FastAPI):
@@ -28,3 +29,4 @@ def register_routers(app: FastAPI):
     app.include_router(caption_variants_router)
     app.include_router(image_variants_router)
     app.include_router(user_memes_router)
+    app.include_router(chat_router)
