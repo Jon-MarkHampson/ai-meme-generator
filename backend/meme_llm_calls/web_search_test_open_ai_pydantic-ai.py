@@ -13,7 +13,7 @@ logfire.instrument_pydantic_ai()
 # 1) Define the tool with a fully specified schema
 search_tool = ToolDefinition(
     name="web_search_preview",
-    description="Fetch up-to-date web search results using OpenAI’s built-in tool",
+    description="Fetch up-to-date web search results using OpenAI's built-in tool",
     parameters_json_schema={
         "type": "object",
         "properties": {},
