@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Sidebar,
   SidebarContent,
@@ -26,28 +27,30 @@ export function ChatSidebar({ onSelectConversation }: ChatSidebarProps) {
 
   return (
     <Sidebar collapsible="icon" className="h-full bg-muted">
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Your Chats</SidebarGroupLabel>
-          <SidebarGroupContent className="space-y-1">
-            {convos.map((c) => (
-              <div
-                key={c.id}
-                onClick={() => onSelectConversation(c.id)}
-                className="
-                  cursor-pointer 
-                  px-3 py-2 
-                  rounded 
-                  hover:bg-sidebar-accent 
-                  hover:text-sidebar-accent-foreground
-                "
-              >
-                {c.summary ?? "Conversation " + c.id.slice(0, 6)}
-              </div>
-            ))}
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+      <ScrollArea className="h-full">
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Your Chats</SidebarGroupLabel>
+            <SidebarGroupContent className="space-y-1">
+              {convos.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => onSelectConversation(c.id)}
+                  className="
+                    cursor-pointer 
+                    px-3 py-2 
+                    rounded 
+                    hover:bg-sidebar-accent 
+                    hover:text-sidebar-accent-foreground
+                  "
+                >
+                  {c.summary ?? "Conversation " + c.id.slice(0, 6)}
+                </div>
+              ))}
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </ScrollArea>
     </Sidebar>
   );
 }
