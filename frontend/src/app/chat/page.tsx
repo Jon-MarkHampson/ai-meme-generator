@@ -1,59 +1,104 @@
-// frontend/src/app/chat/page.tsx
 "use client";
-import React, { useState, useRef, useEffect } from "react";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { useEffect, useState, useRef } from "react";
+import {
+    createConversation,
+    streamChat,
+    ChatMessage,
+} from "@/lib/chat";
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatInput } from "@/components/ChatInput";
-import { sendChatMessage } from "@/lib/api";
-
-// Message type
-type Msg = { role: "user" | "assistant"; text: string };
 
 
 export default function ChatPage() {
-    const [msgs, setMsgs] = useState<Msg[]>([]);
-    const scrollRef = useRef<HTMLDivElement>(null);
+    const [convId, setConvId] = useState<string | null>(null);
+    const [msgs, setMsgs] = useState<ChatMessage[]>([]);
+    const abortRef = useRef<(() => void) | undefined>(undefined);
 
+    // 1) on mount, start a conversation
     useEffect(() => {
-        // Scroll to bottom whenever messages change
-        scrollRef.current?.scrollTo({
-            top: scrollRef.current.scrollHeight,
-            behavior: "smooth",
-        });
-    }, [msgs]);
+        createConversation()
+            .then((c) => setConvId(c.id))
+            .catch(() =>
+                setMsgs([
+                    {
+                        role: "model",
+                        content: "⚠ Could not start conversation.",
+                        timestamp: new Date().toISOString(),
+                    },
+                ])
+            );
+    }, []);
 
-    async function handleSend(text: string) {
-        // Add user message
-        setMsgs((prev) => [...prev, { role: "user", text }]);
-        try {
-            // Fetch assistant reply
-            const reply = await sendChatMessage(text);
-            setMsgs((prev) => [...prev, { role: "assistant", text: reply }]);
-        } catch (error) {
-            console.error("Chat error", error);
-            setMsgs((prev) => [...prev, { role: "assistant", text: "Error fetching reply." }]);
-        }
-    }
+    // 2) on user send
+    const handleSend = async (text: string): Promise<void> => {
+        if (!convId) return;
+        // 1) show the user's bubble immediately
+        setMsgs((prev) => [
+            ...prev,
+            { role: "user", content: text, timestamp: new Date().toISOString() },
+        ]);
+
+        // 2) stream the AI response
+        abortRef.current = streamChat(
+            convId,
+            text,
+            (msg) => {
+                if (msg.role !== "model") return; // only handle model messages
+                setMsgs((prev) => {
+                    // if the last bubble is already from the model, overwrite it
+                    if (prev.length && prev[prev.length - 1].role === "model") {
+                        const copy = [...prev];
+                        copy[copy.length - 1] = {
+                            role: "model",
+                            content: msg.content,
+                            timestamp: msg.timestamp,
+                        };
+                        return copy;
+                    }
+                    // otherwise append a new model bubble
+                    return [
+                        ...prev,
+                        { role: "model", content: msg.content, timestamp: msg.timestamp },
+                    ];
+                });
+            },
+            () => {
+                // on error, append a single error bubble
+                setMsgs((prev) => [
+                    ...prev,
+                    {
+                        role: "model",
+                        content: "⚠ Error talking to AI.",
+                        timestamp: new Date().toISOString(),
+                    },
+                ]);
+            }
+        );
+    };
 
     return (
-        <div className="flex flex-col h-screen">
-            {/* Centered container with max width */}
-            <div className="flex-1 flex justify-center">
-                <div className="flex flex-col w-full max-w-3xl">
-                    {/* Scrollable message area */}
-                    <ScrollArea className="flex-1">
-                        <div ref={scrollRef} className="space-y-2 p-4">
-                            {msgs.map((msg, idx) => (
-                                <ChatBubble key={idx} text={msg.text} isUser={msg.role === "user"} />
-                            ))}
-                        </div>
-                        <ScrollBar orientation="vertical" />
-                    </ScrollArea>
-
-                    {/* Sticky input at bottom */}
-                    <div className="sticky bottom-0 w-full p-10">
-                        <ChatInput onSend={handleSend} />
+        // push below header
+        <div className="flex justify-center mt-10">
+            {/* debug border on the chat “frame” */}
+            <div className="
+         flex flex-col            /* stack scroll + input */
+         h-[80vh]                 /* give it a fixed height */
+         w-full max-w-3xl         /* center, limit width */
+         px-3
+       ">
+                {/* 1) scrollable history */}
+                <ScrollArea className="flex-1 overflow-auto border-1 border-border rounded-lg">
+                    <div className="pt-4 space-y-2">
+                        {msgs.map((m, i) => (
+                            <ChatBubble key={i} text={m.content} isUser={m.role === "user"} />
+                        ))}
                     </div>
+                </ScrollArea>
+
+                {/* 2) always-visible input at bottom */}
+                <div className="pt-4 bg-background">
+                    <ChatInput onSend={handleSend} />
                 </div>
             </div>
         </div>
