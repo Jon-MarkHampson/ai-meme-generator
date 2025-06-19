@@ -3,7 +3,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, String
+from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 
 
@@ -33,7 +33,12 @@ class MemeTemplate(SQLModel, table=True):
         default=None, nullable=True
     )  # Optional field for AI-generated sources
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), nullable=False
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        ),
     )
 
     def __repr__(self):
