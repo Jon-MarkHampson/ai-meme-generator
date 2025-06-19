@@ -13,7 +13,7 @@ from .models import (
     MessageRead,
     MessageCreate,
     ChatRequest,
-    ChatResponse,
+    ChatMessage,
 )
 from .service import (
     list_conversations,
@@ -109,14 +109,14 @@ def delete_conversation_route(
 
 @router.get(
     "/conversations/{conversation_id}/messages/",
-    response_model=List[MessageRead],
+    response_model=List[ChatMessage],
     summary="List all messages in a conversation.",
 )
 def read_messages(
     conversation_id: str,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-) -> List[MessageRead]:
+) -> List[ChatMessage]:
     return list_messages(conversation_id, session, current_user)
 
 
