@@ -15,6 +15,7 @@ export default function ChatPage() {
     const [convId, setConvId] = useState<string | null>(null);
     const [msgs, setMsgs] = useState<ChatMessage[]>([]);
     const abortRef = useRef<(() => void) | undefined>(undefined);
+    const endRef = useRef<HTMLDivElement>(null);
 
     // 1) on mount, start a conversation
     useEffect(() => {
@@ -30,6 +31,10 @@ export default function ChatPage() {
                 ])
             );
     }, []);
+
+    useEffect(() => {
+        endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [msgs]);
 
     // 2) on user send
     const handleSend = async (text: string): Promise<void> => {
@@ -79,37 +84,53 @@ export default function ChatPage() {
     };
 
     return (
-        <SidebarProvider>
-            <div className="flex align-middle justify-center h-[80vh] w-full max-w-[1200px] mt-10 px-3">
-                {/* 1) Sidebar drawer */}
-                <ChatSidebar />
-
-                {/* 2) Chat content area */}
-                <div className="flex-1 flex flex-col align-middle justify-center w-full">
-                    {/* toggle button always shown (you can hide on desktop with md:hidden if you like) */}
-                    <div className="p-2">
-                        <SidebarTrigger />
-                    </div>
-
-                    {/* messages */}
-                    <ScrollArea className="flex-1 overflow-auto border-1 border-border rounded-lg">
-                        <div className="pt-4 space-y-2">
-                            {msgs.map((m, i) => (
-                                <ChatBubble
-                                    key={i}
-                                    text={m.content}
-                                    isUser={m.role === "user"}
-                                />
-                            ))}
+        <div className="h-[calc(100vh-5rem)] overflow-hidden">
+            <SidebarProvider>
+                {/* 
+        Wrap everything in a relative so our inner container can be absolute.
+      */}
+                <div className="relative w-full">
+                    {/*
+          Absolute‐position your entire chat UI underneath the header:
+            - top-16 (4rem) matches your header's height (p-4 ➔ 1rem top + 1rem bottom + ~2rem content)
+            - bottom-0
+            - inset-x-0 stretches left & right
+            - overflow-hidden so only our ScrollArea scrolls
+        */}
+                    <div className="flex absolute justify-center inset-x-0 bottom-0 h-[calc(100vh-6rem)]">
+                        {/* ─── Sidebar ─── */}
+                        <div>
+                            <ChatSidebar />
                         </div>
-                    </ScrollArea>
 
-                    {/* input */}
-                    <div className="py-4 bg-background">
-                        <ChatInput onSend={handleSend} />
+                        {/* ─── Chat Column ─── */}
+                        <div className="flex flex-col flex-1 min-h-0 max-w-[1200px]">
+                            <div className="p-2">
+                                <SidebarTrigger />
+                            </div>
+
+                            {/* Only this scrolls */}
+                            <ScrollArea className="flex-1 overflow-auto p-4 border-2 border-border rounded-lg">
+                                <div className="space-y-2">
+                                    {msgs.map((m, i) => (
+                                        <ChatBubble
+                                            key={i}
+                                            text={m.content}
+                                            isUser={m.role === "user"}
+                                        />
+                                    ))}
+                                    {/* ← our invisible anchor */}
+                                    <div ref={endRef} />
+                                </div>
+                            </ScrollArea>
+
+                            <div className="py-4 bg-background">
+                                <ChatInput onSend={handleSend} />
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </SidebarProvider>
+            </SidebarProvider>
+        </div>
     );
 }
