@@ -6,9 +6,10 @@ import {
     ChatMessage,
 } from "@/lib/chat";
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatInput } from "@/components/ChatInput";
-
+import { ChatSidebar } from "@/components/ChatSidebar";
 
 export default function ChatPage() {
     const [convId, setConvId] = useState<string | null>(null);
@@ -78,29 +79,37 @@ export default function ChatPage() {
     };
 
     return (
-        // push below header
-        <div className="flex justify-center mt-10">
-            {/* debug border on the chat “frame” */}
-            <div className="
-         flex flex-col            /* stack scroll + input */
-         h-[80vh]                 /* give it a fixed height */
-         w-full max-w-3xl         /* center, limit width */
-         px-3
-       ">
-                {/* 1) scrollable history */}
-                <ScrollArea className="flex-1 overflow-auto border-1 border-border rounded-lg">
-                    <div className="pt-4 space-y-2">
-                        {msgs.map((m, i) => (
-                            <ChatBubble key={i} text={m.content} isUser={m.role === "user"} />
-                        ))}
-                    </div>
-                </ScrollArea>
+        <SidebarProvider>
+            <div className="flex align-middle justify-center h-[80vh] w-full max-w-[1200px] mt-10 px-3">
+                {/* 1) Sidebar drawer */}
+                <ChatSidebar />
 
-                {/* 2) always-visible input at bottom */}
-                <div className="pt-4 bg-background">
-                    <ChatInput onSend={handleSend} />
+                {/* 2) Chat content area */}
+                <div className="flex-1 flex flex-col align-middle justify-center w-full">
+                    {/* toggle button always shown (you can hide on desktop with md:hidden if you like) */}
+                    <div className="p-2">
+                        <SidebarTrigger />
+                    </div>
+
+                    {/* messages */}
+                    <ScrollArea className="flex-1 overflow-auto border-1 border-border rounded-lg">
+                        <div className="pt-4 space-y-2">
+                            {msgs.map((m, i) => (
+                                <ChatBubble
+                                    key={i}
+                                    text={m.content}
+                                    isUser={m.role === "user"}
+                                />
+                            ))}
+                        </div>
+                    </ScrollArea>
+
+                    {/* input */}
+                    <div className="py-4 bg-background">
+                        <ChatInput onSend={handleSend} />
+                    </div>
                 </div>
             </div>
-        </div>
+        </SidebarProvider>
     );
 }
