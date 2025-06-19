@@ -7,8 +7,14 @@ from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
-from pydantic_ai.messages import ModelMessagesTypeAdapter
-from pydantic_ai.messages import ModelResponse, TextPart
+from pydantic_ai.messages import (
+    ModelMessagesTypeAdapter,
+    ModelRequest,
+    ModelResponse,
+    UserPromptPart,
+    TextPart,
+)
+
 from entities.chat_converstaions import Conversation as ConversationEntity
 from entities.chat_messages import Message as MessageEntity
 from entities.user import User
@@ -81,7 +87,10 @@ def list_messages(
     conversation_id: str,
     session: Session,
     current_user: User,
-) -> List[MessageRead]:
+) -> List[ChatMessage]:
+    # Start with an empty list to collect messages to avoid returning None
+    out: List[ChatMessage] = []
+
     conv = session.get(ConversationEntity, conversation_id)
     if not conv or conv.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
@@ -90,8 +99,29 @@ def list_messages(
         .where(MessageEntity.conversation_id == conversation_id)
         .order_by(MessageEntity.created_at)
     )
-    msgs = session.exec(stmt).all()
-    return [m for m in msgs]
+    rows = session.exec(stmt).all()
+    for row in rows:
+        # row.message_list is already a Python list[dict]
+        msgs = ModelMessagesTypeAdapter.validate_python(row.message_list)
+        for m in msgs:
+            first = m.parts[0]
+            if isinstance(m, ModelRequest) and isinstance(first, UserPromptPart):
+                out.append(
+                    ChatMessage(
+                        role="user",
+                        content=first.content,
+                        timestamp=first.timestamp,
+                    )
+                )
+            elif isinstance(m, ModelResponse) and isinstance(first, TextPart):
+                out.append(
+                    ChatMessage(
+                        role="model",
+                        content=first.content,
+                        timestamp=m.timestamp,
+                    )
+                )
+    return out
 
 
 def create_message(
