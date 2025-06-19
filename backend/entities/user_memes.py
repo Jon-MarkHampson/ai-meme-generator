@@ -2,7 +2,7 @@ from uuid import uuid4
 from typing import Optional
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, ForeignKey
+from sqlalchemy import Column, DateTime, ForeignKey
 
 
 class UserMeme(SQLModel, table=True):
