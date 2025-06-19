@@ -53,9 +53,11 @@ async def health_check():
     return {"Health Check - status": "ok"}
 
 
+# Default to localhost if not set
+# Walrus operator to assign FRONTEND_URL and use it in CORS
 origins = [
-    "http://localhost:3000"
-]  # Add additional allowed origins here, such as the production frontend URL
+    FRONTEND_URL := os.getenv("FRONTEND_URL", "http://localhost:3000"),
+]
 
 app.add_middleware(
     CORSMiddleware,
