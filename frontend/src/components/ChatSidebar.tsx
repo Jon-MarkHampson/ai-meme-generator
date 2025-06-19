@@ -1,51 +1,52 @@
 // frontend/src/components/ChatSidebar.tsx
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupContent,
 } from "@/components/ui/sidebar";
+import { listConversations } from "@/lib/chat";
+import type { ConversationRead } from "@/lib/chat";
 
-export function ChatSidebar() {
+export interface ChatSidebarProps {
+  /** called when the user clicks a conversation */
+  onSelectConversation: (conversationId: string) => void;
+}
+
+export function ChatSidebar({ onSelectConversation }: ChatSidebarProps) {
+  const [convos, setConvos] = useState<ConversationRead[]>([]);
+
+  useEffect(() => {
+    listConversations().then(setConvos).catch(console.error);
+  }, []);
+
   return (
-    <Sidebar
-      className="h-full bg-muted mt-14"
-    >
+    <Sidebar collapsible="icon" className="h-full bg-muted">
       <SidebarContent>
-        <ul className="space-y-2 p-4">
-          {/* TODO: map your real conversations here */}
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 1
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 2
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 3
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 4
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 5
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 6
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 7
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 8
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 9
-          </li>
-          <li className="cursor-pointer hover:bg-accent/10 rounded px-2 py-1">
-            Conversation 10
-          </li>
-          {/* … */}
-        </ul>
+        <SidebarGroup>
+          <SidebarGroupLabel>Your Chats</SidebarGroupLabel>
+          <SidebarGroupContent className="space-y-1">
+            {convos.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => onSelectConversation(c.id)}
+                className="
+                  cursor-pointer 
+                  px-3 py-2 
+                  rounded 
+                  hover:bg-sidebar-accent 
+                  hover:text-sidebar-accent-foreground
+                "
+              >
+                {c.summary ?? "Conversation " + c.id.slice(0, 6)}
+              </div>
+            ))}
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
     </Sidebar>
   );

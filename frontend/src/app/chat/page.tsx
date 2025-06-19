@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import {
     createConversation,
     streamChat,
+    listMessages,
     ChatMessage,
 } from "@/lib/chat";
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -35,6 +36,22 @@ export default function ChatPage() {
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [msgs]);
+    // ————————————————————————————
+    // 2) Whenever convId changes, load its history
+    // ————————————————————————————
+    useEffect(() => {
+        if (!convId) return;
+        listMessages(convId)
+            .then((history) => {
+                setMsgs(history);
+                // after loading, scroll to bottom:
+                setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
+            })
+            .catch(() => {
+                // (optional) handle error
+            });
+    }, [convId]);
+
 
     // 2) on user send
     const handleSend = async (text: string): Promise<void> => {
@@ -100,7 +117,24 @@ export default function ChatPage() {
                     <div className="flex absolute justify-center inset-x-0 bottom-0 h-[calc(100vh-6rem)]">
                         {/* ─── Sidebar ─── */}
                         <div>
-                            <ChatSidebar />
+                            {/* pass a handler down into the sidebar */}
+                            <ChatSidebar
+                                onSelectConversation={(id) => {
+                                    setConvId(id);
+                                    // load that conversation’s past messages:
+                                    listMessages(id)
+                                        .then(setMsgs)
+                                        .catch(() => {
+                                            setMsgs([
+                                                {
+                                                    role: "model",
+                                                    content: "⚠ Couldn’t load that conversation.",
+                                                    timestamp: new Date().toISOString(),
+                                                },
+                                            ]);
+                                        });
+                                }}
+                            />
                         </div>
 
                         {/* ─── Chat Column ─── */}
