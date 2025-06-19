@@ -1,7 +1,7 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
-from sqlalchemy import Column, ForeignKey, CheckConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, CheckConstraint
 
 
 class ImageVariant(SQLModel, table=True):
@@ -23,7 +23,12 @@ class ImageVariant(SQLModel, table=True):
     image_url: str = Field(nullable=False)
     variant_rank: int = Field(default=0, nullable=False)
     created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc), nullable=False
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(
+            DateTime(timezone=True),
+            default=lambda: datetime.now(timezone.utc),
+            nullable=False,
+        ),
     )
 
     def __repr__(self):
