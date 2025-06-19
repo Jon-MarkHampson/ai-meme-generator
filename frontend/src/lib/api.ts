@@ -17,18 +17,4 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Chat response shape from the backend
-export interface ChatResponse {
-  reply: string;
-}
-
-/**
- * Send a chat message to the backend and return the assistant's reply.
- * @param message User's message text
- */
-export async function sendChatMessage(message: string): Promise<string> {
-  const { data } = await API.post<ChatResponse>("/chat", { message });
-  return data.reply;
-}
-
 export default API;
