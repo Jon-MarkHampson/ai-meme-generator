@@ -7,7 +7,7 @@ import {
     streamChat,
     listMessages,
     ChatMessage,
-} from "@/lib/chat";
+} from "@/lib/generate";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ChatSidebar } from "@/components/ChatSidebar";
@@ -146,10 +146,10 @@ export default function ChatPage() {
                         </div>
                         <div className="flex flex-col flex-1 min-h-0 max-w-[1200px]">
                             <div className="flex flex-row p-2 justify-between">
-                                <button className="flex items-center gap-2 text-sm font-medium text-primary bg-transparent rounded hover:bg-accent hover:text-accent-foreground">
+                                <div className="flex items-center gap-2 text-sm font-medium text-primary bg-transparent rounded hover:bg-accent hover:text-accent-foreground">
                                     <SidebarTrigger className="w-4 h-4" />
                                     History
-                                </button>
+                                </div>
                                 <button
                                     onClick={startNewConversation}
                                     className="flex items-center gap-2 text-sm font-medium text-primary bg-transparent rounded hover:bg-accent hover:text-accent-foreground">

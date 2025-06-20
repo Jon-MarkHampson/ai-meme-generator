@@ -27,7 +27,7 @@ from .service import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/chat", tags=["chat"])
+router = APIRouter(prefix="/generate", tags=["chat"])
 
 # Conversation CRUD
 

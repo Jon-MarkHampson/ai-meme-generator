@@ -50,5 +50,10 @@ export function middleware(req: NextRequest) {
 
 // Only run on the routes you actually need protected:
 export const config = {
-  matcher: ["/chat", "/chat/:path*", "/profile/:path*", "/settings/:path*"],
+  matcher: [
+    "/generate",
+    "/generate/:path*",
+    "/profile/:path*",
+    "/settings/:path*",
+  ],
 };

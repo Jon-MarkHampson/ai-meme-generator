@@ -1,4 +1,4 @@
-# backend/features/chat/agent.py
+# backend/features/generate/agent.py
 from dotenv import load_dotenv
 
 from openai.types.responses import WebSearchToolParam
