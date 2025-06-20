@@ -16,7 +16,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
-import { ConversationRead, listConversations } from "@/lib/chat";
+import { ConversationRead, listConversations } from "@/lib/generate";
 
 export interface ChatSidebarProps {
   onSelectConversation: (id: string) => void;

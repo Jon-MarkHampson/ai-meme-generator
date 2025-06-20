@@ -32,7 +32,7 @@ export default function LoginPage() {
   // 1) Redirect away if already logged in
   useEffect(() => {
     if (user) {
-      router.replace('/chat');
+      router.replace('/generate');
     }
   }, [user, router]);
 
@@ -41,7 +41,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(values.email, values.password);
-      router.push('/chat');
+      router.push('/generate');
     } catch (err: any) {
       const msg = err.response?.data?.detail || 'Login failed.';
       setFormError(msg);

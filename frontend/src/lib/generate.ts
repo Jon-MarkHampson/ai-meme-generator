@@ -1,4 +1,4 @@
-// lib/chat.ts
+// lib/generate.ts
 import API from "./api";
 import Cookies from "js-cookie";
 
@@ -18,19 +18,23 @@ export interface ChatMessage {
 
 // 1) Create a new conversation
 export async function createConversation(): Promise<ConversationRead> {
-  const { data } = await API.post<ConversationRead>("/chat/conversations/");
+  const { data } = await API.post<ConversationRead>("/generate/conversations/");
   return data;
 }
 
 // 2) List all of a user’s conversations
 export async function listConversations(): Promise<ConversationRead[]> {
-  const { data } = await API.get<ConversationRead[]>("/chat/conversations/");
+  const { data } = await API.get<ConversationRead[]>(
+    "/generate/conversations/"
+  );
   return data;
 }
 
 // 3) Fetch one conversation
 export async function getConversation(id: string): Promise<ConversationRead> {
-  const { data } = await API.get<ConversationRead>(`/chat/conversations/${id}`);
+  const { data } = await API.get<ConversationRead>(
+    `/generate/conversations/${id}`
+  );
   return data;
 }
 
@@ -40,7 +44,7 @@ export async function updateConversation(
   summary: string
 ): Promise<ConversationRead> {
   const { data } = await API.patch<ConversationRead>(
-    `/chat/conversations/${id}`,
+    `/generate/conversations/${id}`,
     { summary }
   );
   return data;
@@ -48,7 +52,7 @@ export async function updateConversation(
 
 // 5) Delete
 export async function deleteConversation(id: string): Promise<void> {
-  await API.delete<void>(`/chat/conversations/${id}`);
+  await API.delete<void>(`/generate/conversations/${id}`);
 }
 
 // 6) List messages
@@ -56,7 +60,7 @@ export async function listMessages(
   conversationId: string
 ): Promise<ChatMessage[]> {
   const { data } = await API.get<ChatMessage[]>(
-    `/chat/conversations/${conversationId}/messages/`
+    `/generate/conversations/${conversationId}/messages/`
   );
   return data;
 }
@@ -67,7 +71,7 @@ export async function postMessage(
   content: string
 ): Promise<ChatMessage> {
   const { data } = await API.post<ChatMessage>(
-    `/chat/conversations/${conversationId}/messages/`,
+    `/generate/conversations/${conversationId}/messages/`,
     { role: "user", content }
   );
   return data;
@@ -84,7 +88,7 @@ export function streamChat(
   const token = Cookies.get("access_token");
 
   fetch(
-    `${API.defaults.baseURL}/chat/conversations/${conversationId}/stream/`,
+    `${API.defaults.baseURL}/generate/conversations/${conversationId}/stream/`,
     {
       method: "POST",
       headers: {
