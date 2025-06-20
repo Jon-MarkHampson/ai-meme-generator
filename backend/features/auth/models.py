@@ -3,6 +3,7 @@ from typing import Optional
 from ..users.models import UserRead
 
 
+# Maybe unused
 class Token(BaseModel):
     access_token: str
     token_type: str
