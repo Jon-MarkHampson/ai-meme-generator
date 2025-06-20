@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 from datetime import timedelta
 
-from .models import Token, SignupResponse
+from .models import SignupResponse
 from ..users.models import UserCreate
 from entities.user import User
 from .service import verify_password, get_password_hash, create_access_token
@@ -56,7 +57,7 @@ def signup(
     return SignupResponse(user=user, access_token=access_token, token_type="bearer")
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: Session = Depends(get_session),
@@ -82,4 +83,29 @@ def login(
     )
 
     # 4) Return it
-    return {"access_token": access_token, "token_type": "bearer"}
+    response = JSONResponse(
+        status_code=status.HTTP_200_OK, content={"token_type": "bearer"}
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,  # only over HTTPS
+        samesite="lax",  # or "strict"
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # convert minutes to seconds
+        path="/",
+    )
+    return response
+
+
+@router.post("/logout")
+def logout():
+    """
+    Invalidate the user's session by clearing the access token cookie.
+    """
+    response = JSONResponse(
+        content={"message": "Logged out successfully"},
+        status_code=status.HTTP_200_OK,
+    )
+    response.delete_cookie("access_token", path="/")
+    return response
