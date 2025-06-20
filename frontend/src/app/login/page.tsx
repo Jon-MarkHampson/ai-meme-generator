@@ -1,6 +1,6 @@
 'use client';
 
-import { useContext, useState } from 'react';
+import { useEffect, useContext, useState } from 'react';
 import { AuthContext } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -12,16 +12,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
-
 const formSchema = z.object({
   email: z.string().email({ message: 'Enter a valid email.' }),
   password: z.string().min(1, { message: 'Enter your password.' }),
 });
-
 type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
-  const { login } = useContext(AuthContext);
+  const { login, user } = useContext(AuthContext);
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,14 +29,25 @@ export default function LoginPage() {
     defaultValues: { email: '', password: '' },
   });
 
+  // 1) Redirect away if already logged in
+  useEffect(() => {
+    if (user) {
+      router.replace('/chat');
+    }
+  }, [user, router]);
+
   async function onSubmit(values: FormValues) {
     setFormError(null);
     setIsSubmitting(true);
     try {
       await login(values.email, values.password);
-      router.push('/profile');
+      router.push('/chat');
     } catch (err: any) {
-      setFormError(err.response?.data?.detail || 'Login failed.');
+      const msg = err.response?.data?.detail || 'Login failed.';
+      setFormError(msg);
+      if (err.response?.status === 401) {
+        form.setValue('password', '');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -46,14 +55,25 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      {/* Hidden heading for screen readers */}
+      <h1 className="sr-only">Log In</h1>
+
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center">Log In</CardTitle>
         </CardHeader>
+
         <CardContent>
           {formError && (
-            <p className="mb-4 text-center text-sm text-red-600">{formError}</p>
+            <p
+              role="alert"
+              aria-live="assertive"
+              className="mb-4 text-center text-sm text-red-600"
+            >
+              {formError}
+            </p>
           )}
+
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Email */}
@@ -64,7 +84,12 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@example.com" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="john@example.com"
+                        disabled={isSubmitting}
+                        {...field}
+                      />
                     </FormControl>
                     {form.formState.errors.email && (
                       <p className="mt-1 text-sm text-red-600">
@@ -83,7 +108,12 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        disabled={isSubmitting}
+                        {...field}
+                      />
                     </FormControl>
                     {form.formState.errors.password && (
                       <p className="mt-1 text-sm text-red-600">
@@ -95,7 +125,7 @@ export default function LoginPage() {
               />
 
               {/* Submit Button */}
-              <div className="mt-4 flex flex-col space-y-2">
+              <div className="mt-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? 'Logging In…' : 'Log In'}
                 </Button>

@@ -1,9 +1,8 @@
 // frontend/src/app/layout.tsx
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider"
-import { ModeToggle } from "@/components/ui/mode-toggle"
-import { AuthProvider } from '@/context/AuthContext'
+import { AuthProvider } from '@/context/AuthContext';
+import { NavBar } from "@/components/NavBar";
 
 import "./globals.css";
 
@@ -40,11 +39,7 @@ export function generateViewport() {
   };
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
@@ -55,21 +50,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <header className="
-              sticky top-0 z-50
-              bg-background/80 backdrop-blur-sm
-              border-b border-border
-              p-4 flex justify-between items-center
-            "
-            >
-              <nav className="flex space-x-4">
-                <Link href="/">Home</Link>
-                <Link href="/chat">Meme Chat</Link>
-                <Link href="/about">About</Link>
-                <Link href="/contact">Contact</Link>
-              </nav>
-              <ModeToggle />
-            </header>
+            <NavBar />
 
             <main>{children}</main>
           </AuthProvider>
