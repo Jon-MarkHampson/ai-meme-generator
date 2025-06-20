@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 import { useAuth } from "@/context/AuthContext";
-import { apiDeleteAccount } from "@/lib/auth";
+import { apiDeleteAccount, apiLogout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -99,10 +99,10 @@ export default function EditProfilePage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Redirect to /login if not authenticated
+  // Redirect to / if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      router.push("/");
     }
   }, [loading, user, router]);
 

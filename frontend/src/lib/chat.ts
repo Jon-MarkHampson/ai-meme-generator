@@ -81,7 +81,7 @@ export function streamChat(
   onError: (err: Error) => void
 ): () => void {
   const controller = new AbortController();
-  const token = Cookies.get("token");
+  const token = Cookies.get("access_token");
 
   fetch(
     `${API.defaults.baseURL}/chat/conversations/${conversationId}/stream/`,

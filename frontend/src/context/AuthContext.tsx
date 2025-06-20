@@ -1,16 +1,16 @@
 'use client'
 
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react'
-import Cookies from 'js-cookie'
 import API from '@/lib/api'
-import { apiLogin, apiSignup, fetchProfile, User, apiUpdateProfile } from '@/lib/auth'
+import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile } from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (firstName: string, lastName: string, email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   updateProfile: (payload: {
     currentPassword: string
     firstName?: string
@@ -23,47 +23,26 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType>(null!)
 
-/**
- * Wrap app in <AuthProvider> in layout.tsx
- * so every page can access `user`, `login`, `signup`, `logout`.
- */
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
-  // On mount, if a 'token' cookie exists, fetch /users/me
   useEffect(() => {
-    const token = Cookies.get('token')
-    if (token) {
-      fetchProfile()
-        .then((resp) => {
-          setUser(resp.data)
-        })
-        .catch(() => {
-          Cookies.remove('token')
-          setUser(null)
-        })
-        .finally(() => {
-          setLoading(false)
-        })
-    } else {
-      setLoading(false)
-    }
+    fetchProfile()
+      .then((u) => setUser(u))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false))
   }, [])
 
-  /**
-   * login: calls /auth/login, stores JWT cookie, then fetches profile
-   */
+
   const login = async (email: string, password: string) => {
-    const { access_token } = await apiLogin(email, password)
-    Cookies.set('token', access_token)
-    const profile = await fetchProfile()
-    setUser(profile.data)
+    await apiLogin(email, password)
+    const u = await fetchProfile()
+    setUser(u)
   }
 
-  /**
-   * signup: calls /auth/signup (gets user + token), stores cookie, and sets user
-   */
   const signup = async (firstName: string, lastName: string, email: string, password: string) => {
     const { user: newUser, access_token } = await apiSignup(
       firstName,
@@ -71,16 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password
     )
-    Cookies.set('token', access_token)
+    // backend doesn’t set httpOnly cookie on signup, so we store it temporarily:
+    document.cookie = `access_token=${access_token}; path=/;`
     setUser(newUser)
   }
 
-  /**
-   * logout: clear the cookie and React state
-   */
-  const logout = () => {
-    Cookies.remove('token')
-    setUser(null)
+
+  const logout = async () => {
+    try {
+      await apiLogout();        // clear cookie server-side
+    } catch {
+      // optional: show a toast if it fails
+    }
+    setUser(null);              // clear client-side user
+    router.push("/");           // send them to homepage or login
   }
 
   // ─── updateProfile: PATCH /users/me then re‐fetch /users/me ───
@@ -98,10 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (email !== undefined) body.email = email
     if (password !== undefined) body.password = password
 
-    await API.patch("/users/me", body)
-    const resp = await fetchProfile()
-    setUser(resp.data)
+    await apiUpdateProfile(body)
+    const u = await fetchProfile()
+    setUser(u)
   }
+
 
   return (
     <AuthContext.Provider

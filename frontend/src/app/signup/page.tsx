@@ -66,7 +66,7 @@ export default function SignupPage() {
         values.email,
         values.password
       )
-      router.push('/profile')
+      router.push('/chat')
     } catch (err: any) {
       const message =
         err.response?.data?.detail || 'Sign up failed. Please try again.'
