@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ClockIcon } from "lucide-react";
+import { DeleteIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarMenu,
@@ -70,6 +71,13 @@ export function ChatSidebar({
                           </span>
                           {/* <ClockIcon className="w-4 h-4 opacity-50" /> */}
                         </button>
+                        {/* <button
+                          onClick={() => {
+                            // handle delete conversation
+                          }}
+                        >
+                          <DeleteIcon className="w-4 h-4 opacity-50" />
+                        </button> */}
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
