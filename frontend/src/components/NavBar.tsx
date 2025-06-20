@@ -18,7 +18,7 @@ export function NavBar() {
       "
         >
             <nav className="flex space-x-4">
-                <Link href="/chat">Meme Chat</Link>
+                <Link href="/generate">Generate</Link>
                 <Link href="/gallery">Gallery</Link>
                 <Link href="/profile">Profile</Link>
                 <Link href="/about">About</Link>
