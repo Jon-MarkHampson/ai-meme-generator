@@ -88,39 +88,48 @@ def list_messages(
     session: Session,
     current_user: User,
 ) -> List[ChatMessage]:
-    # Start with an empty list to collect messages to avoid returning None
     out: List[ChatMessage] = []
 
     conv = session.get(ConversationEntity, conversation_id)
     if not conv or conv.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Conversation not found")
+
     stmt = (
         select(MessageEntity)
         .where(MessageEntity.conversation_id == conversation_id)
         .order_by(MessageEntity.created_at)
     )
     rows = session.exec(stmt).all()
+
     for row in rows:
         # row.message_list is already a Python list[dict]
         msgs = ModelMessagesTypeAdapter.validate_python(row.message_list)
+
         for m in msgs:
-            first = m.parts[0]
-            if isinstance(m, ModelRequest) and isinstance(first, UserPromptPart):
-                out.append(
-                    ChatMessage(
-                        role="user",
-                        content=first.content,
-                        timestamp=first.timestamp,
-                    )
-                )
-            elif isinstance(m, ModelResponse) and isinstance(first, TextPart):
-                out.append(
-                    ChatMessage(
-                        role="model",
-                        content=first.content,
-                        timestamp=m.timestamp,
-                    )
-                )
+            # catch **all** user‐prompt parts, not just the first one
+            if isinstance(m, ModelRequest):
+                for part in m.parts:
+                    if isinstance(part, UserPromptPart):
+                        out.append(
+                            ChatMessage(
+                                role="user",
+                                content=part.content,
+                                timestamp=part.timestamp,
+                            )
+                        )
+
+            # catch **all** text parts of the model response
+            elif isinstance(m, ModelResponse):
+                for part in m.parts:
+                    if isinstance(part, TextPart):
+                        out.append(
+                            ChatMessage(
+                                role="model",
+                                content=part.content,
+                                timestamp=m.timestamp,
+                            )
+                        )
+
     return out
 
 
