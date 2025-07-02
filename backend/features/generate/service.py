@@ -18,7 +18,7 @@ from pydantic_ai.messages import (
 from entities.chat_converstaions import Conversation as ConversationEntity
 from entities.chat_messages import Message as MessageEntity
 from entities.user import User
-from .agent import chat_agent
+from .agent import main_agent
 from .models import (
     ConversationRead,
     ConversationUpdate,
@@ -167,11 +167,13 @@ def chat_stream(
                 ModelMessagesTypeAdapter.validate_json(json.dumps(row.message_list))
             )
 
-        async with chat_agent.run_stream(prompt, message_history=history) as result:
-            async for chunk in result.stream(debounce_by=0.01):
+        # ===== plain-text streaming =====
+        async with main_agent.run_stream(prompt, message_history=history) as result:
+            # use .stream_text to get raw LLM output (no JSON/schema parsing)
+            async for text_piece in result.stream_text(debounce_by=0.01):
                 resp_msg = ChatMessage(
                     role="model",
-                    content=chunk,
+                    content=text_piece,
                     timestamp=result.timestamp(),
                 )
                 yield (resp_msg.model_dump_json() + "\n").encode("utf-8")
