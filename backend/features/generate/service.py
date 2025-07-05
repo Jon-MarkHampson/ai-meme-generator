@@ -133,7 +133,7 @@ def list_messages(
     return out
 
 
-def create_message(
+def store_message(
     conversation_id: str,
     payload: MessageCreate,
     session: Session,
@@ -191,7 +191,7 @@ def chat_stream(
 
         full_json = result.new_messages_json()
         payload = json.loads(full_json)
-        create_message(
+        store_message(
             conversation_id,
             MessageCreate(conversation_id=conversation_id, message_list=payload),
             session,
