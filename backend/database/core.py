@@ -15,6 +15,10 @@ from config import settings
 engine = create_engine(
     settings.DATABASE_URL,
     echo=False,
+    pool_pre_ping=True,  # <-- makes SQLAlchemy check connections before using
+    pool_recycle=3600,  # <-- optional: recycle connections every hour
+    pool_size=10,  # adjust to required load
+    max_overflow=20,
     connect_args={"sslmode": "require"},  # enforce SSL for Supabase
 )
 
