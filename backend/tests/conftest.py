@@ -57,7 +57,7 @@ def test_user(session):
 
 @pytest.fixture()
 def test_token(test_user):
-    # same payload as your real login
+    # same payload as the real login
     to_encode = {"sub": test_user.id}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
