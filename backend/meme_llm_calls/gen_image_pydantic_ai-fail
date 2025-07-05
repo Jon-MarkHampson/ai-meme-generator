@@ -1,0 +1,47 @@
+from dotenv import load_dotenv
+import logfire
+from pydantic_ai import Agent, RunContext
+from pydantic_ai.usage import UsageLimits
+from pydantic_ai.models.openai import OpenAIResponsesModel, OpenAIResponsesModelSettings
+from openai.types.responses import WebSearchToolParam
+from pydantic import BaseModel
+import asyncio
+
+
+# Load environment variables (e.g. OPENAI_API_KEY)
+load_dotenv()
+
+# Configure Logfire for observability
+logfire.configure()
+logfire.instrument_pydantic_ai()
+
+
+# Use GPT-4.1 with built-in web_search_preview tool
+model = OpenAIResponsesModel("gpt-4.1-2025-04-14")
+
+
+meme_image_generation_agent = Agent(
+    model=model,
+    # deps_type=dict,
+    system_prompt="""
+    You are a meme image generation agent: given a set of captions and some image context, generate meme images.
+    return a binary base64 image for the caption.
+    """,
+    output_type=str,  # Assuming the output is a base64 encoded image string
+)
+
+
+# Example usage
+async def main():
+    # image_context = "A nerd sat at a retro computer screen"
+    # text_boxes = {"text_box_1": "Hello", "text_box_2": "World"}
+    # image_input = {"image_context": image_context, "text_boxes": text_boxes}
+    result = await meme_image_generation_agent.run(
+        "Generate a meme image of a nerd sat at a retro computer screen and the top text is 'Hello' and the bottom text is 'World'.",
+        # deps=image_input,
+    )
+    print(result)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
