@@ -29,16 +29,16 @@ export function NavBar() {
                 {user ? (
                     <button
                         onClick={logout}
-                        className="text-sm text-red-500 hover:underline"
+                        className="text-sm text-destructive"
                     >
                         Logout
                     </button>
                 ) : (
                     <>
-                        <Link href="/login" className="text-sm hover:underline">
+                        <Link href="/login" className="text-sm">
                             Log In
                         </Link>
-                        <Link href="/signup" className="text-sm hover:underline">
+                        <Link href="/signup" className="text-sm">
                             Sign Up
                         </Link>
                     </>
