@@ -1,3 +1,4 @@
+# backend/features/image_storage/controller.py
 import logging
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
 from features.auth.service import get_current_user
