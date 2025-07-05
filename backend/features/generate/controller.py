@@ -22,7 +22,7 @@ from .service import (
     update_conversation,
     delete_conversation,
     list_messages,
-    create_message,
+    store_message,
     chat_stream,
 )
 
@@ -132,7 +132,7 @@ def post_message(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> MessageRead:
-    return create_message(conversation_id, payload, session, current_user)
+    return store_message(conversation_id, payload, session, current_user)
 
 
 # Streaming chat endpoint
