@@ -1,3 +1,4 @@
+# backend/features/image_storage/service.py
 import uuid
 import logging
 from fastapi import HTTPException, status
@@ -21,12 +22,13 @@ def upload_image_to_supabase(
     """
 
     # Step 1: Build a unique filename
-    try:
-        suffix = original_filename.rsplit(".", 1)[1].lower()
-    except Exception:
-        suffix = "png"
-    file_name = f"{uuid.uuid4().hex}.{suffix}"
-    logger.info(f"Generated object file name: {file_name}")
+    # try:
+    #     suffix = original_filename.rsplit(".", 1)[1].lower()
+    # except Exception:
+    #     suffix = "png"
+    # file_name = f"{uuid.uuid4().hex}.{suffix}"
+    # logger.info(f"Generated object file name: {file_name}")
+    file_name = original_filename
 
     # Step 2: Attempt the upload
     try:
