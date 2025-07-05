@@ -187,6 +187,8 @@ def chat_stream(
                 )
                 yield (resp_msg.model_dump_json() + "\n").encode("utf-8")
 
+        # ADD logic to store things in db here
+
         full_json = result.new_messages_json()
         payload = json.loads(full_json)
         create_message(

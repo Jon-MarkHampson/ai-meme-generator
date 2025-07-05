@@ -40,3 +40,20 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     lines: List[ChatMessage]
+
+
+class MemeCaption(BaseModel):
+    """
+    Represents a single meme caption with top and bottom text.
+    """
+
+    text_box_1: str  # Top text
+    text_box_2: str  # Bottom text
+
+
+class ResponseMemeCaptions(BaseModel):
+    """
+    Wrapper schema for a list of MemeCaption objects.
+    """
+
+    captions: list[MemeCaption]
