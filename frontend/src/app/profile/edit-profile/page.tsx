@@ -228,7 +228,7 @@ export default function EditProfilePage() {
                       />
                     </FormControl>
                     {methods.formState.errors.currentPassword && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {methods.formState.errors.currentPassword.message}
                       </p>
                     )}
@@ -247,7 +247,7 @@ export default function EditProfilePage() {
                       <Input placeholder={user.first_name} {...field} />
                     </FormControl>
                     {methods.formState.errors.firstName && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {methods.formState.errors.firstName.message}
                       </p>
                     )}
@@ -266,7 +266,7 @@ export default function EditProfilePage() {
                       <Input placeholder={user.last_name} {...field} />
                     </FormControl>
                     {methods.formState.errors.lastName && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {methods.formState.errors.lastName.message}
                       </p>
                     )}
@@ -285,7 +285,7 @@ export default function EditProfilePage() {
                       <Input type="email" placeholder={user.email} {...field} />
                     </FormControl>
                     {methods.formState.errors.email && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {methods.formState.errors.email.message}
                       </p>
                     )}
@@ -308,7 +308,7 @@ export default function EditProfilePage() {
                       />
                     </FormControl>
                     {methods.formState.errors.password && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {methods.formState.errors.password.message}
                       </p>
                     )}
@@ -331,7 +331,7 @@ export default function EditProfilePage() {
                       />
                     </FormControl>
                     {methods.formState.errors.confirmPassword && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {methods.formState.errors.confirmPassword.message}
                       </p>
                     )}
@@ -357,7 +357,7 @@ export default function EditProfilePage() {
         </CardContent>
 
         {/* — Delete Account Section — */}
-        <CardContent className="border-t border-gray-200 dark:border-gray-700">
+        <CardContent className="border-t">
           {!confirmDelete ? (
             <div className="flex justify-center mt-4">
               <Button
@@ -374,14 +374,14 @@ export default function EditProfilePage() {
             </div>
           ) : (
             <div className="space-y-4 mt-4">
-              <p className="text-sm text-red-700 text-center">
+              <p className="text-sm text-destructive text-center">
                 Enter your password to confirm deletion
               </p>
 
               <div className="space-y-1">
                 <label
                   htmlFor="delete-password"
-                  className="block text-sm font-medium text-red-700"
+                  className="block text-sm font-medium text-destructive"
                 >
                   Password
                 </label>
@@ -391,10 +391,10 @@ export default function EditProfilePage() {
                   placeholder="Type your password"
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-neutral-100 dark:bg-neutral-700"
+                  className="block w-full rounded-md"
                 />
                 {deleteError && (
-                  <p className="mt-1 text-sm text-red-600 text-center">
+                  <p className="mt-1 text-sm text-destructive text-center">
                     {deleteError}
                   </p>
                 )}
