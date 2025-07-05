@@ -34,17 +34,23 @@ class Deps:
     client: OpenAI
 
 
-# ─── Image Generation Context ───────────────────────────────────────────────
-class ImageGenerationContext(BaseModel):
-    text_boxes: dict[str, str]  # e.g. {"text_box_1": "Hello", "text_box_2": "World"}
-    context: str = ""  # optional scene or style notes
-
-
 # ─── Pydantic AI Result Model ────────────────────────────────────────────────
 class ImageResult(BaseModel):
     url: str  # the Supabase URL
     response_id: str  # the OpenAI `response.id` you got back
 
+
+# ─── Manager Agent ──────────────────────────────────────────────
+# meme_image_generation_manager = Agent(
+#     model=model,
+#     model_settings=model_settings,
+#     deps_type=Deps,
+#     system_prompt="""
+#     You are a Meme Image Generation Manager.
+#     Your job is to oversee the meme image generation process, ensuring that all steps are followed and that the final output meets the user's expectations.
+#     You will work closely with the Meme Image Generation Agent to facilitate this process.
+#     """,
+# )
 
 # ─── Image‐Generation Agent ─────────────────────────────────────────────────
 meme_image_generation_agent = Agent(
@@ -52,20 +58,26 @@ meme_image_generation_agent = Agent(
     model_settings=model_settings,
     deps_type=Deps,
     system_prompt="""
-    You are a Meme Image Generation Agent.  
+    You are a Meme Image Generation Agent.
+    The user might supply meme image ideas, text boxes and previous image generation attempts openai previous_response_id.
+    You will generate a meme image based on the provided text boxes and context, possibly using a previous image generation attempt as a reference.
+    You must convert these strings into structured format to call the `image_generation` tool.
     When invoked, you must call the `image_generation` tool with:
-    ImageGenerationContext(text_boxes=<dict of text boxes>, context=<optional context>) & optionally the previous image generation attempts attempts response_id.
+    text_boxes=<dict of text boxes>, context=<optional context>, previous_response_id=<previous image generation attempts previous_response_id> can be None.
     The `image_generation` tool will return an `ImageResult` which will contain the public URL to the generated image and the response ID.
-    Store the the response_id for incase the user make a follow-up request to regenerate the image.
+    If the user asks for a different style, you should call the `image_generation` tool again with the same text boxes and context, but with a new previous_response_id.
+    Output the result as an `ImageResult` object.
     """,
+    output_type=ImageResult,
 )
 
 
 @meme_image_generation_agent.tool
 def image_generation(
     ctx: RunContext[None],
-    image_context: ImageGenerationContext,
-    response_id: str | None = None,
+    text_boxes: dict[str, str],
+    context: str = "",
+    previous_response_id: str | None = None,
 ) -> ImageResult:
     """
     1) Ask OpenAI's image_generation tool for a base64-encoded PNG,
@@ -74,17 +86,16 @@ def image_generation(
     3) Return ImageResult.
     """
     # Build a little “Top: …; Bottom: …; Caption3: …” string from whatever keys you got
-    boxes_desc = "; ".join(
-        f"{key}: “{val}”" for key, val in image_context.text_boxes.items()
-    )
+    boxes_desc = "; ".join(f"{key}: “{val}”" for key, val in text_boxes.items())
 
     prompt = f"Create a meme image with the following text boxes: {boxes_desc}." + (
-        f" Context: {image_context.context}" if image_context.context else ""
+        f" Context: {context}" if context else ""
     )
 
     # Synchronous call into the OpenAI client
     response = ctx.deps.client.responses.create(
         model="gpt-4.1-2025-04-14",
+        previous_response_id=previous_response_id,
         input=prompt,
         tools=[{"type": "image_generation"}],
     )
@@ -112,15 +123,20 @@ def image_generation(
 # ─── Quick CLI Test ─────────────────────────────────────────────────────────
 if __name__ == "__main__":
     client = OpenAI()
+
     deps = Deps(client=client)
+
     first_run = meme_image_generation_agent.run_sync(
         "Generate a meme of a nerd at a computer with Hello/World captions in cartoon style",
         deps=deps,
     )
-    print("Saved image:", first_run.output)
+    # Extract the message history containing the response id and append it
+    # message_history.append(first_run.output)
+    # print("message_history:", message_history)
+    response_id = first_run.output.response_id
+    print("First run:", first_run.output)
 
     second_run = meme_image_generation_agent.run_sync(
-        "Make the image more realistic",
-        deps=deps,
+        f"Make the previous image (response_id={response_id}) more realistic", deps=deps
     )
-    print("Saved image:", second_run.output)
+    print("Second run:", second_run.output)
