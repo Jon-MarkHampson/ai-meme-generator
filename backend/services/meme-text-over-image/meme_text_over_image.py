@@ -7,7 +7,7 @@ import datetime
 logger = logging.getLogger(__name__)
 
 
-# 1. Load your template
+# 1. Load template
 img = Image.open("meme-text-over-image/coffee.png")
 
 # 2. Prepare to draw
