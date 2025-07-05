@@ -85,18 +85,17 @@ export function streamChat(
   onError: (err: Error) => void
 ): () => void {
   const controller = new AbortController();
-  const token = Cookies.get("access_token");
-
   fetch(
     `${API.defaults.baseURL}/generate/conversations/${conversationId}/stream/`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({ prompt }),
       signal: controller.signal,
+      // this tells fetch to include HttpOnly cookie
+      credentials: "include",
     }
   )
     .then((res) => {
