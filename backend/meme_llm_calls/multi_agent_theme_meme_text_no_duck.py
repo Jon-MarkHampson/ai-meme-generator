@@ -21,7 +21,6 @@ model_settings = OpenAIResponsesModelSettings(
 
 # Use GPT-4.1 with built-in web_search_preview tool
 model = OpenAIResponsesModel("gpt-4.1-2025-04-14")
-agent = Agent(model=model, model_settings=model_settings)
 
 
 class MemeCaption(BaseModel):
@@ -45,6 +44,7 @@ class ResponseMemeCaptions(BaseModel):
 # This agent produces raw meme captions based on theme keywords.
 meme_generation_agent = Agent(
     model=model,
+    model_settings=model_settings,
     system_prompt="""
 # Role and Objective
 You are a meme-caption factory: generate meme captions from themes.
@@ -84,6 +84,7 @@ You are a meme-caption factory: generate meme captions from themes.
 # This agent curates and filters generated memes.
 meme_selection_agent = Agent(
     model=model,
+    model_settings=model_settings,
     system_prompt="""
 # Role and Objective
 You are a meme curator: select and refine the best captions.
@@ -115,7 +116,7 @@ You are a meme curator: select and refine the best captions.
 ## Output Format
 - Return strictly valid JSON matching the `ResponseMemeCaptions` schema.
 """,
-    output_type=ResponseMemeCaptions,
+    output_type=str,
 )
 
 
