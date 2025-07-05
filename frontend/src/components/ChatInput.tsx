@@ -31,7 +31,7 @@ export const ChatInput: FC<{ onSend: (msg: string) => Promise<void> }> = ({ onSe
             />
             <Button
                 type="submit"
-                className="absolute right-2 bottom-2 p-2 h-5 w-5 rounded-full text-muted-foreground bg-transparent hover:bg-primary/20 disabled:opacity-50 disabled:pointer-events-none"
+                className="absolute right-2 bottom-2 p-2 h-5 w-5 rounded-full text-primary bg-transparent hover:bg-primary/20 disabled:opacity-50 disabled:pointer-events-none"
             >
                 <Send />
             </Button>
