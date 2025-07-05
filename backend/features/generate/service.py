@@ -18,7 +18,7 @@ from pydantic_ai.messages import (
 from entities.chat_converstaions import Conversation as ConversationEntity
 from entities.chat_messages import Message as MessageEntity
 from entities.user import User
-from .agent import main_agent
+from .agent import manager_agent
 from .models import (
     ConversationRead,
     ConversationUpdate,
@@ -177,7 +177,7 @@ def chat_stream(
             )
 
         # ===== plain-text streaming =====
-        async with main_agent.run_stream(prompt, message_history=history) as result:
+        async with manager_agent.run_stream(prompt, message_history=history) as result:
             # use .stream_text to get raw LLM output (no JSON/schema parsing)
             async for text_piece in result.stream_text(debounce_by=0.01):
                 resp_msg = ChatMessage(
