@@ -69,7 +69,14 @@ export default function ChatPage() {
             });
     }, [convId]);
 
-    // ─── Now do your early return based on auth ────────────────────
+    // 4) Reset to welcome when convId === null:
+    useEffect(() => {
+        if (convId === null) {
+            setMsgs(WELCOME);
+        }
+    }, [convId]);
+
+    // ─── Now do early return based on auth ────────────────────
     if (loading || !user) {
         return null; // or a loading spinner
     }
@@ -141,7 +148,16 @@ export default function ChatPage() {
                     <div className="flex absolute justify-center inset-x-0 bottom-0 h-[calc(100vh-6rem)]">
                         <div className="shrink-0">
                             <ChatSidebar
-                                onSelectConversation={(id) => setConvId(id)}
+                                activeId={convId}
+                                onSelectConversation={(id) => {
+                                    // always update the active conversation id (possibly null)
+                                    setConvId(id)
+
+                                    // but only fetch messages if it's a real conversation
+                                    if (id) {
+                                        listMessages(id).then(setMsgs)
+                                    }
+                                }}
                             />
                         </div>
                         <div className="flex flex-col flex-1 min-h-0 max-w-[1200px]">
