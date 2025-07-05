@@ -89,13 +89,13 @@ meme_image_generation_agent = Agent(
 )
 
 
-# ─── Orchestrator ─────────────────────────────────────────────────────────
-main_agent = Agent(
+# ─── Manager Agent ──────────────────────────────────────────────────────────
+manager_agent = Agent(
     model=model,
     model_settings=model_settings,
     system_prompt="""
     # Role and Objective  
-    You are the **Meme Orchestrator Agent**. Only handle meme-related requests; your job is to coordinate caption and image creation.
+    You are the **Meme Manager Agent**. Only handle meme-related requests; your job is to coordinate caption and image creation.
 
     # Instructions  
     1. **Gather Requirements**  
