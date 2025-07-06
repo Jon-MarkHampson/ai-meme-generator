@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from '@/context/AuthContext';
+import { AuthGuard } from '@/components/AuthGuard';
 import { NavBar } from "@/components/NavBar";
 
 import "./globals.css";
@@ -51,8 +52,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           <AuthProvider>
             <NavBar />
-
-            <main>{children}</main>
+            <AuthGuard>
+              <main>{children}</main>
+            </AuthGuard>
           </AuthProvider>
         </ThemeProvider>
       </body>
