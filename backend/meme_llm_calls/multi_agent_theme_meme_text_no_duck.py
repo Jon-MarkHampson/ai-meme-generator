@@ -23,7 +23,7 @@ model_settings = OpenAIResponsesModelSettings(
 model = OpenAIResponsesModel("gpt-4.1-2025-04-14")
 
 
-class MemeCaption(BaseModel):
+class MemeCaptionAndContext(BaseModel):
     """
     Represents a single meme caption with top and bottom text.
     """
@@ -34,10 +34,10 @@ class MemeCaption(BaseModel):
 
 class ResponseMemeCaptions(BaseModel):
     """
-    Wrapper schema for a list of MemeCaption objects.
+    Wrapper schema for a list of MemeCaptionAndContext objects.
     """
 
-    captions: list[MemeCaption]
+    captions: list[MemeCaptionAndContext]
 
 
 # ----- Meme Generation Agent -----
@@ -124,7 +124,7 @@ You are a meme curator: select and refine the best captions.
 @meme_selection_agent.tool
 async def meme_factory(
     ctx: RunContext[None], keywords: list[str], count: int
-) -> list[MemeCaption]:
+) -> list[MemeCaptionAndContext]:
     """
     Delegate caption generation to the meme_generation_agent, sharing usage budget.
     """
@@ -139,7 +139,7 @@ def generate_curated_memes(
     keywords: list[str],
     num_variants: int = 5,
     usage_limits: UsageLimits = UsageLimits(request_limit=5, total_tokens_limit=5000),
-) -> list[MemeCaption]:
+) -> list[MemeCaptionAndContext]:
     """
     Generate and curate meme captions using a two-agent pipeline.
     """

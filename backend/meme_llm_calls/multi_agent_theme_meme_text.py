@@ -16,7 +16,7 @@ logfire.instrument_pydantic_ai()
 model = OpenAIModel("gpt-4.1-2025-04-14")
 
 
-class MemeCaption(BaseModel):
+class MemeCaptionAndContext(BaseModel):
     """
     Represents a single meme caption with top and bottom text.
     """
@@ -27,10 +27,10 @@ class MemeCaption(BaseModel):
 
 class ResponseMemeCaptions(BaseModel):
     """
-    Wrapper schema for a list of MemeCaption objects.
+    Wrapper schema for a list of MemeCaptionAndContext objects.
     """
 
-    captions: list[MemeCaption]
+    captions: list[MemeCaptionAndContext]
 
 
 # Agent that only generates raw meme captions
@@ -61,7 +61,7 @@ meme_selection_agent = Agent(
 @meme_selection_agent.tool
 async def meme_factory(
     ctx: RunContext[None], keywords: list[str], count: int
-) -> list[MemeCaption]:
+) -> list[MemeCaptionAndContext]:
     # Delegate generation to meme_generation_agent, sharing usage budget
     result = await meme_generation_agent.run(
         f"Themes: {', '.join(keywords)}. Create {count} captions.",
@@ -75,7 +75,7 @@ def generate_curated_memes(
     keywords: list[str],
     num_variants: int = 5,
     usage_limits: UsageLimits = UsageLimits(request_limit=5, total_tokens_limit=5000),
-) -> list[MemeCaption]:
+) -> list[MemeCaptionAndContext]:
     """
     Generate and curate meme captions using a two-agent pipeline.
 
@@ -85,7 +85,7 @@ def generate_curated_memes(
         usage_limits: Caps on requests and tokens.
 
     Returns:
-        A list of curated MemeCaption objects.
+        A list of curated MemeCaptionAndContext objects.
     """
     prompt = f"Fetch {num_variants} top captions for themes: {', '.join(keywords)}."
     result = meme_selection_agent.run_sync(prompt, usage_limits=usage_limits)

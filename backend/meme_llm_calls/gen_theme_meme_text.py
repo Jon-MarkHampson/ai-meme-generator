@@ -10,7 +10,7 @@ load_dotenv()
 model = OpenAIModel("gpt-4.1-2025-04-14")
 
 
-class MemeCaption(BaseModel):
+class MemeCaptionAndContext(BaseModel):
     """
     Represents a single meme caption with top and bottom text.
     Each caption has two text boxes.
@@ -27,7 +27,7 @@ class ResponseMemeCaptions(BaseModel):
     Each caption object has 'text_box_1' and 'text_box_2'.
     """
 
-    captions: list[MemeCaption]
+    captions: list[MemeCaptionAndContext]
 
 
 # Initialize a PydanticAI Agent with DuckDuckGo search and output_type schema
