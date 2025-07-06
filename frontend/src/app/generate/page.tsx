@@ -142,10 +142,10 @@ export default function ChatPage() {
 
     // ─── Finally, your JSX ────────────────────────────────────────
     return (
-        <div className="h-[calc(100vh-5rem)] overflow-hidden">
+        <div className="fixed inset-x-0 top-[5rem] bottom-0 overflow-hidden">
             <SidebarProvider>
                 <div className="relative w-full">
-                    <div className="flex absolute justify-center inset-x-0 bottom-0 h-[calc(100vh-6rem)]">
+                    <div className="flex absolute justify-center inset-x-0 h-[calc(100vh-6rem)]">
                         <div className="shrink-0">
                             <ChatSidebar
                                 activeId={convId}
