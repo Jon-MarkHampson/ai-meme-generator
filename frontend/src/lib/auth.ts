@@ -69,3 +69,15 @@ export async function apiDeleteAccount(password: string): Promise<void> {
   // axios.delete needs the data field cast to any to satisfy TS
   await API.delete<void>("/users/me", { data: { password } } as any);
 }
+
+/**
+ * Attempts to fetch the current user's profile to verify session.
+ * Returns the User if logged in, or null if unauthorized or error.
+ */
+export async function getSession(): Promise<User | null> {
+  try {
+    return await fetchProfile();
+  } catch (error) {
+    return null;
+  }
+}
