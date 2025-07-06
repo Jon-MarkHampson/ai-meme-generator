@@ -10,7 +10,7 @@ from pydantic_ai.models.openai import (
     OpenAIResponsesModel,
     OpenAIResponsesModelSettings,
 )
-from .models import MemeCaption, ResponseMemeCaptions
+from .models import MemeCaptionAndContext, ResponseMemeCaptions
 
 # ─── Bootstrap ─────────────────────────────────────────────────────────────
 load_dotenv()
@@ -56,7 +56,7 @@ You are a meme curator: select and refine the best captions.
 @meme_selection_agent.tool
 async def meme_factory(
     ctx: RunContext[None], keywords: list[str], count: int
-) -> list[MemeCaption]:
+) -> list[MemeCaptionAndContext]:
     # Delegate actual caption generation
     result = await meme_theme_generation_agent.run(
         f"Themes: {', '.join(keywords)}. Create {count} captions.",
