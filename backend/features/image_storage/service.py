@@ -10,7 +10,10 @@ logger = logging.getLogger(__name__)
 
 
 def upload_image_to_supabase(
-    storage_bucket: str, contents: bytes, original_filename: str
+    storage_bucket: str,
+    contents: bytes,
+    original_filename: str,
+    content_type: str = "image/png",
 ) -> str:
     """
     1) Build a unique file path under “<storage_bucket>/” using a UUID + original extension.
@@ -33,7 +36,9 @@ def upload_image_to_supabase(
     # Step 2: Attempt the upload
     try:
         logger.info(f"Uploading {original_filename} to Supabase at {file_name}")
-        supabase.storage.from_(storage_bucket).upload(file_name, contents)
+        supabase.storage.from_(storage_bucket).upload(
+            file_name, contents, file_options={"content-type": content_type}
+        )
         logger.info(f"Upload successful for {file_name}")
     except StorageApiError as e:
         msg = str(e)
