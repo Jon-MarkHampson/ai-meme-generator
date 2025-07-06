@@ -8,7 +8,7 @@ from pydantic_ai.models.openai import (
     OpenAIResponsesModel,
     OpenAIResponsesModelSettings,
 )
-from .models import MemeCaption, ResponseMemeCaptions
+from .models import MemeCaptionAndContext, ResponseMemeCaptions
 
 load_dotenv()
 logfire.configure()
