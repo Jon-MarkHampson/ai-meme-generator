@@ -2,10 +2,12 @@ from datetime import datetime, timezone
 import json
 import logging
 from typing import List
-
+import httpx
+import asyncio
 from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
+from openai import OpenAI
 
 from pydantic_ai.messages import (
     ModelMessagesTypeAdapter,
@@ -25,9 +27,16 @@ from .models import (
     MessageRead,
     MessageCreate,
     ChatMessage,
+    Deps,
 )
 
 logger = logging.getLogger(__name__)
+
+client = OpenAI()
+
+deps = Deps(
+    client=client,
+)
 
 
 def list_conversations(session: Session, current_user: User) -> List[ConversationRead]:
@@ -177,15 +186,27 @@ def chat_stream(
             )
 
         # ===== plain-text streaming =====
-        async with manager_agent.run_stream(prompt, message_history=history) as result:
-            # use .stream_text to get raw LLM output (no JSON/schema parsing)
-            async for text_piece in result.stream_text(debounce_by=0.01):
-                resp_msg = ChatMessage(
-                    role="model",
-                    content=text_piece,
-                    timestamp=result.timestamp(),
-                )
-                yield (resp_msg.model_dump_json() + "\n").encode("utf-8")
+        try:
+            async with manager_agent.run_stream(
+                prompt, message_history=history, deps=deps
+            ) as result:
+                # use .stream_text to get raw LLM output (no JSON/schema parsing)
+                async for text_piece in result.stream_text(debounce_by=0.01):
+                    resp_msg = ChatMessage(
+                        role="model",
+                        content=text_piece,
+                        timestamp=result.timestamp(),
+                    )
+                    yield (resp_msg.model_dump_json() + "\n").encode("utf-8")
+        except (
+            BrokenPipeError,
+            ConnectionResetError,
+            OSError,
+            asyncio.CancelledError,
+            httpx.HTTPError,
+        ):
+            # client disconnected; stop streaming gracefully
+            return
 
         # ADD logic to store things in db here
 
