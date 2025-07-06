@@ -1,6 +1,14 @@
+from dataclasses import dataclass
+from openai import OpenAI
 from pydantic import BaseModel
 from typing import List, Dict, Literal, Optional
 from datetime import datetime
+
+
+# ─── Dependency Container ───────────────────────────────────────────────────
+@dataclass
+class Deps:
+    client: OpenAI
 
 
 class ConversationRead(BaseModel):
@@ -42,18 +50,15 @@ class ChatResponse(BaseModel):
     lines: List[ChatMessage]
 
 
-class MemeCaption(BaseModel):
+class MemeCaptionAndContext(BaseModel):
     """
     Represents a single meme caption with top and bottom text.
     """
 
-    text_box_1: str  # Top text
-    text_box_2: str  # Bottom text
+    text_boxes: Dict[str, str]  # Dictionary with keys 'text_box_1' and 'text_box_2'
+    context: Optional[str] = None  # Optional context for the meme
 
 
-class ResponseMemeCaptions(BaseModel):
-    """
-    Wrapper schema for a list of MemeCaption objects.
-    """
-
-    captions: list[MemeCaption]
+class ImageResult(BaseModel):
+    url: str  # the Supabase URL
+    response_id: str  # the OpenAI `response.id` you got back
