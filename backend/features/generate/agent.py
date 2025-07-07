@@ -108,12 +108,13 @@ def image_generation(
     if previous_response_id:
         prompt = (
             f"Rerun the image generation with the previous response ID: {previous_response_id}. "
-            f"Create a meme image with the following text boxes: {boxes_desc}."
-            + (f" Image context: {context}" if context else "")
+            f"Use the following text boxes: {boxes_desc}."
+            + (f" Image context changes: {context}" if context else "")
         )
     else:
         prompt = (
-            f"Create a meme image with the following text boxes using Impact font: {boxes_desc}."
+            f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
+            f" Take care creating the text layout and spacing to ensure it looks like a real meme."
             + (f" Image context: {context}" if context else "")
         )
     # Debug logging
@@ -242,7 +243,7 @@ You are a friendly and efficient Meme Manager Agent. You coordinate meme creatio
 **Output Content & Format**
 Always maintain a friendly tone.
 Avoid double newlines in your output.
-When the image is ready, return the public URL as a string.
+When the image is ready, return the public URL enclosed in Markdown image syntax (e.g., `![](your_url_here)`).
 """,
     output_type=str,
 )
@@ -289,7 +290,11 @@ def meme_image_generation(
         deps=ctx.deps,
         usage=ctx.usage,
     )
-    return result.output
+    # Wrap the image URL in Markdown so the frontend renders it inline
+    image_url = (
+        result.output.url if hasattr(result.output, "url") else str(result.output)
+    )
+    return f"![]({image_url})"
 
 
 # ─── Meme Caption Refinement Tool ──────────────────────────────────────────
