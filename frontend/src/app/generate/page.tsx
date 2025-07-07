@@ -7,6 +7,9 @@ import {
     streamChat,
     listMessages,
     ChatMessage,
+    ConversationRead,
+    listConversations,
+    deleteConversation,
 } from "@/lib/generate";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -32,6 +35,7 @@ export default function ChatPage() {
     // ─── Declare ALL your hooks first ─────────────────────────────
     const [convId, setConvId] = useState<string | null>(null);
     const [msgs, setMsgs] = useState<ChatMessage[]>(WELCOME);
+    const [convos, setConvos] = useState<ConversationRead[] | null>(null);
     const abortRef = useRef<(() => void) | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +50,13 @@ export default function ChatPage() {
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [msgs]);
+
+    // ─── List conversations on load ────────────────────────────────────
+    useEffect(() => {
+        listConversations()
+            .then(setConvos)
+            .catch(() => setConvos([]));
+    }, []);
 
     // ─── 3) whenever convId changes, load its history ─────────────
     useEffect(() => {
@@ -94,6 +105,7 @@ export default function ChatPage() {
                 const conv = await createConversation();
                 id = conv.id;
                 setConvId(id);
+                setConvos(prev => (prev ? [...prev, conv] : [conv]));
             } catch {
                 setMsgs((prev) => [
                     ...prev,
@@ -134,6 +146,20 @@ export default function ChatPage() {
         );
     };
 
+    // ─── Delete conversation handler ────────────────────────────────────
+    const handleDeleteConversation = (id: string) => {
+        const wasActive = id === convId;
+        deleteConversation(id).then(() => {
+            // Remove the conversation from the list
+            setConvos(prev => prev?.filter(c => c.id !== id) ?? []);
+            // If the deleted one was active, always reset to welcome
+            if (wasActive) {
+                setConvId(null);
+                setMsgs(WELCOME);
+            }
+        });
+    };
+
     // ─── 5) new‐conversation reset handler ────────────────────────
     const startNewConversation = () => {
         setConvId(null);
@@ -148,6 +174,7 @@ export default function ChatPage() {
                     <div className="flex absolute justify-center inset-x-0 h-[calc(100vh-6rem)]">
                         <div className="shrink-0">
                             <ChatSidebar
+                                convos={convos}
                                 activeId={convId}
                                 onSelectConversation={(id) => {
                                     // always update the active conversation id (possibly null)
@@ -158,6 +185,7 @@ export default function ChatPage() {
                                         listMessages(id).then(setMsgs)
                                     }
                                 }}
+                                onDeleteConversation={handleDeleteConversation}
                             />
                         </div>
                         <div className="flex flex-col flex-1 min-h-0 max-w-[1200px]">
