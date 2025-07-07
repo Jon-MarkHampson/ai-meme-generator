@@ -1,5 +1,5 @@
 'use client'
-import { useContext, useEffect } from 'react'
+import { useContext } from 'react'
 import { AuthContext } from '@/context/AuthContext'
 import { useRouter } from 'next/navigation'
 
@@ -20,11 +20,6 @@ export default function ProfilePage() {
   const { user, logout } = useContext(AuthContext)
   const router = useRouter()
 
-  useEffect(() => {
-    if (!user) {
-      router.push('/login')
-    }
-  }, [user, router])
 
   if (!user) {
     return (
@@ -73,7 +68,7 @@ export default function ProfilePage() {
             variant="destructive"
             onClick={() => {
               logout()
-              router.push('/login')
+              router.push('/')
             }}
             className="w-full"
           >
