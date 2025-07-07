@@ -20,7 +20,7 @@ export const ChatBubble: FC<{ text: string; isUser: boolean }> = ({ text, isUser
                             const href = props.href || "";
                             // Render images inline with rounded corners
                             if (/\.(jpeg|jpg|gif|png|svg)$/.test(href)) {
-                                return <img src={href} alt="" className="max-h-40 rounded-lg" />;
+                                return <img src={href} alt="" className="max-w-full rounded-lg" />;
                             }
                             return (
                                 <a
@@ -32,7 +32,11 @@ export const ChatBubble: FC<{ text: string; isUser: boolean }> = ({ text, isUser
                             );
                         },
                         img: ({ node, ...props }) => (
-                            <img {...props} alt={props.alt} className="max-w-full rounded-lg" />
+                            <img
+                                {...props}
+                                alt={props.alt}
+                                className="max-w-full max-h-96 rounded-lg"
+                            />
                         ),
                     }}
                 >
