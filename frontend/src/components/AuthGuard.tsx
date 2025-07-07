@@ -8,7 +8,8 @@ export function AuthGuard({ children }: PropsWithChildren) {
     const router = useRouter();
     const pathname = usePathname();
     useEffect(() => {
-        if (pathname === '/login') return;
+        const publicPaths = ['/login', '/'];
+        if (publicPaths.includes(pathname)) return;
         getSession().then(sess => {
             if (!sess) router.replace('/login');
         });
