@@ -1,6 +1,5 @@
 // lib/generate.ts
 import API from "./api";
-import Cookies from "js-cookie";
 
 export interface ConversationRead {
   id: string;
