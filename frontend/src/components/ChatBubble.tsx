@@ -16,13 +16,23 @@ export const ChatBubble: FC<{ text: string; isUser: boolean }> = ({ text, isUser
                 <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                        a: ({ node, ...props }) => (
-                            <a
-                                {...props}
-                                className="text-blue-600 dark:text-blue-400 font-medium hover:underline underline-offset-2 transition-colors"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            />
+                        a: ({ node, ...props }) => {
+                            const href = props.href || "";
+                            // Render images inline with rounded corners
+                            if (/\.(jpeg|jpg|gif|png|svg)$/.test(href)) {
+                                return <img src={href} alt="" className="max-h-40 rounded-lg" />;
+                            }
+                            return (
+                                <a
+                                    {...props}
+                                    className="text-blue-600 dark:text-blue-400 font-medium hover:underline underline-offset-2 transition-colors"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                />
+                            );
+                        },
+                        img: ({ node, ...props }) => (
+                            <img {...props} alt={props.alt} className="max-w-full rounded-lg" />
                         ),
                     }}
                 >
