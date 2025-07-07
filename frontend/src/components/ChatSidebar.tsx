@@ -1,7 +1,6 @@
-// frontend/src/components/ChatSidebar.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { ConversationRead } from "@/lib/generate";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DeleteIcon } from "lucide-react";
 import {
@@ -25,37 +24,20 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
-import {
-  ConversationRead,
-  listConversations,
-  deleteConversation,
-} from "@/lib/generate";
 
 export interface ChatSidebarProps {
+  convos: ConversationRead[] | null;
   onSelectConversation: (id: string | null) => void;
+  onDeleteConversation: (id: string) => void;
   activeId?: string | null;
 }
 
 export function ChatSidebar({
+  convos,
   onSelectConversation,
+  onDeleteConversation,
   activeId,
 }: ChatSidebarProps) {
-  const [convos, setConvos] = useState<ConversationRead[] | null>(null);
-
-  // load list once
-  useEffect(() => {
-    listConversations()
-      .then(setConvos)
-      .catch(() => setConvos([]));
-  }, []);
-
-  // whenever activeId changes to a value we don’t yet have, re-fetch
-  useEffect(() => {
-    if (activeId && convos && !convos.find((c) => c.id === activeId)) {
-      listConversations().then(setConvos);
-    }
-  }, [activeId, convos]);
-
   return (
     <Sidebar className="h-full bg-muted">
       <ScrollArea className="h-full mt-0 lg:mt-16">
@@ -80,22 +62,21 @@ export function ChatSidebar({
                 <SidebarMenu>
                   {convos.map((c) => (
                     <SidebarMenuItem key={c.id}>
-                      <div
-                        className={`
-                          flex items-center justify-between
-                          px-3 py-2 rounded
-                          ${c.id === activeId
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                            : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          }
-                          cursor-pointer
-                        `}
-                        onClick={() => onSelectConversation(c.id)}
-                      >
-                        {/* Chat title */}
-                        <span className="truncate flex-1">
-                          {c.summary ?? `Chat • ${c.id.slice(0, 6)}`}
-                        </span>
+                      <div className="flex items-center justify-between rounded">
+                        <button
+                          className={`
+                            flex-1 text-left px-3 py-2 rounded
+                            ${c.id === activeId
+                              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                              : "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                            }
+                          `}
+                          onClick={() => onSelectConversation(c.id)}
+                        >
+                          <span className="truncate">
+                            {c.summary ?? `Chat • ${c.id.slice(0, 6)}`}
+                          </span>
+                        </button>
 
                         {/* Delete with confirmation */}
                         <AlertDialog>
@@ -120,22 +101,7 @@ export function ChatSidebar({
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => {
-                                  deleteConversation(c.id).then(() => {
-                                    setConvos((prev) => {
-                                      const updated = prev?.filter((x) => x.id !== c.id) ?? [];
-                                      // if we deleted the active convo, clear selection
-                                      if (c.id === activeId) {
-                                        if (updated.length > 0) {
-                                          onSelectConversation(updated[0].id);
-                                        } else {
-                                          onSelectConversation(null);
-                                        }
-                                      }
-                                      return updated;
-                                    });
-                                  });
-                                }}
+                                onClick={() => onDeleteConversation(c.id)}
                               >
                                 Delete
                               </AlertDialogAction>
