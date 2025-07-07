@@ -1,18 +1,21 @@
-// src/components/AuthGuard.tsx
+// AuthGuard.tsx
 'use client';
-import { useEffect, PropsWithChildren } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { getSession } from '@/lib/auth';
+import { PropsWithChildren, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { PUBLIC_ROUTES } from '@/lib/authRoutes';
 
 export function AuthGuard({ children }: PropsWithChildren) {
+    const { user, loading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const isPublic = PUBLIC_ROUTES.includes(pathname as (typeof PUBLIC_ROUTES)[number]);
+
     useEffect(() => {
-        const publicPaths = ['/login', '/'];
-        if (publicPaths.includes(pathname)) return;
-        getSession().then(sess => {
-            if (!sess) router.replace('/login');
-        });
-    }, [pathname, router]);
+        if (!isPublic && !loading && !user) {
+            router.replace('/');          // soft-redirect for in-app expiry
+        }
+    }, [isPublic, loading, user, router]);
+
     return <>{children}</>;
 }

@@ -5,6 +5,14 @@ import API from '@/lib/api'
 import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
+// Mutable reference that can be used outside React (e.g. axios interceptor)
+let setUserRef: React.Dispatch<React.SetStateAction<User | null>> | null = null;
+
+/** Clears user state without navigation—handy for 401 interceptors */
+export function logoutSilently() {
+  setUserRef?.(null);
+}
+
 interface AuthContextType {
   user: User | null
   loading: boolean
@@ -26,6 +34,8 @@ export const AuthContext = createContext<AuthContextType>(null!)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  // expose the state setter to logoutSilently()
+  setUserRef = setUser;
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
