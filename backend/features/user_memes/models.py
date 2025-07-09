@@ -5,22 +5,26 @@ from entities.user_memes import UserMeme
 
 
 class UserMemeCreate(BaseModel):
+    conversation_id: str
     meme_template_id: Optional[str] = (
         None  # Remove optional once meme templates table is created
     )
     caption_variant_id: Optional[str] = None
     image_url: str
+    openai_response_id: str  # This is the ID from OpenAI's response
     is_favorite: Optional[bool] = False  # Default to False if not specified
 
 
 class UserMemeRead(BaseModel):
     id: str
     user_id: str
+    conversation_id: str
     meme_template_id: Optional[str] = (
         None  # Remove optional once meme templates table is created
     )
     caption_variant_id: Optional[str] = None
     image_url: str
+    openai_response_id: str  # This is the ID from OpenAI's response
     is_favorite: bool
     created_at: datetime  # ISO format string for datetime
 

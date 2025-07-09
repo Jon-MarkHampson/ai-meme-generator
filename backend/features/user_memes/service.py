@@ -83,6 +83,29 @@ def read_user_meme(
     return user_meme
 
 
+def read_latest_conversation_meme(
+    conversation_id: str,
+    session: Session,
+    current_user: User,
+) -> UserMemeRead:
+    statement = (
+        select(UserMeme)
+        .where(
+            UserMeme.conversation_id == conversation_id,
+            UserMeme.user_id == current_user.id,
+        )
+        .order_by(UserMeme.created_at.desc())
+    )
+    user_meme = session.exec(statement).first()
+
+    if not user_meme:
+        logger.info(f"User {current_user.id} has no memes")
+        return None
+
+    logger.info(f"Latest meme for user {current_user.id} retrieved")
+    return user_meme
+
+
 def update_user_meme(
     meme_id: str,
     data: UserMemeUpdate,
