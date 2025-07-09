@@ -1,21 +1,22 @@
 # backend/features/generate/agent.py
 import os
-import base64
-import uuid
-import mimetypes
 import logfire
 from dotenv import load_dotenv
 from typing import List
 from fastapi import HTTPException
+from sqlalchemy.exc import OperationalError
+import time
 
 from openai.types.responses import WebSearchToolParam
 from pydantic_ai import Agent, RunContext, ModelRetry
+from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai.models.openai import (
     OpenAIResponsesModel,
     OpenAIResponsesModelSettings,
 )
 from .models import MemeCaptionAndContext, ImageResult, Deps
+
 from features.image_storage.service import upload_image_to_supabase
 from features.user_memes.service import (
     create_user_meme,
@@ -31,12 +32,38 @@ logfire.configure()
 logfire.instrument_pydantic_ai()
 
 AI_IMAGE_BUCKET = os.getenv("AI_IMAGE_BUCKET", "memes")  # Default bucket name
+logfire.configure()
+logfire.instrument_pydantic_ai()
+
+AI_IMAGE_BUCKET = os.getenv("AI_IMAGE_BUCKET", "memes")  # Default bucket name
 
 model_settings = OpenAIResponsesModelSettings(
     openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")],
     allow_tools=True,
 )
 model = OpenAIResponsesModel("gpt-4.1-2025-04-14")
+
+
+# This is used to summarize the oldest messages in a conversation to keep the context manageable.
+# Use a cheaper model to summarize old messages for keeping token usage down
+summarize_agent = Agent(
+    "openai:gpt-4o-mini",
+    instructions="""
+Summarize this conversation, omitting small talk and unrelated topics.
+Focus on the technical discussion and next steps.
+""",
+)
+
+
+async def summarize_old_messages(messages: list[ModelMessage]) -> list[ModelMessage]:
+    # Summarize the oldest 10 messages
+    if len(messages) > 10:
+        oldest_messages = messages[:10]
+        summary = await summarize_agent.run(message_history=oldest_messages)
+        # Return the last message and the summary
+        return summary.new_messages() + messages[-1:]
+
+    return messages
 
 
 # ─── Meme Theme Generation Agent ────────────────────────────────────────────
@@ -62,6 +89,22 @@ Your job is to generate meme captions and, if needed, image context, and emit on
     output_type=MemeCaptionAndContext,
 )
 
+# ─── User Request Summary Agent ─────────────────────────────────────────────────
+user_request_summary_agent = Agent(
+    model="openai:gpt-4o-mini",
+    model_settings=model_settings,
+    instructions="""
+You are a User Request Summary Agent.
+Your job is to summarise the user request.
+The summary should be concise and capture the essence of the user's request.
+The summary should be less than 10 words. Omitting any intial actions like 'create a meme' or 'generate a meme'.
+e.g. Input: "The user wants a meme about Donald Trump and Elon Musk's falling out.
+The chosen caption is: 'When you used to retweet each other / But now you subtweet each other.'
+The image context should show Trump and Musk standing back to back, arms crossed, both looking away with frustrated expressions."
+    Output: "Trump and Musk's falling out"
+""",
+    output_type=str,
+)
 
 # ─── Image‐Generation Agent ─────────────────────────────────────────────────
 meme_image_generation_agent = Agent(
@@ -295,8 +338,10 @@ manager_agent = Agent(
     model=model,
     model_settings=model_settings,
     deps_type=Deps,
+    history_processors=[summarize_old_messages],
     system_prompt="""
 You are a friendly and efficient Meme Manager Agent. You coordinate meme creation in two phases: caption generation and image creation.
+You must create a summary of the users request as soon they have choosen a caption. And pass that summary to the `summarise_request` tool.
 
 1. **Classify User Input**
    Determine which mode the user wants:
@@ -315,17 +360,20 @@ You are a friendly and efficient Meme Manager Agent. You coordinate meme creatio
    - For **caption** mode, call `meme_caption_refinement_agent`
    - For **random** mode, call `meme_random_inspiration_agent`
    Stream back the three caption+context variants.
-
+   
 4. **Caption Selection**
    - Wait for the user to pick one variant (e.g., “I choose #2”).
+   
+5.a **Summarise User Request**
+    Immediately after the user has chosen a caption call `summarise_request` passing in your understanding of the user request as user_request.
 
-5. **Generate Image**
+5.b **Generate Image**
    - Call `meme_image_generation` once on the selected variant. You will be returned an `ImageResult` object.
    - The `ImageResult` will contain: image_id: str (the database uuid), url: str (storage bucket URL), response_id: str (the OpenAI `response.id`)
    - Stream back the image URL.
 
-6. **Image Tweaks**
-   - If the user wants to modify an image,” first call `fetch_previous_response_id` and retrieve the `response_id` e.g. `resp_686d406b0f08819bb6f77467aa2068e702a8423ad56bed0a`.
+7. **Image Tweaks**
+   - If the user wants to modify (list out for 'change', 'edit', 'tweak' or any other synonyms) an image,” first call `fetch_previous_response_id` and retrieve the `response_id` e.g. `resp_686d406b0f08819bb6f77467aa2068e702a8423ad56bed0a`.
    - Then call `meme_image_modification` passing the `response_id` and the requested modifications.
    meme_image_modification(
        response_id=response_id,
@@ -334,12 +382,13 @@ You are a friendly and efficient Meme Manager Agent. You coordinate meme creatio
    You will be returned an `ImageResult` object.
    - Stream back the image URL.
    
-7. **Favourite Memes**
+8. **Favourite Memes**
    - If the user ever requests to “favourite” or “save this meme,” call `favourite_meme_in_db`.
 
 **Tools Available**
 - `web_search_preview` for up-to-date context (optional).
 - `meme_theme_factory` for theme-based captions.
+- `summarise_request` for summarising the user request.
 - `meme_image_generation` for image rendering.
 - `fetch_previous_response_id` to get the last image's response ID.
 - `meme_image_modification` for image tweaks.
@@ -549,15 +598,65 @@ def fetch_previous_response_id(ctx: RunContext[Deps]) -> str:
     return user_meme.openai_response_id
 
 
+@manager_agent.tool
+def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
+    """
+    Summarise the current user request and update the conversation with the summary.
+    """
+    # Import locally to avoid circular import
+    from .service import update_conversation
+
+    # Debug logging to help identify the issue
+    print(f"Summarising user request: {user_request}")
+    prompt = f"Summarise the following user request: {user_request}"
+    r = user_request_summary_agent.run_sync(prompt, usage=ctx.usage)
+    summary = r.output
+
+    # Debug logging to help identify the issue
+    print(f"Summarised request: {summary}")
+
+    # Update the conversation with the summary
+    from .models import ConversationUpdate
+
+    def update_conversation_operation():
+        return update_conversation(
+            conversation_id=ctx.deps.conversation_id,
+            updates=ConversationUpdate(summary=summary),
+            session=ctx.deps.session,
+            current_user=ctx.deps.current_user,
+        )
+
+    updated_conversation = safe_db_operation(
+        update_conversation_operation, ctx.deps.session
+    )
+    print(f"Updated conversation {ctx.deps.conversation_id} with summary: {summary}")
+
+    return f"Successfully summarised and saved: {summary}"
+
+    def update_conversation_operation():
+        return update_conversation(
+            conversation_id=ctx.deps.conversation_id,
+            summary=r.output,
+            session=ctx.deps.session,
+            current_user=ctx.deps.current_user,
+        )
+
+    # Safely update the conversation with the summary
+    try:
+        safe_db_operation(update_conversation_operation, ctx.deps.session)
+    except OperationalError as e:
+        print(f"Database operation failed: {e}")
+        raise ModelRetry(f"Failed to update conversation summary: {e}")
+    # Update the conversation with the summary
+    print(f"Updated conversation summary: {r.output}")
+
+
 # Helper function to safely handle database operations in agent context
 def safe_db_operation(operation, session, max_retries=3):
     """
     Safely execute database operations with retry logic and proper error handling.
     This helps prevent connection pool exhaustion in long-running agent operations.
     """
-    from sqlalchemy.exc import OperationalError
-    import time
-
     for attempt in range(max_retries):
         try:
             return operation()
