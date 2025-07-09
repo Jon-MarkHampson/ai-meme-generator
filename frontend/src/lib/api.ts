@@ -1,6 +1,7 @@
 // lib/api.ts
 import axios from "axios";
 import { logoutSilently } from "@/context/AuthContext";
+import { clearAuthCookies, isPublicRoute } from "@/lib/authUtils";
 
 const API = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000",
@@ -31,22 +32,19 @@ API.interceptors.response.use(
       isHandling401 = true;
 
       try {
-        // Clear user state
+        // Clear user state using the shared function
         logoutSilently();
 
         // Clear any auth cookies client-side
-        document.cookie =
-          "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        document.cookie =
-          "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        clearAuthCookies();
 
         // Only redirect if we're not already on a public route
-        const isPublicRoute = ["/", "/login", "/signup"].includes(
-          window.location.pathname
-        );
-        if (!isPublicRoute) {
+        if (!isPublicRoute(window.location.pathname)) {
           // Use replace to avoid back button issues
-          window.location.replace("/?session=expired");
+          // Add a small delay to ensure state updates complete
+          setTimeout(() => {
+            window.location.replace("/?session=expired");
+          }, 100);
         }
       } catch (cleanupError) {
         console.error("Error during session cleanup:", cleanupError);

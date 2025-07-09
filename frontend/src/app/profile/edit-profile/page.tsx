@@ -99,13 +99,6 @@ export default function EditProfilePage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Redirect to / if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/");
-    }
-  }, [loading, user, router]);
-
   // Initialize React Hook Form with camelCase defaults,
   // but defaultValues pull from user.first_name / user.last_name
   const methods = useForm<FormValues>({

@@ -47,6 +47,10 @@ export async function fetchProfile(): Promise<User> {
   return resp.data;
 }
 
+export async function apiRefreshSession(): Promise<void> {
+  await API.post("/auth/refresh");
+}
+
 export async function apiUpdateProfile(
   payload: Partial<{
     current_password: string;
