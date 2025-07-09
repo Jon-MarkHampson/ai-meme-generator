@@ -2,9 +2,9 @@
 
 import React, { createContext, useState, useEffect, ReactNode, useContext, useCallback } from 'react'
 import API from '@/lib/api'
-import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile } from '@/lib/auth'
+import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile, apiRefreshSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
-import { jwtDecode } from 'jwt-decode'
+import { getAccessTokenFromCookies, getTokenTimeRemaining, isTokenExpired } from '@/lib/authUtils'
 
 // Mutable reference that can be used outside React (e.g. axios interceptor)
 let setUserRef: React.Dispatch<React.SetStateAction<User | null>> | null = null;
@@ -30,12 +30,6 @@ interface AuthContextType {
   sessionTimeRemaining: number | null
 }
 
-interface JWTPayload {
-  exp: number;
-  iat?: number;
-  sub?: string;
-}
-
 export const AuthContext = createContext<AuthContextType>(null!)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -51,42 +45,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkTokenExpiry = useCallback(() => {
     if (typeof window === 'undefined') return;
 
-    const token = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('access_token='))
-      ?.split('=')[1];
-
+    const token = getAccessTokenFromCookies();
     if (!token) {
       setSessionTimeRemaining(null);
       return;
     }
 
-    try {
-      const payload = jwtDecode<JWTPayload>(token);
-      const currentTime = Math.floor(Date.now() / 1000);
-      const remaining = payload.exp - currentTime;
-
-      if (remaining <= 0) {
-        // Token is expired
-        setSessionTimeRemaining(0);
-        setUser(null);
-        return;
-      }
-
-      setSessionTimeRemaining(remaining);
-
-      // If less than 5 minutes remaining, show warning
-      if (remaining < 300 && remaining > 0) {
-        console.warn(`Session expires in ${Math.floor(remaining / 60)} minutes`);
-        // You could show a toast notification here
-      }
-
-    } catch (error) {
-      console.error('Error decoding token:', error);
+    const remaining = getTokenTimeRemaining(token);
+    if (remaining === null) {
       setSessionTimeRemaining(null);
       setUser(null);
+      return;
+    }
+
+    if (remaining <= 0) {
+      // Token is expired
+      setSessionTimeRemaining(0);
+      setUser(null);
+      return;
+    }
+
+    setSessionTimeRemaining(remaining);
+
+    // If less than 10 minutes remaining, try to refresh the session
+    if (remaining < 600 && remaining > 0) {
+      console.warn(`Session expires in ${Math.floor(remaining / 60)} minutes - attempting refresh`);
+      refreshSession();
     }
   }, []);
+
+  // Function to refresh session by making an authenticated API call
+  const refreshSession = useCallback(async () => {
+    try {
+      // Call the dedicated refresh endpoint
+      await apiRefreshSession();
+      console.log('Session refreshed successfully');
+
+      // Recheck token expiry after refresh
+      setTimeout(checkTokenExpiry, 1000);
+    } catch (error) {
+      console.warn('Failed to refresh session:', error);
+    }
+  }, [checkTokenExpiry]);
 
   // Monitor session expiry
   useEffect(() => {
@@ -116,21 +116,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false))
   }, [checkTokenExpiry])
 
-  // Handle session expiry warnings
+  // Handle session expiry warnings and redirect
   useEffect(() => {
     if (sessionTimeRemaining !== null && sessionTimeRemaining <= 0 && user) {
       // Session has expired
-      console.warn('Session has expired');
+      console.warn('Session has expired - logging out user');
+
+      // Clear user state immediately
       setUser(null);
       setSessionTimeRemaining(null);
 
-      // Only redirect if not already on a public route
-      const isPublicRoute = ["/", "/login", "/signup"].includes(window.location.pathname);
-      if (!isPublicRoute) {
-        router.replace("/?session=expired");
-      }
+      // Let the API interceptor handle the redirect to avoid race conditions
+      // The API interceptor will handle 401 errors and redirect appropriately
     }
-  }, [sessionTimeRemaining, user, router]);
+  }, [sessionTimeRemaining, user]);
+
+  // Add activity detection to extend sessions
+  useEffect(() => {
+    if (!user) return;
+
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    let activityTimer: NodeJS.Timeout;
+
+    const handleActivity = () => {
+      // Clear existing timer
+      if (activityTimer) {
+        clearTimeout(activityTimer);
+      }
+
+      // Set timer to refresh session after 5 minutes of activity
+      activityTimer = setTimeout(() => {
+        // Only refresh if less than 10 minutes remaining to avoid spam
+        if (sessionTimeRemaining && sessionTimeRemaining < 600) {
+          refreshSession();
+        }
+      }, 5 * 60 * 1000); // 5 minutes
+    };
+
+    // Add event listeners
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity, true);
+    });
+
+    // Initial activity setup
+    handleActivity();
+
+    return () => {
+      // Cleanup
+      if (activityTimer) {
+        clearTimeout(activityTimer);
+      }
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleActivity, true);
+      });
+    };
+  }, [user, sessionTimeRemaining, refreshSession]);
 
   const login = async (email: string, password: string) => {
     await apiLogin(email, password)
