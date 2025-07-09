@@ -15,6 +15,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Sidebar,
   SidebarMenu,
   SidebarMenuItem,
@@ -31,6 +36,12 @@ export interface ChatSidebarProps {
   onDeleteConversation: (id: string) => void;
   activeId?: string | null;
 }
+
+// Helper function to truncate summary text
+const truncateSummary = (text: string, maxLength: number = 25): string => {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength) + "...";
+};
 
 export function ChatSidebar({
   convos,
@@ -73,9 +84,22 @@ export function ChatSidebar({
                           `}
                           onClick={() => onSelectConversation(c.id)}
                         >
-                          <span className="truncate">
-                            {c.summary ?? `Chat • ${c.id.slice(0, 6)}`}
-                          </span>
+                          {c.summary ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="truncate block">
+                                  {truncateSummary(c.summary)}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{c.summary}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className="truncate">
+                              {`Chat • ${c.id.slice(0, 6)}`}
+                            </span>
+                          )}
                         </button>
 
                         {/* Delete with confirmation */}
