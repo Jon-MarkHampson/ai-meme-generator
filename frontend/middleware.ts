@@ -1,12 +1,6 @@
 // middleware.ts
 import { NextRequest, NextResponse } from "next/server";
-import { jwtDecode } from "jwt-decode";
-
-interface JWTPayload {
-  exp: number;
-  iat?: number;
-  sub?: string;
-}
+import { isTokenExpired, decodeJWT, type JWTPayload } from "@/lib/authUtils";
 
 // Enhanced helper with better logging and cleanup
 function redirectToIndex(req: NextRequest, reason: string) {
@@ -42,8 +36,8 @@ function redirectToIndex(req: NextRequest, reason: string) {
 }
 
 export function middleware(req: NextRequest) {
-  // Define protected routes directly here (statically)
-  const protectedRoutes = ["/generate", "/profile", "/dashboard"];
+  // Define protected routes - these should match the routes in authRoutes.ts
+  const protectedRoutes = ["/generate", "/profile", "/gallery"];
 
   // Check if current path needs protection
   const needsAuth = protectedRoutes.some((route) =>
@@ -62,23 +56,20 @@ export function middleware(req: NextRequest) {
   }
 
   // 2) Validate token structure and expiry
+  if (isTokenExpired(token, 30)) {
+    return redirectToIndex(req, "expired");
+  }
+
   try {
-    const payload = jwtDecode<JWTPayload>(token);
+    const payload = decodeJWT(token);
 
     // Check if token has required fields
-    if (!payload.exp || !payload.sub) {
+    if (!payload || !payload.exp || !payload.sub) {
       throw new Error("Invalid token structure");
     }
 
-    // Check expiry with 30-second grace period for clock skew
-    const currentTime = Math.floor(Date.now() / 1000);
-    const gracePeriod = 30; // seconds
-
-    if (payload.exp < currentTime + gracePeriod) {
-      throw new Error("Token expired");
-    }
-
     // Optional: Check if token is too old (issued more than X hours ago)
+    const currentTime = Math.floor(Date.now() / 1000);
     if (payload.iat && currentTime - payload.iat > 24 * 60 * 60) {
       // 24 hours
       throw new Error("Token too old");
@@ -99,5 +90,5 @@ export function middleware(req: NextRequest) {
 
 // Static config that Next.js can parse at build time
 export const config = {
-  matcher: ["/generate/:path*", "/profile/:path*", "/dashboard/:path*"],
+  matcher: ["/generate/:path*", "/profile/:path*", "/gallery/:path*"],
 };

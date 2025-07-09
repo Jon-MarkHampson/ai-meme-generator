@@ -8,7 +8,12 @@ from datetime import timedelta
 from .models import SignupResponse
 from ..users.models import UserCreate
 from entities.user import User
-from .service import verify_password, get_password_hash, create_access_token
+from .service import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    get_current_user,
+)
 from database.core import get_session
 from config import settings
 
@@ -93,6 +98,36 @@ def login(
         secure=True,  # only over HTTPS
         samesite="lax",  # or "strict"
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # convert minutes to seconds
+        path="/",
+    )
+    return response
+
+
+@router.post("/refresh")
+def refresh_session(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Refresh the user's session by issuing a new token.
+    This extends their session time.
+    """
+    # Create a new JWT with fresh expiration
+    access_token = create_access_token(
+        subject=current_user.id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    response = JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": "Session refreshed successfully"},
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,  # only over HTTPS
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
     return response

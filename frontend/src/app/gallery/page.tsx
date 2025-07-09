@@ -24,13 +24,6 @@ export default function GalleryPage() {
 
     const [favourites, setFavourites] = useState<FavouriteMemeRead[]>([]);
 
-    // redirect if not logged in ─────────────────────────────
-    useEffect(() => {
-        if (!loading && !user) {
-            router.replace("/");
-        }
-    }, [loading, user, router]);
-
     // fetch favourites on load ───────────────────────────────
     useEffect(() => {
         listFavourites()
