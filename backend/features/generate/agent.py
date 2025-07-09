@@ -6,6 +6,7 @@ import mimetypes
 import logfire
 from dotenv import load_dotenv
 from typing import List
+from fastapi import HTTPException
 
 from openai.types.responses import WebSearchToolParam
 from pydantic_ai import Agent, RunContext, ModelRetry
@@ -16,6 +17,14 @@ from pydantic_ai.models.openai import (
 )
 from .models import MemeCaptionAndContext, ImageResult, Deps
 from features.image_storage.service import upload_image_to_supabase
+from features.user_memes.service import (
+    create_user_meme,
+    update_user_meme,
+    read_latest_conversation_meme,
+)
+from features.user_memes.models import UserMemeCreate, UserMemeUpdate
+from .helpers import convert_response_to_png
+
 
 load_dotenv()
 logfire.configure()
@@ -80,7 +89,6 @@ Your job is:
    image_generation(
      text_boxes=text_boxes,
      context=context,
-     previous_response_id=previous_response_id
    )
 3. Receive an `ImageResult` from the tool, and return that object directly. Do not emit any additional text, comments, or formatting.
 """,
@@ -94,7 +102,7 @@ def image_generation(
     ctx: RunContext[Deps],
     text_boxes: dict[str, str],
     context: str = "",
-    previous_response_id: str | None = None,
+    # previous_response_id: str | None = None,
 ) -> ImageResult:
     """
     1) Ask OpenAI's image_generation tool for a base64-encoded PNG,
@@ -105,54 +113,139 @@ def image_generation(
     # Build a little “Top: …; Bottom: …; Caption3: …” string from whatever keys you got
     boxes_desc = "; ".join(f"{key}: “{val}”" for key, val in text_boxes.items())
 
-    if previous_response_id:
-        prompt = (
-            f"Rerun the image generation with the previous response ID: {previous_response_id}. "
-            f"Use the following text boxes: {boxes_desc}."
-            + (f" Image context changes: {context}" if context else "")
-        )
-    else:
-        prompt = (
-            f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
-            f" Take care creating the text layout and spacing to ensure it looks like a real meme."
-            + (f" Image context: {context}" if context else "")
-        )
+    prompt = (
+        f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
+        f" Take care creating the text layout and spacing to ensure it looks like a real meme."
+        + (f" Image context: {context}" if context else "")
+    )
     # Debug logging
     # print(f"Image generation prompt: {prompt}")
 
     # Synchronous call into the OpenAI client
     response = ctx.deps.client.responses.create(
         model="gpt-4.1-2025-04-14",
-        previous_response_id=previous_response_id,
         input=prompt,
         tools=[{"type": "image_generation"}],
     )
 
-    # Find the first image payload
-    for output in response.output:
-        if output.type == "image_generation_call":
-            image_b64 = output.result
-            # strip any data-url header
-            if image_b64.startswith("data:"):
-                image_b64 = image_b64.split(",", 1)[1]
+    if not response.output:
+        raise ModelRetry("No image generated. Please try again.")
 
-            contents = base64.b64decode(image_b64)
-            filename = f"{uuid.uuid4().hex}.png"
+    # Convert the response to PNG bytes, mime type, and filename
+    # This function will extract the base64-encoded image from the response
+    converted_image = convert_response_to_png(response)
 
-            mime_type, _ = mimetypes.guess_type(filename)
-            if not mime_type:
-                # Default to PNG if we can't guess the type
-                mime_type = "image/png"
+    # upload directly to Supabase storage bucket
+    public_url = upload_image_to_supabase(
+        storage_bucket=AI_IMAGE_BUCKET,
+        contents=converted_image.contents,
+        original_filename=converted_image.filename,
+        content_type=converted_image.mime_type,
+    )
 
-            # upload directly to Supabase
-            public_url = upload_image_to_supabase(
-                AI_IMAGE_BUCKET, contents, filename, content_type=mime_type
-            )
+    # add the url to the user_meme database table
+    data = UserMemeCreate(
+        conversation_id=ctx.deps.conversation_id,
+        image_url=public_url,
+        openai_response_id=response.id,
+    )
 
-            return ImageResult(url=public_url, response_id=response.id)
+    def create_user_meme_operation():
+        return create_user_meme(
+            data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
+        )
 
-    # If no image came back, ask agent to retry
-    raise ModelRetry("No image returned from OpenAI image_generation tool")
+    user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
+    print(f"Created user meme with ID: {user_meme.id}")
+    print(f"Response ID: {response.id}")
+    return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
+
+
+# ─── Image Modification Agent ──────────────────────────────────────────────────────
+# This agent modifies existing meme images based on user requests
+meme_image_modification_agent = Agent(
+    model=model,
+    model_settings=model_settings,
+    deps_type=Deps,
+    system_prompt="""
+You are a Meme Image Modification Agent, part of a multi-agent workflow.
+You will receive a prompt that contains a modification request and response ID in this format:
+"Modify the previous image based on the following request: [MODIFICATION_REQUEST]. Pass the previous response ID: [RESPONSE_ID]."
+
+Your job is to:
+1. Parse the prompt to extract the modification request (the text between "request: " and ". Pass the previous")
+2. Parse the prompt to extract the response ID (the text after "response ID: ")
+3. Call the modify_image tool with these exact extracted values
+4. Return the ImageResult object directly
+
+Example:
+Input: "Modify the previous image based on the following request: Change the dog to a cat. Pass the previous response ID: resp_123abc."
+You should extract:
+- modification_request: "Change the dog to a cat"
+- response_id: "resp_123abc"
+
+Then call: modify_image(modification_request="Change the dog to a cat", response_id="resp_123abc")
+""",
+    output_type=ImageResult,
+)
+
+
+@meme_image_modification_agent.tool
+def modify_image(
+    ctx: RunContext[Deps],
+    modification_request: str,
+    response_id: str,
+) -> ImageResult:
+    """
+    Modify an existing meme image based on user request.
+    """
+    # Debug print
+    print(
+        f"Modification request from meme_image_modification_agent.tool: {modification_request}, response_id: {response_id}"
+    )
+
+    # Build the prompt for modification
+    prompt = f"Modify the image based on the following request: {modification_request}."
+
+    # Synchronous call into the OpenAI client
+    response = ctx.deps.client.responses.create(
+        model="gpt-4.1-2025-04-14",
+        input=prompt,
+        previous_response_id=response_id,
+        tools=[{"type": "image_generation"}],
+    )
+
+    if not response.output:
+        raise ModelRetry("No image generated. Please try again.")
+
+    # Convert the response to PNG bytes, mime type, and filename
+    # This function will extract the base64-encoded image from the response
+    converted_image = convert_response_to_png(response)
+
+    # upload directly to Supabase storage bucket
+    public_url = upload_image_to_supabase(
+        storage_bucket=AI_IMAGE_BUCKET,
+        contents=converted_image.contents,
+        original_filename=converted_image.filename,
+        content_type=converted_image.mime_type,
+    )
+
+    # add the url to the user_meme database table
+    data = UserMemeCreate(
+        conversation_id=ctx.deps.conversation_id,
+        image_url=public_url,
+        openai_response_id=response.id,
+    )
+
+    def create_user_meme_operation():
+        return create_user_meme(
+            data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
+        )
+
+    user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
+    print(f"Created user meme with ID: {user_meme.id}")
+    print(f"Response ID: {response.id}")
+    return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
 
 
 # ─── Caption Refinement Agent ──────────────────────────────────────────────
@@ -227,18 +320,32 @@ You are a friendly and efficient Meme Manager Agent. You coordinate meme creatio
    - Wait for the user to pick one variant (e.g., “I choose #2”).
 
 5. **Generate Image**
-   - Call `meme_image_generation` once on the selected variant.
+   - Call `meme_image_generation` once on the selected variant. You will be returned an `ImageResult` object.
+   - The `ImageResult` will contain: image_id: str (the database uuid), url: str (storage bucket URL), response_id: str (the OpenAI `response.id`)
    - Stream back the image URL.
 
 6. **Image Tweaks**
-   - If the user says “tweak” or “make it X,” call `meme_image_generation` again with the same `text_boxes`, `context`, and the `previous_response_id`.
-
+   - If the user wants to modify an image,” first call `fetch_previous_response_id` and retrieve the `response_id` e.g. `resp_686d406b0f08819bb6f77467aa2068e702a8423ad56bed0a`.
+   - Then call `meme_image_modification` passing the `response_id` and the requested modifications.
+   meme_image_modification(
+       response_id=response_id,
+       modification_request=modification_request
+   )
+   You will be returned an `ImageResult` object.
+   - Stream back the image URL.
+   
+7. **Favourite Memes**
+   - If the user says “favourite” or “save this meme,” first call `favourite_meme_in_db` with the `image_id`.
+   
 **Tools Available**
 - `web_search_preview` for up-to-date context (optional).
 - `meme_theme_factory` for theme-based captions.
 - `meme_image_generation` for image rendering.
+- `fetch_previous_response_id` to get the last image's response ID.
+- `meme_image_modification` for image tweaks.
 - `meme_caption_refinement` for user-supplied captions.
 - `meme_random_inspiration` for random mode.
+- `favourite_meme_in_db` to mark memes as favourites in the database.
 
 **Output Content & Format**
 Always maintain a friendly tone.
@@ -266,23 +373,15 @@ def meme_image_generation(
     ctx: RunContext[Deps],
     text_boxes: dict[str, str],
     context: str = "",
-    previous_response_id: str | None = None,
-) -> ImageResult:
+) -> str:
     """
     Call the image generation agent to create a meme image.
     """
     # Debug print
-    print(
-        f"Generating image with text_boxes: {text_boxes}, context: {context}, previous_response_id: {previous_response_id}"
-    )
+    print(f"Generating image with text_boxes: {text_boxes}, context: {context}")
     prompt = (
         f"Create a meme image with the following text boxes: {', '.join(text_boxes.values())}."
         + (f" Image context: {context}" if context else "")
-        + (
-            f" (previous response ID: {previous_response_id})"
-            if previous_response_id
-            else ""
-        )
     )
     # Call the image generation agent synchronously
     result = meme_image_generation_agent.run_sync(
@@ -290,6 +389,34 @@ def meme_image_generation(
         deps=ctx.deps,
         usage=ctx.usage,
     )
+    # Wrap the image URL in Markdown so the frontend renders it inline
+    image_url = (
+        result.output.url if hasattr(result.output, "url") else str(result.output)
+    )
+    return f"![]({image_url})"
+
+
+@manager_agent.tool
+def meme_image_modification(
+    ctx: RunContext[Deps],
+    modification_request: str,
+    response_id: str,
+) -> str:
+    """
+    Modify an existing meme image based on user request.
+    """
+    prompt = f"Modify the previous image based on the following request: {modification_request}. Pass the previous response ID: {response_id}."
+    # Debug print
+    print(
+        f"Modification request from manager_agent.tool meme_image_modification: {modification_request}, response_id: {response_id}"
+    )
+    # Call the image modification agent synchronously
+    result = meme_image_modification_agent.run_sync(
+        prompt,
+        deps=ctx.deps,
+        usage=ctx.usage,
+    )
+
     # Wrap the image URL in Markdown so the frontend renders it inline
     image_url = (
         result.output.url if hasattr(result.output, "url") else str(result.output)
@@ -321,11 +448,129 @@ def meme_random_inspiration(ctx: RunContext[Deps]) -> MemeCaptionAndContext:
     return r.output
 
 
-# Exported for service.py
-# __all__ = [
-#     "main_agent",
-#     "meme_theme_generation_agent",
-#     "meme_selection_agent",
-#     "meme_random_inspiration_agent",
-#     "meme_image_generation_agent",
-# ]
+@manager_agent.tool
+def favourite_meme_in_db(ctx: RunContext[Deps]) -> str:
+    """
+    Mark a meme as favourite in the database.
+    This function updates the `is_favorite` field of the UserMeme model.
+    If the meme is not found, it returns a friendly message.
+    """
+    try:
+
+        def mark_meme_as_favourite_operation():
+            user_meme = read_latest_conversation_meme(
+                conversation_id=ctx.deps.conversation_id,
+                session=ctx.deps.session,
+                current_user=ctx.deps.current_user,
+            )
+            if not user_meme or not user_meme.openai_response_id:
+                raise HTTPException(
+                    status_code=404, detail="No previous meme found to favourite"
+                )
+            update_user_meme(
+                meme_id=user_meme.id,
+                data=UserMemeUpdate(is_favorite=True),
+                session=ctx.deps.session,
+                current_user=ctx.deps.current_user,
+            )
+            return user_meme.id
+
+        favourited_meme_id = safe_db_operation(
+            mark_meme_as_favourite_operation, ctx.deps.session
+        )
+    except HTTPException as http_exception:
+        if http_exception.status_code == 404:
+            return http_exception.detail
+        else:
+            raise ModelRetry(f"Error favouriting meme: {http_exception.detail}")
+
+    return f"Marked meme {favourited_meme_id} as favourite."
+
+
+@manager_agent.tool
+def fetch_previous_image_id(ctx: RunContext[Deps]) -> str:
+    """
+    Fetch the previous image ID for a given meme.
+    This function retrieves the image ID from the UserMeme model.
+    """
+
+    def read_latest_conversation_meme_operation():
+        return read_latest_conversation_meme(
+            conversation_id=ctx.deps.conversation_id,
+            session=ctx.deps.session,
+            current_user=ctx.deps.current_user,
+        )
+
+    user_meme = safe_db_operation(
+        read_latest_conversation_meme_operation, ctx.deps.session
+    )
+
+    # Add validation to ensure we have a valid response ID
+    if not user_meme:
+        raise ModelRetry("No previous meme found in this conversation.")
+
+    if not user_meme.openai_response_id:
+        raise ModelRetry("Previous meme does not have a valid OpenAI response ID.")
+
+    # Debug logging to help identify the issue
+    print(f"Retrieved response ID: {user_meme.openai_response_id}")
+
+    return user_meme.openai_response_id
+
+
+@manager_agent.tool
+def fetch_previous_response_id(ctx: RunContext[Deps]) -> str:
+    """
+    Fetch the previous response ID for a given image ID.
+    This function retrieves the OpenAI response ID from the UserMeme model.
+    """
+
+    def read_latest_conversation_meme_operation():
+        return read_latest_conversation_meme(
+            conversation_id=ctx.deps.conversation_id,
+            session=ctx.deps.session,
+            current_user=ctx.deps.current_user,
+        )
+
+    user_meme = safe_db_operation(
+        read_latest_conversation_meme_operation, ctx.deps.session
+    )
+
+    # Add validation to ensure we have a valid response ID
+    if not user_meme:
+        raise ModelRetry("No previous meme found in this conversation.")
+
+    if not user_meme.openai_response_id:
+        raise ModelRetry("Previous meme does not have a valid OpenAI response ID.")
+
+    # Debug logging to help identify the issue
+    print(f"Retrieved response ID: {user_meme.openai_response_id}")
+
+    return user_meme.openai_response_id
+
+
+# Helper function to safely handle database operations in agent context
+def safe_db_operation(operation, session, max_retries=3):
+    """
+    Safely execute database operations with retry logic and proper error handling.
+    This helps prevent connection pool exhaustion in long-running agent operations.
+    """
+    from sqlalchemy.exc import OperationalError
+    import time
+
+    for attempt in range(max_retries):
+        try:
+            return operation()
+        except OperationalError as e:
+            if attempt < max_retries - 1:
+                print(
+                    f"Database operation failed (attempt {attempt + 1}), retrying: {e}"
+                )
+                time.sleep(0.5 * (attempt + 1))  # Exponential backoff
+                continue
+            else:
+                print(f"Database operation failed after {max_retries} attempts: {e}")
+                raise
+        except Exception as e:
+            print(f"Unexpected error in database operation: {e}")
+            raise

@@ -3,12 +3,28 @@ from openai import OpenAI
 from pydantic import BaseModel
 from typing import List, Dict, Literal, Optional
 from datetime import datetime
+from entities.user import User
+from sqlmodel import Session
 
 
 # ─── Dependency Container ───────────────────────────────────────────────────
 @dataclass
 class Deps:
     client: OpenAI
+    current_user: User
+    session: Session
+    conversation_id: str
+
+
+@dataclass
+class ConvertedImageResult:
+    """
+    Represents the result of converting an OpenAI response to a PNG image.
+    """
+
+    contents: bytes
+    filename: str
+    mime_type: str
 
 
 class ConversationRead(BaseModel):
@@ -60,5 +76,6 @@ class MemeCaptionAndContext(BaseModel):
 
 
 class ImageResult(BaseModel):
+    image_id: str  # the database uuid
     url: str  # the Supabase URL
-    response_id: str  # the OpenAI `response.id` you got back
+    response_id: str  # the OpenAI `response.id`
