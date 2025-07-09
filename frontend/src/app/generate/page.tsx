@@ -8,6 +8,7 @@ import {
     listMessages,
     ChatMessage,
     ConversationRead,
+    ConversationUpdateMessage,
     listConversations,
     deleteConversation,
     sortConversationsByUpdatedAt,
@@ -40,14 +41,7 @@ export default function ChatPage() {
     const abortRef = useRef<(() => void) | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
 
-    // ─── 1) redirect if not logged in ─────────────────────────────
-    useEffect(() => {
-        if (!loading && !user) {
-            router.replace("/");
-        }
-    }, [loading, user, router]);
-
-    // ─── 2) scroll to bottom on new msgs ──────────────────────────
+    // ─── 1) scroll to bottom on new msgs ──────────────────────────
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [msgs]);
@@ -88,11 +82,6 @@ export default function ChatPage() {
         }
     }, [convId]);
 
-    // ─── Now do early return based on auth ────────────────────
-    if (loading || !user) {
-        return null; // or a loading spinner
-    }
-
     // ─── 4) on user send ─────────────────────────────────────────
     const handleSend = async (text: string) => {
         setMsgs((prev) => [
@@ -125,10 +114,22 @@ export default function ChatPage() {
             }
         }
 
+        // Abort any existing stream before starting a new one
+        if (abortRef.current) {
+            abortRef.current();
+        }
+
         abortRef.current = streamChat(
             id,
             text,
-            (msg) => {
+            (msg, streamConvId) => {
+                // Only update messages if this stream matches the current conversation
+                // Use 'id' instead of 'convId' because convId state update is async
+                if (streamConvId !== id) {
+                    console.log(`Ignoring message from conversation ${streamConvId}, current is ${id}`);
+                    return;
+                }
+
                 if (msg.role !== "model") return;
                 setMsgs((prev) => {
                     if (prev.length && prev[prev.length - 1].role === "model") {
@@ -141,12 +142,28 @@ export default function ChatPage() {
 
                 // When AI responds, the conversation is "updated", so reorder the list
                 // We can simulate an updated conversation by updating its updated_at timestamp
-                if (convos && id) {
-                    const currentConv = convos.find(c => c.id === id);
+                if (convos && streamConvId) {
+                    const currentConv = convos.find(c => c.id === streamConvId);
                     if (currentConv) {
                         const updatedConv = {
                             ...currentConv,
                             updated_at: new Date().toISOString()
+                        };
+                        updateConversationInList(updatedConv);
+                    }
+                }
+            },
+            (update) => {
+                // Handle conversation summary updates
+                console.log(`Received conversation update for ${update.conversation_id}: ${update.summary}`);
+
+                if (convos) {
+                    const convToUpdate = convos.find(c => c.id === update.conversation_id);
+                    if (convToUpdate) {
+                        const updatedConv = {
+                            ...convToUpdate,
+                            summary: update.summary,
+                            updated_at: update.updated_at
                         };
                         updateConversationInList(updatedConv);
                     }
@@ -191,6 +208,12 @@ export default function ChatPage() {
 
     // ─── 5) new‐conversation reset handler ────────────────────────
     const startNewConversation = () => {
+        // Abort any existing stream when starting a new conversation
+        if (abortRef.current) {
+            abortRef.current();
+            abortRef.current = null;
+        }
+
         setConvId(null);
         setMsgs(WELCOME);
     };
@@ -206,6 +229,12 @@ export default function ChatPage() {
                                 convos={convos}
                                 activeId={convId}
                                 onSelectConversation={(id) => {
+                                    // Abort any existing stream when switching conversations
+                                    if (abortRef.current) {
+                                        abortRef.current();
+                                        abortRef.current = null;
+                                    }
+
                                     // always update the active conversation id (possibly null)
                                     setConvId(id)
 
