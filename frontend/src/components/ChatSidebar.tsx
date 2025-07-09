@@ -96,8 +96,8 @@ export function ChatSidebar({
                               </TooltipContent>
                             </Tooltip>
                           ) : (
-                            <span className="truncate">
-                              {`Chat • ${c.id.slice(0, 6)}`}
+                            <span className="truncate text-muted-foreground">
+                              New chat
                             </span>
                           )}
                         </button>
@@ -116,7 +116,7 @@ export function ChatSidebar({
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>
-                                Delete “{c.summary ?? c.id.slice(0, 6)}”?
+                                Delete "{c.summary ?? "New chat"}"?
                               </AlertDialogTitle>
                               <AlertDialogDescription>
                                 This cannot be undone.
