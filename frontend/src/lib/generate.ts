@@ -15,6 +15,15 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export interface ConversationUpdateMessage {
+  type: "conversation_update";
+  conversation_id: string;
+  summary: string;
+  updated_at: string;
+}
+
+export type StreamMessage = ChatMessage | ConversationUpdateMessage;
+
 // Add utility function to sort conversations by updated_at descending
 export function sortConversationsByUpdatedAt(
   conversations: ConversationRead[]
@@ -90,7 +99,8 @@ export async function postMessage(
 export function streamChat(
   conversationId: string,
   prompt: string,
-  onMessage: (msg: ChatMessage) => void,
+  onMessage: (msg: ChatMessage, streamConvId: string) => void,
+  onConversationUpdate: (update: ConversationUpdateMessage) => void,
   onError: (err: Error) => void
 ): () => void {
   const controller = new AbortController();
@@ -119,7 +129,16 @@ export function streamChat(
         const lines = buf.split("\n");
         buf = lines.pop()!; // leave incomplete chunk
         for (const line of lines) {
-          if (line.trim()) onMessage(JSON.parse(line));
+          if (line.trim()) {
+            const parsed = JSON.parse(line) as StreamMessage;
+            if ("type" in parsed && parsed.type === "conversation_update") {
+              // Handle conversation update
+              onConversationUpdate(parsed);
+            } else {
+              // Handle regular chat message
+              onMessage(parsed as ChatMessage, conversationId);
+            }
+          }
         }
         return reader.read().then(pump);
       });
