@@ -16,7 +16,7 @@ from .models import (
     ChatMessage,
 )
 from .service import (
-    list_conversations,
+    list_conversations_ordered,
     create_conversation,
     get_conversation,
     update_conversation,
@@ -42,7 +42,7 @@ def read_conversations(
     current_user: User = Depends(get_current_user),
 ) -> List[ConversationRead]:
     logger.info(f"Listing conversations for user {current_user.id}")
-    return list_conversations(session, current_user)
+    return list_conversations_ordered(session, current_user)
 
 
 @router.post(
