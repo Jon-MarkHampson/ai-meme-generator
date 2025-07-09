@@ -15,6 +15,16 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+// Add utility function to sort conversations by updated_at descending
+export function sortConversationsByUpdatedAt(
+  conversations: ConversationRead[]
+): ConversationRead[] {
+  return [...conversations].sort(
+    (a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  );
+}
+
 // 1) Create a new conversation
 export async function createConversation(): Promise<ConversationRead> {
   const { data } = await API.post<ConversationRead>("/generate/conversations/");
