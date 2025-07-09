@@ -17,14 +17,25 @@ export function AuthGuard({ children }: PropsWithChildren) {
     // Handle session expiry message from URL params
     useEffect(() => {
         const sessionParam = searchParams.get('session');
+        const authParam = searchParams.get('auth');
+
         if (sessionParam === 'expired') {
             // Show session expired notification
             console.log('Session has expired. Please log in again.');
             // You could show a toast notification here
+        }
 
-            // Clean up the URL parameter
+        if (authParam === 'required') {
+            // Show authentication required message
+            console.log('Authentication required. Please log in to continue.');
+            // You could show a toast notification here
+        }
+
+        // Clean up the URL parameters
+        if (sessionParam === 'expired' || authParam === 'required') {
             const url = new URL(window.location.href);
             url.searchParams.delete('session');
+            url.searchParams.delete('auth');
             window.history.replaceState({}, '', url.toString());
         }
     }, [searchParams]);
@@ -53,6 +64,7 @@ export function AuthGuard({ children }: PropsWithChildren) {
         if (!loading) {
             if (!isPublic && !user) {
                 // User needs to be authenticated but isn't
+                // Note: This should rarely happen since middleware catches most cases
                 router.replace('/?auth=required');
             } else if (isPublic && user && pathname === '/') {
                 // User is authenticated and on public home page, redirect to app
