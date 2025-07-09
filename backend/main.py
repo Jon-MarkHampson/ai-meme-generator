@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
 from logging_config import configure_logging, LogLevels
-from database.core import create_db_and_tables
+from database.core import create_db_and_tables, check_db_connection
 from api import register_routers
 
 load_dotenv()
@@ -46,11 +46,25 @@ logfire.instrument_fastapi(app, capture_headers=True)
 # logfire.instrument_psycopg(enable_commenter=True)
 
 
-# Health check at root URL
-@app.get("/", summary="Health check")
+# Health check backend
+@app.get("/health/", summary="Health check")
 async def health_check():
     logger.info("Health check endpoint called")
     return {"Health Check - status": "ok"}
+
+
+# Database health check
+@app.get("/health/db", summary="Database health check")
+async def db_health_check():
+    logger.info("Database health check endpoint called")
+    is_healthy = check_db_connection()
+    if is_healthy:
+        return {"Database Health Check - status": "ok"}
+    else:
+        return {
+            "Database Health Check - status": "error",
+            "message": "Database connection failed",
+        }
 
 
 # Default to localhost if not set
