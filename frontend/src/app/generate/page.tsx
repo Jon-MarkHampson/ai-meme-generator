@@ -10,6 +10,7 @@ import {
     ConversationRead,
     listConversations,
     deleteConversation,
+    sortConversationsByUpdatedAt,
 } from "@/lib/generate";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -105,7 +106,11 @@ export default function ChatPage() {
                 const conv = await createConversation();
                 id = conv.id;
                 setConvId(id);
-                setConvos(prev => (prev ? [...prev, conv] : [conv]));
+                // Add new conversation and sort by updated_at
+                setConvos(prev => {
+                    const newList = prev ? [...prev, conv] : [conv];
+                    return sortConversationsByUpdatedAt(newList);
+                });
             } catch {
                 setMsgs((prev) => [
                     ...prev,
@@ -133,6 +138,19 @@ export default function ChatPage() {
                     }
                     return [...prev, msg];
                 });
+
+                // When AI responds, the conversation is "updated", so reorder the list
+                // We can simulate an updated conversation by updating its updated_at timestamp
+                if (convos && id) {
+                    const currentConv = convos.find(c => c.id === id);
+                    if (currentConv) {
+                        const updatedConv = {
+                            ...currentConv,
+                            updated_at: new Date().toISOString()
+                        };
+                        updateConversationInList(updatedConv);
+                    }
+                }
             },
             () =>
                 setMsgs((prev) => [
@@ -157,6 +175,17 @@ export default function ChatPage() {
                 setConvId(null);
                 setMsgs(WELCOME);
             }
+        });
+    };
+
+    // ─── Update conversation and reorder list ────────────────────────────────
+    const updateConversationInList = (updatedConv: ConversationRead) => {
+        setConvos(prevConvos => {
+            if (!prevConvos) return [updatedConv];
+            const updatedList = prevConvos.map(conv =>
+                conv.id === updatedConv.id ? updatedConv : conv
+            );
+            return sortConversationsByUpdatedAt(updatedList);
         });
     };
 
