@@ -29,6 +29,7 @@ from .models import (
     MessageRead,
     MessageCreate,
     ChatMessage,
+    ConversationUpdateMessage,
     Deps,
 )
 
@@ -224,6 +225,31 @@ def chat_stream(
                     ) as result:
                         # use .stream_text to get raw LLM output (no JSON/schema parsing)
                         async for text_piece in result.stream_text(debounce_by=0.01):
+                            # Check if this is a conversation update signal
+                            if text_piece.startswith("CONVERSATION_UPDATE:"):
+                                # Parse the conversation update
+                                try:
+                                    _, conv_id, summary, updated_at = text_piece.split(
+                                        ":", 3
+                                    )
+                                    from .models import ConversationUpdateMessage
+
+                                    update_msg = ConversationUpdateMessage(
+                                        conversation_id=conv_id,
+                                        summary=summary,
+                                        updated_at=datetime.fromisoformat(updated_at),
+                                    )
+                                    yield (update_msg.model_dump_json() + "\n").encode(
+                                        "utf-8"
+                                    )
+                                    continue  # Don't send this as a regular chat message
+                                except Exception as e:
+                                    logger.error(
+                                        f"Error parsing conversation update: {e}"
+                                    )
+                                    # Fall through to send as regular message if parsing fails
+
+                            # Send regular chat message
                             resp_msg = ChatMessage(
                                 role="model",
                                 content=text_piece,

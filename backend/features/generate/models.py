@@ -79,3 +79,12 @@ class ImageResult(BaseModel):
     image_id: str  # the database uuid
     url: str  # the Supabase URL
     response_id: str  # the OpenAI `response.id`
+
+
+class ConversationUpdateMessage(BaseModel):
+    """Message sent via streaming when a conversation summary is updated"""
+
+    type: str = "conversation_update"
+    conversation_id: str
+    summary: str
+    updated_at: datetime

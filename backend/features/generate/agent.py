@@ -368,7 +368,9 @@ You must create a summary of the users request as soon they have choosen a capti
     Immediately after the user has chosen a caption call `summarise_request` passing in your understanding of the user request as user_request.
 
 5.b **Generate Image**
-   - Call `meme_image_generation` once on the selected variant. You will be returned an `ImageResult` object.
+   - Call `meme_image_generation` once on the selected variant. Extract the `text_boxes` dictionary and `context` string from the chosen caption variant.
+   - Call: `meme_image_generation(text_boxes=selected_variant.text_boxes, context=selected_variant.context)`
+   - You will be returned an `ImageResult` object.
    - The `ImageResult` will contain: image_id: str (the database uuid), url: str (storage bucket URL), response_id: str (the OpenAI `response.id`)
    - Stream back the image URL.
 
@@ -389,12 +391,17 @@ You must create a summary of the users request as soon they have choosen a capti
 - `web_search_preview` for up-to-date context (optional).
 - `meme_theme_factory` for theme-based captions.
 - `summarise_request` for summarising the user request.
-- `meme_image_generation` for image rendering.
+- `meme_image_generation(text_boxes=dict, context=str)` for image rendering. Pass the exact text_boxes dictionary and context string from the selected caption variant.
 - `fetch_previous_response_id` to get the last image's response ID.
 - `meme_image_modification` for image tweaks.
 - `meme_caption_refinement` for user-supplied captions.
 - `meme_random_inspiration` for random mode.
 - `favourite_meme_in_db` to mark memes as favourites in the database.
+
+**Important Notes**
+- When user selects a caption variant (e.g., "I choose #2"), extract that variant's text_boxes and context before calling meme_image_generation.
+- The text_boxes parameter must be a dictionary (e.g., {"text_box_1": "Top text", "text_box_2": "Bottom text"}).
+- DO NOT pass a list or string to meme_image_generation - only dictionaries.
 
 **Output Content & Format**
 Always maintain a friendly tone.
@@ -425,9 +432,26 @@ def meme_image_generation(
 ) -> str:
     """
     Call the image generation agent to create a meme image.
+    Args:
+        text_boxes: A dictionary with keys like 'text_box_1', 'text_box_2', etc., and string values for each text box
+        context: Optional context describing the scene/background for the meme
     """
     # Debug print
     print(f"Generating image with text_boxes: {text_boxes}, context: {context}")
+
+    # Validate input types
+    if not isinstance(text_boxes, dict):
+        raise ValueError(
+            f"text_boxes must be a dictionary, got {type(text_boxes)}: {text_boxes}"
+        )
+
+    if not all(
+        isinstance(k, str) and isinstance(v, str) for k, v in text_boxes.items()
+    ):
+        raise ValueError(
+            f"text_boxes must be a dictionary with string keys and values, got: {text_boxes}"
+        )
+
     prompt = (
         f"Create a meme image with the following text boxes: {', '.join(text_boxes.values())}."
         + (f" Image context: {context}" if context else "")
@@ -602,6 +626,7 @@ def fetch_previous_response_id(ctx: RunContext[Deps]) -> str:
 def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     """
     Summarise the current user request and update the conversation with the summary.
+    This also triggers a streaming update to notify the frontend.
     """
     # Import locally to avoid circular import
     from .service import update_conversation
@@ -631,24 +656,9 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     )
     print(f"Updated conversation {ctx.deps.conversation_id} with summary: {summary}")
 
-    return f"Successfully summarised and saved: {summary}"
-
-    def update_conversation_operation():
-        return update_conversation(
-            conversation_id=ctx.deps.conversation_id,
-            summary=r.output,
-            session=ctx.deps.session,
-            current_user=ctx.deps.current_user,
-        )
-
-    # Safely update the conversation with the summary
-    try:
-        safe_db_operation(update_conversation_operation, ctx.deps.session)
-    except OperationalError as e:
-        print(f"Database operation failed: {e}")
-        raise ModelRetry(f"Failed to update conversation summary: {e}")
-    # Update the conversation with the summary
-    print(f"Updated conversation summary: {r.output}")
+    # Return a message that will trigger the conversation update stream
+    # The streaming service will detect this pattern and emit a conversation update
+    return f"CONVERSATION_UPDATE:{ctx.deps.conversation_id}:{summary}:{updated_conversation.updated_at.isoformat()}"
 
 
 # Helper function to safely handle database operations in agent context
