@@ -11,6 +11,7 @@ from .service import (
     update_user_meme as service_update,
     delete_user_meme as service_delete,
     list_user_memes as service_list,
+    get_favorite_memes as service_get_favorite_memes,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,30 @@ def create_user_meme(
     current_user: User = Depends(get_current_user),
 ) -> UserMemeRead:
     return service_create(data, session, current_user)
+
+
+@router.get(
+    "/",
+    response_model=UserMemeList,
+    summary="List all user memes.",
+)
+def list_user_memes(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> UserMemeList:
+    return service_list(session, current_user)
+
+
+@router.get(
+    "/favorites",
+    response_model=UserMemeList,
+    summary="List all favorite user memes.",
+)
+def get_favorite_memes(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+) -> UserMemeList:
+    return service_get_favorite_memes(session, current_user)
 
 
 @router.get(
@@ -69,15 +94,3 @@ def delete_user_meme(
     current_user: User = Depends(get_current_user),
 ) -> None:
     service_delete(meme_id, session, current_user)
-
-
-@router.get(
-    "/",
-    response_model=UserMemeList,
-    summary="List all user memes.",
-)
-def list_user_memes(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> UserMemeList:
-    return service_list(session, current_user)

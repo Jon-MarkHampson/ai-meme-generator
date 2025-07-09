@@ -174,3 +174,24 @@ def list_user_memes(
 
     logger.info(f"Listed {len(memes)} memes for user {current_user.id}")
     return UserMemeList(memes=memes)
+
+
+def get_favorite_memes(
+    session: Session,
+    current_user: User,
+) -> UserMemeList:
+    statement = (
+        select(UserMeme)
+        .where(UserMeme.user_id == current_user.id, UserMeme.is_favorite == True)
+        .order_by(UserMeme.created_at.desc())
+    )
+    favorite_memes = session.exec(statement).all()
+
+    if not favorite_memes:
+        logger.info(f"User {current_user.id} has no favorite memes")
+        return UserMemeList(memes=[])
+
+    logger.info(
+        f"Listed {len(favorite_memes)} favorite memes for user {current_user.id}"
+    )
+    return UserMemeList(memes=favorite_memes)
