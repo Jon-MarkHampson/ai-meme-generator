@@ -38,9 +38,13 @@ logger = logging.getLogger(__name__)
 client = OpenAI()
 
 
-def list_conversations(session: Session, current_user: User) -> List[ConversationRead]:
-    stmt = select(ConversationEntity).where(
-        ConversationEntity.user_id == current_user.id
+def list_conversations_ordered(
+    session: Session, current_user: User
+) -> List[ConversationRead]:
+    stmt = (
+        select(ConversationEntity)
+        .where(ConversationEntity.user_id == current_user.id)
+        .order_by(ConversationEntity.updated_at.desc())
     )
     convs = session.exec(stmt).all()
     return [c for c in convs]
