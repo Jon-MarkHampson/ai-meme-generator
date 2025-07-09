@@ -7,6 +7,8 @@ import asyncio
 from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
+from database.core import Session as SessionClass, engine
+from entities.user import User
 from openai import OpenAI
 
 from pydantic_ai.messages import (
@@ -30,13 +32,10 @@ from .models import (
     Deps,
 )
 
+
 logger = logging.getLogger(__name__)
 
 client = OpenAI()
-
-deps = Deps(
-    client=client,
-)
 
 
 def list_conversations(session: Session, current_user: User) -> List[ConversationRead]:
@@ -167,6 +166,14 @@ def chat_stream(
     session: Session,
     current_user: User,
 ) -> StreamingResponse:
+    # Check conversation exists first, then close this session
+    conv = session.get(ConversationEntity, conversation_id)
+    if not conv or conv.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    # Extract user ID before the session is closed to avoid DetachedInstanceError
+    user_id = current_user.id
+
     async def streamer():
         user_msg = ChatMessage(
             role="user",
@@ -175,52 +182,76 @@ def chat_stream(
         )
         yield (user_msg.model_dump_json() + "\n").encode("utf-8")
 
-        stmt = select(MessageEntity).where(
-            MessageEntity.conversation_id == conversation_id
-        )
-        rows = session.exec(stmt).all()
-        history = []
-        for row in rows:
-            history.extend(
-                ModelMessagesTypeAdapter.validate_json(json.dumps(row.message_list))
-            )
+        # Create a new session for the streaming operations
+        # This prevents long-running connections from exhausting the pool
+        from database.core import Session as SessionClass, engine
 
-        # ===== plain-text streaming =====
-        try:
-            async with manager_agent.run_stream(
-                prompt, message_history=history, deps=deps
-            ) as result:
-                # use .stream_text to get raw LLM output (no JSON/schema parsing)
-                async for text_piece in result.stream_text(debounce_by=0.01):
-                    resp_msg = ChatMessage(
-                        role="model",
-                        content=text_piece,
-                        timestamp=result.timestamp(),
+        with SessionClass(engine) as stream_session:
+            try:
+                # Re-fetch the user in the new session
+                stream_current_user = stream_session.get(User, user_id)
+                if not stream_current_user:
+                    raise HTTPException(status_code=404, detail="User not found")
+
+                stmt = select(MessageEntity).where(
+                    MessageEntity.conversation_id == conversation_id
+                )
+                rows = stream_session.exec(stmt).all()
+                history = []
+                for row in rows:
+                    history.extend(
+                        ModelMessagesTypeAdapter.validate_json(
+                            json.dumps(row.message_list)
+                        )
                     )
-                    yield (resp_msg.model_dump_json() + "\n").encode("utf-8")
-        except (
-            BrokenPipeError,
-            ConnectionResetError,
-            OSError,
-            asyncio.CancelledError,
-            httpx.HTTPError,
-        ):
-            # client disconnected; stop streaming gracefully
-            return
 
-        # ADD logic to store things in db here
+                # Build dependencies with the new session
+                deps = Deps(
+                    client=client,
+                    current_user=stream_current_user,
+                    session=stream_session,
+                    conversation_id=conversation_id,
+                )
 
-        full_json = result.new_messages_json()
-        payload = json.loads(full_json)
-        store_message(
-            conversation_id,
-            MessageCreate(conversation_id=conversation_id, message_list=payload),
-            session,
-            current_user,
-        )
+                # ===== plain-text streaming =====
+                try:
+                    async with manager_agent.run_stream(
+                        prompt, message_history=history, deps=deps
+                    ) as result:
+                        # use .stream_text to get raw LLM output (no JSON/schema parsing)
+                        async for text_piece in result.stream_text(debounce_by=0.01):
+                            resp_msg = ChatMessage(
+                                role="model",
+                                content=text_piece,
+                                timestamp=result.timestamp(),
+                            )
+                            yield (resp_msg.model_dump_json() + "\n").encode("utf-8")
+                except (
+                    BrokenPipeError,
+                    ConnectionResetError,
+                    OSError,
+                    asyncio.CancelledError,
+                    httpx.HTTPError,
+                ):
+                    # client disconnected; stop streaming gracefully
+                    return
 
-    conv = session.get(ConversationEntity, conversation_id)
-    if not conv or conv.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+                # Store the final result in the database
+                full_json = result.new_messages_json()
+                payload = json.loads(full_json)
+                store_message(
+                    conversation_id,
+                    MessageCreate(
+                        conversation_id=conversation_id, message_list=payload
+                    ),
+                    stream_session,
+                    stream_current_user,
+                )
+                stream_session.commit()
+
+            except Exception as e:
+                stream_session.rollback()
+                logger.error(f"Error in chat stream: {e}")
+                raise
 
     return StreamingResponse(streamer(), media_type="text/plain")
