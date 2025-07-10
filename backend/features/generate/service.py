@@ -8,7 +8,6 @@ from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from database.core import Session as SessionClass, engine
-from entities.user import User
 from openai import OpenAI
 
 from pydantic_ai.messages import (
