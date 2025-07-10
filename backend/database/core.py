@@ -7,7 +7,7 @@ from entities.caption_requests import CaptionRequest
 from entities.caption_variants import CaptionVariant
 from entities.user_memes import UserMeme
 from entities.image_variants import ImageVariant
-from entities.chat_converstaions import Conversation
+from entities.chat_conversations import Conversation
 from entities.chat_messages import Message
 import logging
 
