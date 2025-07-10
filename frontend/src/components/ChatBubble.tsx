@@ -3,6 +3,7 @@ import { FC } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { FavoriteToggle } from "./FavoriteToggle";
 
 export const ChatBubble: FC<{ text: string; isUser: boolean }> = ({ text, isUser }) => (
     <div className={`flex px-4 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -18,9 +19,16 @@ export const ChatBubble: FC<{ text: string; isUser: boolean }> = ({ text, isUser
                     components={{
                         a: ({ node, ...props }) => {
                             const href = props.href || "";
-                            // Render images inline with rounded corners
+                            // Render images inline with rounded corners and favorite toggle
                             if (/\.(jpeg|jpg|gif|png|svg)$/.test(href)) {
-                                return <img src={href} alt="" className="max-w-full rounded-lg" />;
+                                return (
+                                    <span className="relative inline-block">
+                                        <img src={href} alt="" className="max-w-full rounded-lg" />
+                                        <span className="absolute top-2 right-2">
+                                            <FavoriteToggle imageUrl={href} />
+                                        </span>
+                                    </span>
+                                );
                             }
                             return (
                                 <a
@@ -32,11 +40,16 @@ export const ChatBubble: FC<{ text: string; isUser: boolean }> = ({ text, isUser
                             );
                         },
                         img: ({ node, ...props }) => (
-                            <img
-                                {...props}
-                                alt={props.alt}
-                                className="max-w-full max-h-96 rounded-lg"
-                            />
+                            <span className="relative inline-block">
+                                <img
+                                    {...props}
+                                    alt={props.alt}
+                                    className="max-w-full max-h-96 rounded-lg"
+                                />
+                                <span className="absolute top-2 right-2">
+                                    <FavoriteToggle imageUrl={typeof props.src === 'string' ? props.src : ""} />
+                                </span>
+                            </span>
                         ),
                     }}
                 >
