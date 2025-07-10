@@ -1,10 +1,9 @@
 'use client'
 
 import React, { createContext, useState, useEffect, ReactNode, useContext, useCallback } from 'react'
-import API from '@/lib/api'
 import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile, apiRefreshSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
-import { getAccessTokenFromCookies, getTokenTimeRemaining, isTokenExpired } from '@/lib/authUtils'
+import { getAccessTokenFromCookies, getTokenTimeRemaining } from '@/lib/authUtils'
 
 // Mutable reference that can be used outside React (e.g. axios interceptor)
 let setUserRef: React.Dispatch<React.SetStateAction<User | null>> | null = null;
@@ -72,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.warn(`Session expires in ${Math.floor(remaining / 60)} minutes - attempting refresh`);
       refreshSession();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Function to refresh session by making an authenticated API call
@@ -212,7 +212,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password?: string
   }) => {
     const { currentPassword, firstName, lastName, email, password } = payload
-    const body: any = { current_password: currentPassword }
+    const body: {
+      current_password: string
+      first_name?: string
+      last_name?: string
+      email?: string
+      password?: string
+    } = { current_password: currentPassword }
     if (firstName !== undefined) body.first_name = firstName
     if (lastName !== undefined) body.last_name = lastName
     if (email !== undefined) body.email = email

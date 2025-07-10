@@ -33,12 +33,13 @@ export const ChatBubble: FC<{ text: string; isUser: boolean; isLoading?: boolean
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                            a: ({ node, ...props }) => {
+                            a: ({ ...props }) => {
                                 const href = props.href || "";
                                 // Render images inline with rounded corners and favorite toggle
                                 if (/\.(jpeg|jpg|gif|png|svg)$/.test(href)) {
                                     return (
                                         <span className="relative inline-block">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img src={href} alt="" className="max-w-full rounded-lg" />
                                             <span className="absolute top-2 right-2">
                                                 <FavoriteToggle imageUrl={href} />
@@ -55,8 +56,9 @@ export const ChatBubble: FC<{ text: string; isUser: boolean; isLoading?: boolean
                                     />
                                 );
                             },
-                            img: ({ node, ...props }) => (
+                            img: ({ ...props }) => (
                                 <span className="relative inline-block">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                         {...props}
                                         alt={props.alt}

@@ -42,10 +42,11 @@ export default function LoginPage() {
     try {
       await login(values.email, values.password);
       router.push('/generate');
-    } catch (err: any) {
-      const msg = err.response?.data?.detail || 'Login failed.';
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string }; status?: number } };
+      const msg = error.response?.data?.detail || 'Login failed.';
       setFormError(msg);
-      if (err.response?.status === 401) {
+      if (error.response?.status === 401) {
         form.setValue('password', '');
       }
     } finally {

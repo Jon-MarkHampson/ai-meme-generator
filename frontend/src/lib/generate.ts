@@ -124,25 +124,27 @@ export function streamChat(
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
-      return reader.read().then(function pump({ done, value }): any {
-        if (done) return;
-        buf += dec.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop()!; // leave incomplete chunk
-        for (const line of lines) {
-          if (line.trim()) {
-            const parsed = JSON.parse(line) as StreamMessage;
-            if ("type" in parsed && parsed.type === "conversation_update") {
-              // Handle conversation update
-              onConversationUpdate(parsed);
-            } else {
-              // Handle regular chat message
-              onMessage(parsed as ChatMessage, conversationId);
+      return reader
+        .read()
+        .then(function pump({ done, value }): Promise<void> | undefined {
+          if (done) return;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop()!; // leave incomplete chunk
+          for (const line of lines) {
+            if (line.trim()) {
+              const parsed = JSON.parse(line) as StreamMessage;
+              if ("type" in parsed && parsed.type === "conversation_update") {
+                // Handle conversation update
+                onConversationUpdate(parsed);
+              } else {
+                // Handle regular chat message
+                onMessage(parsed as ChatMessage, conversationId);
+              }
             }
           }
-        }
-        return reader.read().then(pump);
-      });
+          return reader.read().then(pump);
+        });
     })
     .catch(onError);
 

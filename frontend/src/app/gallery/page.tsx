@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import * as React from "react"
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/tooltip"
 import Image from "next/image"
 import { FavoriteToggle } from "@/components/FavoriteToggle";
-import { Loader2, Calendar, User, Hash, Download } from "lucide-react";
+import { Loader2, Calendar, Download } from "lucide-react";
 
 export default function GalleryPage() {
     const { user, loading } = useAuth();

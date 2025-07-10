@@ -67,9 +67,10 @@ export default function SignupPage() {
         values.password
       )
       router.push('/generate')
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
       const message =
-        err.response?.data?.detail || 'Sign up failed. Please try again.'
+        error.response?.data?.detail || 'Sign up failed. Please try again.'
       setFormError(message)
     } finally {
       setIsSubmitting(false)
