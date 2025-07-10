@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
 import {
     createConversation,
     streamChat,
@@ -13,12 +12,22 @@ import {
     deleteConversation,
     sortConversationsByUpdatedAt,
 } from "@/lib/generate";
+import { SquarePen } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatInput } from "@/components/ChatInput";
-import { SquarePen } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
 
 const WELCOME: ChatMessage[] = [
     {
@@ -31,14 +40,14 @@ const WELCOME: ChatMessage[] = [
 
 
 export default function ChatPage() {
-    const { user, loading } = useAuth();
-    const router = useRouter();
+    const { } = useAuth();
 
     // ─── Declare ALL your hooks first ─────────────────────────────
     const [convId, setConvId] = useState<string | null>(null);
     const [msgs, setMsgs] = useState<ChatMessage[]>(WELCOME);
     const [convos, setConvos] = useState<ConversationRead[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedModel, setSelectedModel] = useState<string>("openai:gpt-4.1-2025-04-14");
     const abortRef = useRef<(() => void) | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -126,8 +135,9 @@ export default function ChatPage() {
 
         abortRef.current = streamChat(
             id,
+            selectedModel,
             text,
-            (msg, streamConvId) => {
+            (msg: ChatMessage, streamConvId: string) => {
                 // Only update messages if this stream matches the current conversation
                 // Use 'id' instead of 'convId' because convId state update is async
                 if (streamConvId !== id) {
@@ -162,7 +172,7 @@ export default function ChatPage() {
                     }
                 }
             },
-            (update) => {
+            (update: ConversationUpdateMessage) => {
                 // Handle conversation summary updates
                 console.log(`Received conversation update for ${update.conversation_id}: ${update.summary}`);
 
@@ -266,6 +276,25 @@ export default function ChatPage() {
                                 <div className="flex items-center gap-2 text-sm font-medium text-primary bg-transparent rounded hover:bg-accent hover:text-accent-foreground">
                                     <SidebarTrigger className="w-4 h-4" />
                                     History
+                                </div>
+                                <div className="flex gap-2 justify-center items-center">
+                                    <p className="text-sm"> Chat Model:
+                                    </p>
+                                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                                        <SelectTrigger className="w-[180px]">
+                                            <SelectValue placeholder="Choose AI model" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectGroup>
+                                                <SelectLabel>Choose model</SelectLabel>
+                                                <SelectItem value="openai:gpt-4o">openai:gpt-4o</SelectItem>
+                                                <SelectItem value="openai:gpt-4.1-2025-04-14">openai:gpt-4.1-2025-04-14</SelectItem>
+                                                <SelectItem value="openai:gpt-4.1-mini">openai:gpt-4.1-mini</SelectItem>
+                                                <SelectItem value="openai:gpt-4.1-nano">openai:gpt-4.1-nano</SelectItem>
+                                                <SelectItem value="openai:o4-mini">openai:o4-mini</SelectItem>
+                                            </SelectGroup>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <button
                                     onClick={startNewConversation}

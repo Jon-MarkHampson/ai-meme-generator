@@ -10,6 +10,7 @@ from sqlmodel import Session
 # ─── Dependency Container ───────────────────────────────────────────────────
 @dataclass
 class Deps:
+
     client: OpenAI
     current_user: User
     session: Session
@@ -59,6 +60,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    manager_model: str  # The OpenAI model to use, e.g., "gpt-3.5-turbo"
     prompt: str
 
 

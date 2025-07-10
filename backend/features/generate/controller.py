@@ -151,4 +151,6 @@ def stream_conversation(
     """
     Opens a streaming response that yields newline-delimited JSON ChatMessage objects.
     """
-    return chat_stream(conversation_id, request.prompt, session, current_user)
+    return chat_stream(
+        conversation_id, request.prompt, session, current_user, request.manager_model
+    )
