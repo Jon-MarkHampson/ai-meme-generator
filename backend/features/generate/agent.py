@@ -360,7 +360,7 @@ Do not include any extra text, markdown, or explanations—output ONLY the JSON 
 
 # ─── Manager Agent ──────────────────────────────────────────────────────────
 manager_agent = Agent(
-    model=model,
+    # model=model,
     model_settings=model_settings,
     deps_type=Deps,
     history_processors=[summarize_old_messages],

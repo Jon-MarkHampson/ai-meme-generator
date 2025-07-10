@@ -169,7 +169,11 @@ def chat_stream(
     prompt: str,
     session: Session,
     current_user: User,
+    manager_model: str = "gpt-4.1-2025-04-14",
 ) -> StreamingResponse:
+    # Debug check the model being used
+    print(f"Using model: {manager_model}")
+
     # Check conversation exists first, then close this session
     conv = session.get(ConversationEntity, conversation_id)
     if not conv or conv.user_id != current_user.id:
@@ -219,7 +223,7 @@ def chat_stream(
                 # ===== plain-text streaming =====
                 try:
                     async with manager_agent.run_stream(
-                        prompt, message_history=history, deps=deps
+                        prompt, model=manager_model, message_history=history, deps=deps
                     ) as result:
                         # use .stream_text to get raw LLM output (no JSON/schema parsing)
                         async for text_piece in result.stream_text(debounce_by=0.01):

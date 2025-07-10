@@ -98,6 +98,7 @@ export async function postMessage(
 // 8) Streaming chat
 export function streamChat(
   conversationId: string,
+  manager_model: string,
   prompt: string,
   onMessage: (msg: ChatMessage, streamConvId: string) => void,
   onConversationUpdate: (update: ConversationUpdateMessage) => void,
@@ -111,7 +112,7 @@ export function streamChat(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ manager_model, prompt }),
       signal: controller.signal,
       // this tells fetch to include HttpOnly cookie
       credentials: "include",
