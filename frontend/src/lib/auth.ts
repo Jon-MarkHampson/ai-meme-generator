@@ -70,8 +70,11 @@ export async function apiLogout(): Promise<void> {
 
 export async function apiDeleteAccount(password: string): Promise<void> {
   // FastAPI DELETE /users/me, body: { password }
-  // axios.delete needs the data field cast to any to satisfy TS
-  await API.delete<void>("/users/me", { data: { password } } as any);
+  await API.request({
+    method: "DELETE",
+    url: "/users/me",
+    data: { password },
+  });
 }
 
 /**
@@ -81,7 +84,7 @@ export async function apiDeleteAccount(password: string): Promise<void> {
 export async function getSession(): Promise<User | null> {
   try {
     return await fetchProfile();
-  } catch (error) {
+  } catch {
     return null;
   }
 }

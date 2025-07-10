@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 import { useAuth } from "@/context/AuthContext";
-import { apiDeleteAccount, apiLogout } from "@/lib/auth";
+import { apiDeleteAccount } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -89,7 +89,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const { user, loading, updateProfile, logout } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
 
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -157,8 +157,9 @@ export default function EditProfilePage() {
       // is responsible for internally converting camelCase → snake_case
       await updateProfile(payloadForAuthContext);
       router.push("/profile");
-    } catch (err: any) {
-      setUpdateError(err.response?.data?.detail || "Failed to update profile.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setUpdateError(error.response?.data?.detail || "Failed to update profile.");
     } finally {
       setIsUpdating(false);
     }
@@ -171,8 +172,9 @@ export default function EditProfilePage() {
       await apiDeleteAccount(deletePassword);
       logout();
       router.push("/");
-    } catch (err: any) {
-      setDeleteError(err.response?.data?.detail || "Incorrect password.");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { detail?: string } } };
+      setDeleteError(error.response?.data?.detail || "Incorrect password.");
     } finally {
       setIsDeleting(false);
     }

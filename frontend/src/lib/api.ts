@@ -26,7 +26,11 @@ API.interceptors.request.use(
 // Response interceptor for handling session expiry
 API.interceptors.response.use(
   (response) => response,
-  async (error: any) => {
+  async (error: {
+    response?: { status?: number };
+    code?: string;
+    message?: string;
+  }) => {
     // Handle 401 Unauthorized (session expired)
     if (error.response?.status === 401 && !isHandling401) {
       isHandling401 = true;
@@ -57,7 +61,7 @@ API.interceptors.response.use(
     }
 
     // Handle network errors
-    if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
       console.error("Request timeout or network error");
       // You might want to show a toast notification here
     }

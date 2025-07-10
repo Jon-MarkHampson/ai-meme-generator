@@ -116,7 +116,7 @@ export function ChatSidebar({
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>
-                                Delete "{c.summary ?? "New chat"}"?
+                                Delete &quot;{c.summary ?? "New chat"}&quot;?
                               </AlertDialogTitle>
                               <AlertDialogDescription>
                                 This cannot be undone.
