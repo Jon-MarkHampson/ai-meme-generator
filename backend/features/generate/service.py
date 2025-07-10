@@ -188,7 +188,6 @@ def chat_stream(
 
         # Create a new session for the streaming operations
         # This prevents long-running connections from exhausting the pool
-        from database.core import Session as SessionClass, engine
 
         with SessionClass(engine) as stream_session:
             try:
@@ -263,6 +262,30 @@ def chat_stream(
                     httpx.HTTPError,
                 ):
                     # client disconnected; stop streaming gracefully
+                    return
+                except Exception as e:
+                    # Handle other errors including OpenAI moderation errors
+                    logger.error(f"Error in agent stream: {e}")
+
+                    # Check if it's an OpenAI moderation error
+                    error_message = str(e)
+                    if (
+                        "moderation_blocked" in error_message
+                        or "safety system" in error_message
+                    ):
+                        error_resp = ChatMessage(
+                            role="model",
+                            content="I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content.",
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                    else:
+                        error_resp = ChatMessage(
+                            role="model",
+                            content="I'm sorry, but I encountered an error while creating your meme. Please try again with a different request.",
+                            timestamp=datetime.now(timezone.utc),
+                        )
+
+                    yield (error_resp.model_dump_json() + "\n").encode("utf-8")
                     return
 
                 # Store the final result in the database

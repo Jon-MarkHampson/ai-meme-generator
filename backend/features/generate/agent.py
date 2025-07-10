@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 import time
 
 from openai.types.responses import WebSearchToolParam
+from openai import BadRequestError
 from pydantic_ai import Agent, RunContext, ModelRetry
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import UsageLimits
@@ -165,11 +166,22 @@ def image_generation(
     # print(f"Image generation prompt: {prompt}")
 
     # Synchronous call into the OpenAI client
-    response = ctx.deps.client.responses.create(
-        model="gpt-4.1-2025-04-14",
-        input=prompt,
-        tools=[{"type": "image_generation"}],
-    )
+    try:
+        response = ctx.deps.client.responses.create(
+            model="gpt-4.1-2025-04-14",
+            input=prompt,
+            tools=[{"type": "image_generation"}],
+        )
+    except BadRequestError as e:
+        error_msg = str(e)
+        if "moderation_blocked" in error_msg or "safety system" in error_msg:
+            raise ModelRetry(
+                "I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content."
+            )
+        else:
+            raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
+    except Exception as e:
+        raise ModelRetry(f"Image generation failed: {str(e)}. Please try again.")
 
     if not response.output:
         raise ModelRetry("No image generated. Please try again.")
@@ -251,12 +263,25 @@ def modify_image(
     prompt = f"Modify the image based on the following request: {modification_request}."
 
     # Synchronous call into the OpenAI client
-    response = ctx.deps.client.responses.create(
-        model="gpt-4.1-2025-04-14",
-        input=prompt,
-        previous_response_id=response_id,
-        tools=[{"type": "image_generation"}],
-    )
+    try:
+        response = ctx.deps.client.responses.create(
+            model="gpt-4.1-2025-04-14",
+            input=prompt,
+            previous_response_id=response_id,
+            tools=[{"type": "image_generation"}],
+        )
+    except BadRequestError as e:
+        error_msg = str(e)
+        if "moderation_blocked" in error_msg or "safety system" in error_msg:
+            raise ModelRetry(
+                "I'm sorry, but I can't modify that image as the request was flagged by the content safety system. Please try a different modification that doesn't contain potentially harmful content."
+            )
+        else:
+            raise ModelRetry(
+                f"Image modification failed: {error_msg}. Please try again."
+            )
+    except Exception as e:
+        raise ModelRetry(f"Image modification failed: {str(e)}. Please try again.")
 
     if not response.output:
         raise ModelRetry("No image generated. Please try again.")
@@ -375,7 +400,7 @@ You must create a summary of the users request as soon they have choosen a capti
    - Stream back the image URL.
 
 7. **Image Tweaks**
-   - If the user wants to modify (list out for 'change', 'edit', 'tweak' or any other synonyms) an image,” first call `fetch_previous_response_id` and retrieve the `response_id` e.g. `resp_686d406b0f08819bb6f77467aa2068e702a8423ad56bed0a`.
+   - If the user wants to modify (list out for 'rerun', 'change', 'edit', 'tweak' or any other synonyms) an image,” first call `fetch_previous_response_id` and retrieve the `response_id` e.g. `resp_686d406b0f08819bb6f77467aa2068e702a8423ad56bed0a`.
    - Then call `meme_image_modification` passing the `response_id` and the requested modifications.
    meme_image_modification(
        response_id=response_id,

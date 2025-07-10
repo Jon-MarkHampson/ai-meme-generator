@@ -38,6 +38,7 @@ export default function ChatPage() {
     const [convId, setConvId] = useState<string | null>(null);
     const [msgs, setMsgs] = useState<ChatMessage[]>(WELCOME);
     const [convos, setConvos] = useState<ConversationRead[] | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
     const abortRef = useRef<(() => void) | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -89,6 +90,9 @@ export default function ChatPage() {
             { role: "user", content: text, timestamp: new Date().toISOString() },
         ]);
 
+        // Set loading state and add a skeleton message
+        setIsLoading(true);
+
         let id = convId;
         if (!id) {
             try {
@@ -110,6 +114,7 @@ export default function ChatPage() {
                         timestamp: new Date().toISOString(),
                     },
                 ]);
+                setIsLoading(false);
                 return;
             }
         }
@@ -131,6 +136,10 @@ export default function ChatPage() {
                 }
 
                 if (msg.role !== "model") return;
+
+                // Clear loading state on first model message
+                setIsLoading(false);
+
                 setMsgs((prev) => {
                     if (prev.length && prev[prev.length - 1].role === "model") {
                         const copy = [...prev];
@@ -169,7 +178,8 @@ export default function ChatPage() {
                     }
                 }
             },
-            () =>
+            () => {
+                setIsLoading(false);
                 setMsgs((prev) => [
                     ...prev,
                     {
@@ -177,7 +187,8 @@ export default function ChatPage() {
                         content: "⚠ Error talking to AI.",
                         timestamp: new Date().toISOString(),
                     },
-                ])
+                ]);
+            }
         );
     };
 
@@ -214,6 +225,7 @@ export default function ChatPage() {
             abortRef.current = null;
         }
 
+        setIsLoading(false);
         setConvId(null);
         setMsgs(WELCOME);
     };
@@ -234,6 +246,9 @@ export default function ChatPage() {
                                         abortRef.current();
                                         abortRef.current = null;
                                     }
+
+                                    // Clear loading state when switching conversations
+                                    setIsLoading(false);
 
                                     // always update the active conversation id (possibly null)
                                     setConvId(id)
@@ -268,6 +283,13 @@ export default function ChatPage() {
                                             isUser={m.role === "user"}
                                         />
                                     ))}
+                                    {isLoading && (
+                                        <ChatBubble
+                                            text=""
+                                            isUser={false}
+                                            isLoading={true}
+                                        />
+                                    )}
                                     <div ref={endRef} />
                                 </div>
                             </ScrollArea>
