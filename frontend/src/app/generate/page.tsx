@@ -18,15 +18,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatInput } from "@/components/ChatInput";
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ModelSelector } from "@/components/ModelSelector";
+import { useModelSelection } from "@/hooks/useModelSelection";
 
 
 const WELCOME: ChatMessage[] = [
@@ -47,7 +40,12 @@ export default function ChatPage() {
     const [msgs, setMsgs] = useState<ChatMessage[]>(WELCOME);
     const [convos, setConvos] = useState<ConversationRead[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedModel, setSelectedModel] = useState<string>("openai:gpt-4.1-2025-04-14");
+    // ─── Model selection with smart hook ─────────────────────────────
+    const { selectedModelId, changeModel } = useModelSelection({
+        onModelChange: (model) => {
+            console.log(`Model changed to: ${model.name} (${model.id})`);
+        }
+    });
     const abortRef = useRef<(() => void) | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -135,7 +133,7 @@ export default function ChatPage() {
 
         abortRef.current = streamChat(
             id,
-            selectedModel,
+            selectedModelId,
             text,
             (msg: ChatMessage, streamConvId: string) => {
                 // Only update messages if this stream matches the current conversation
@@ -278,23 +276,11 @@ export default function ChatPage() {
                                     History
                                 </div>
                                 <div className="flex gap-2 justify-center items-center">
-                                    <p className="text-sm"> Chat Model:
-                                    </p>
-                                    <Select value={selectedModel} onValueChange={setSelectedModel}>
-                                        <SelectTrigger className="w-[180px]">
-                                            <SelectValue placeholder="Choose AI model" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                <SelectLabel>Choose model</SelectLabel>
-                                                <SelectItem value="openai:gpt-4o">openai:gpt-4o</SelectItem>
-                                                <SelectItem value="openai:gpt-4.1-2025-04-14">openai:gpt-4.1-2025-04-14</SelectItem>
-                                                <SelectItem value="openai:gpt-4.1-mini">openai:gpt-4.1-mini</SelectItem>
-                                                <SelectItem value="openai:gpt-4.1-nano">openai:gpt-4.1-nano</SelectItem>
-                                                <SelectItem value="openai:o4-mini">openai:o4-mini</SelectItem>
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
+                                    <ModelSelector
+                                        selectedModel={selectedModelId}
+                                        onModelChange={changeModel}
+                                        showMetadata={true}
+                                    />
                                 </div>
                                 <button
                                     onClick={startNewConversation}
