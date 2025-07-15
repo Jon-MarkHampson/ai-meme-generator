@@ -43,12 +43,12 @@ export function ModelSelector({
                                     <span>{selectedModelConfig?.name || selectedModel}</span>
                                     {showMetadata && selectedModelConfig && (
                                         <div className="flex gap-1 text-xs text-muted-foreground">
-                                            <span className="px-1 py-0.5 bg-gray-100 rounded text-xs">
+                                            {/* <span className="px-1 py-0.5 bg-gray-100 rounded text-xs">
                                                 {selectedModelConfig.pricing}
-                                            </span>
-                                            <span className="px-1 py-0.5 bg-blue-100 rounded text-xs">
+                                            </span> */}
+                                            {/* <span className="px-1 py-0.5 bg-blue-100 rounded text-xs">
                                                 {selectedModelConfig.speed}
-                                            </span>
+                                            </span> */}
                                         </div>
                                     )}
                                 </div>
@@ -79,7 +79,7 @@ export function ModelSelector({
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            {showMetadata && (
+                                                            {/* {showMetadata && (
                                                                 <div className="flex gap-1">
                                                                     <span className="text-xs text-muted-foreground px-1 py-0.5 bg-gray-50 rounded">
                                                                         {model.pricing}
@@ -88,7 +88,7 @@ export function ModelSelector({
                                                                         {model.speed}
                                                                     </span>
                                                                 </div>
-                                                            )}
+                                                            )} */}
                                                         </div>
                                                         <span className="text-xs text-muted-foreground">{model.description}</span>
                                                         {model.capabilities && (
@@ -96,27 +96,38 @@ export function ModelSelector({
                                                                 Capabilities: {model.capabilities.join(', ')}
                                                             </div>
                                                         )}
-                                                        {model.maxTokens && (
-                                                            <div className="text-xs text-muted-foreground">
-                                                                Max tokens: {model.maxTokens.toLocaleString()}
+                                                        {showMetadata && (
+                                                            <div className="flex gap-1">
+                                                                <span className="text-xs text-muted-foreground ">
+                                                                    Pricing: {model.pricing} |
+                                                                </span>
+                                                                <span className="text-xs text-muted-foreground ">
+                                                                    Speed: {model.speed}
+                                                                </span>
                                                             </div>
                                                         )}
+
                                                     </div>
                                                 </SelectItem>
                                             </TooltipTrigger>
                                             <TooltipContent>
                                                 <div className="max-w-xs">
-                                                    <p className="font-medium">{model.name}</p>
-                                                    <p className="text-sm text-muted-foreground">{model.description}</p>
-                                                    {model.capabilities && (
+                                                    {/* <p className="font-medium">{model.name}</p>
+                                                    <p className="text-sm text-muted-foreground">{model.description}</p> */}
+                                                    {/* {model.capabilities && (
                                                         <p className="text-xs mt-1">
                                                             Capabilities: {model.capabilities.join(', ')}
                                                         </p>
-                                                    )}
+                                                    )} */}
                                                     {model.costPer1kTokens && (
                                                         <p className="text-xs mt-1">
                                                             Cost: ${model.costPer1kTokens}/1k tokens
                                                         </p>
+                                                    )}
+                                                    {model.maxTokens && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            Max tokens: {model.maxTokens.toLocaleString()}
+                                                        </div>
                                                     )}
                                                     <p className="text-xs mt-1 text-muted-foreground">
                                                         Status: {isAvailable ? '✅ Available' : '❌ Unavailable'}
@@ -139,8 +150,8 @@ export function ModelSelector({
                             <div>
                                 <span className="font-medium">Source:</span>
                                 <span className={`ml-1 px-1 py-0.5 rounded text-xs ${dataSourceInfo.source === 'live-cache' ? 'bg-green-100 text-green-800' :
-                                        dataSourceInfo.source === 'stale-cache' ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-red-100 text-red-800'
+                                    dataSourceInfo.source === 'stale-cache' ? 'bg-yellow-100 text-yellow-800' :
+                                        'bg-red-100 text-red-800'
                                     }`}>
                                     {dataSourceInfo.source}
                                 </span>
