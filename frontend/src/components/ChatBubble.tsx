@@ -20,9 +20,9 @@ export const ChatBubble: FC<{ text: string; isUser: boolean; isLoading?: boolean
                         <Skeleton className="h-4 w-[280px]" />
                         <div className="relative">
                             <Skeleton className="h-[80px] w-[300px] rounded-xl" />
-                            <div className="absolute inset-0 flex items-center justify-center">
+                            {/* <div className="absolute inset-0 flex items-center justify-center">
                                 <span className="text-sm text-muted-foreground font-medium">Generating...</span>
-                            </div>
+                            </div> */}
                         </div>
                         <div className="space-y-2">
                             <Skeleton className="h-4 w-[240px]" />
