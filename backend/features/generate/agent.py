@@ -71,7 +71,7 @@ async def summarize_old_messages(messages: list[ModelMessage]) -> list[ModelMess
 meme_theme_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
-    system_prompt="""
+    instructions="""
 You are a meme-caption factory.
 Your job is to generate meme captions and, if needed, image context, and emit only valid JSON matching this exact schema:
 
@@ -112,7 +112,7 @@ meme_image_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
     deps_type=Deps,
-    system_prompt="""
+    instructions="""
 You are the Meme Image Generation Agent in a multi-agent workflow.
 Your manager will hand you a single string containing JSON with these keys:
 {
@@ -222,7 +222,7 @@ meme_image_modification_agent = Agent(
     model=model,
     model_settings=model_settings,
     deps_type=Deps,
-    system_prompt="""
+    instructions="""
 You are a Meme Image Modification Agent, part of a multi-agent workflow.
 You will receive a prompt that contains a modification request and response ID in this format:
 "Modify the previous image based on the following request: [MODIFICATION_REQUEST]. Pass the previous response ID: [RESPONSE_ID]."
@@ -320,7 +320,7 @@ def modify_image(
 meme_caption_refinement_agent = Agent(
     model=model,
     model_settings=model_settings,
-    system_prompt="""
+    instructions="""
 You are a Meme Caption Refinement Agent.
 Your job is to take a user-supplied meme caption (and optional image context), and rewrite or improve it, splitting it into text boxes as needed for a meme image.
 Output only valid JSON matching this schema:
@@ -342,7 +342,7 @@ Output only valid JSON matching this schema:
 meme_random_inspiration_agent = Agent(
     model=model,
     model_settings=model_settings,
-    system_prompt="""
+    instructions="""
 You are a Meme Random Inspiration Agent.
 Your job is to invent a random, humorous meme caption and scene, and output it as valid JSON:
 {
@@ -364,7 +364,7 @@ manager_agent = Agent(
     model_settings=model_settings,
     deps_type=Deps,
     history_processors=[summarize_old_messages],
-    system_prompt="""
+    instructions="""
 You are a friendly and efficient Meme Manager Agent. You coordinate meme creation in two phases: caption generation and image creation.
 You must create a summary of the users request as soon they have choosen a caption. And pass that summary to the `summarise_request` tool.
 
