@@ -37,7 +37,7 @@ class ResponseMemeCaptions(BaseModel):
 meme_generation_agent = Agent(
     model=model,
     # tools=[duckduckgo_search_tool()],
-    system_prompt=(
+    instructions=(
         "You are a meme-caption factory. Given theme keywords, decide if you need fresh context from the web; "
         "if so, call the {'type': 'web_search_preview'} tool. Then generate the requested number of short, clever, meme-style captions "
         "as top text/bottom text pairs. Do not use emojis or hashtags. Return JSON matching ResponseMemeCaptions."
@@ -48,7 +48,7 @@ meme_generation_agent = Agent(
 # Agent that selects the best memes from candidates
 meme_selection_agent = Agent(
     model=model,
-    system_prompt=(
+    instructions=(
         "You are a meme curator. Use the meme_factory tool to get a batch of memes, review them, discard any that aren't funny or relevant, "
         "and return a final list of the top captions. If the batch is insufficient, you may call meme_factory again. "
         "Return only JSON matching ResponseMemeCaptions."

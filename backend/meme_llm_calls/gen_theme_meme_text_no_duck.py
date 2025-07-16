@@ -38,7 +38,7 @@ class ResponseMemeCaptions(BaseModel):
 # Initialize a PydanticAI Agent with DuckDuckGo search and output_type schema
 agent = Agent(
     model=model,
-    system_prompt=(
+    instructions=(
         "You are a meme-caption generator. Your job: produce meaningful, astute, satirical, short, punchy, meme-style captions that are informed, witty, relatable, and funny. "
         "Given theme keywords, decide whether to use the tool: {'type': 'web_search_preview'} to fetch fresh context. "
         "Do not use emojis, hashtags, or extra commentary. "

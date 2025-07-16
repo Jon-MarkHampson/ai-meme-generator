@@ -6,7 +6,7 @@ load_dotenv()
 
 joke_selection_agent = Agent(
     "openai:gpt-4.1-2025-04-14",
-    system_prompt=(
+    instructions=(
         "Use the `joke_factory` to generate some jokes, then choose the best. "
         "You must return just a single joke."
     ),

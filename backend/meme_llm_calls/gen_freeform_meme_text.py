@@ -13,7 +13,7 @@ def hello_world() -> str:
     """
     agent = Agent(
         "openai:gpt-4.1-2025-04-14",
-        system_prompt="Be concise, reply with one sentence.",
+        instructions="Be concise, reply with one sentence.",
     )
 
     result = agent.run_sync('Where does "hello world" come from?')
@@ -35,7 +35,7 @@ def generate_freeform_meme_text(prompt: str) -> str:
     """
     agent = Agent(
         "openai:gpt-4.1-2025-04-14",
-        system_prompt="Generate a creative and humorous meme caption based on the provided prompt. "
+        instructions="Generate a creative and humorous meme caption based on the provided prompt. "
         "Keep it concise and engaging, suitable for a meme format with two text boxes. "
         "Output format: JSON with 'text_box_1' and 'text_box_2' fields.",
     )

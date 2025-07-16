@@ -5,7 +5,7 @@ load_dotenv()
 
 agent = Agent(
     "openai:gpt-4.1-2025-04-14",
-    system_prompt="Be concise, reply with one sentence.",
+    instructions="Be concise, reply with one sentence.",
 )
 
 result = agent.run_sync('Where does "hello world" come from?')

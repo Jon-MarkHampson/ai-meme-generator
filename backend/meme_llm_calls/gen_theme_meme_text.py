@@ -34,7 +34,7 @@ class ResponseMemeCaptions(BaseModel):
 agent = Agent(
     model=model,
     tools=[duckduckgo_search_tool()],
-    system_prompt=(
+    instructions=(
         "You are a meme-caption generator. Your job: produce meaningful, astute, satirical, short, punchy, meme-style captions that are informed, witty, relatable, and funny. "
         "Given theme keywords, decide whether to use duckduckgo_search_tool to fetch fresh context. "
         "Do not use emojis, hashtags, or extra commentary. "

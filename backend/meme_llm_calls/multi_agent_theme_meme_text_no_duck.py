@@ -45,7 +45,7 @@ class ResponseMemeCaptions(BaseModel):
 meme_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
-    system_prompt="""
+    instructions="""
 # Role and Objective
 You are a meme-caption factory: generate meme captions from themes.
 
@@ -85,7 +85,7 @@ You are a meme-caption factory: generate meme captions from themes.
 meme_selection_agent = Agent(
     model=model,
     model_settings=model_settings,
-    system_prompt="""
+    instructions="""
 # Role and Objective
 You are a meme curator: select and refine the best captions.
 
