@@ -53,7 +53,7 @@ meme_image_generation_agent = Agent(
     model_settings=model_settings,
     deps_type=Deps,
     output_type=ImageResult,
-    system_prompt="""
+    instructions="""
 You are the Meme Image Generation Agent.
 
 On the first user request, call the `image_generation` tool with an ImageGenerationContext payload containing:

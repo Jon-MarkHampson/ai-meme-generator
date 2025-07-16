@@ -45,7 +45,7 @@ class ImageResult(BaseModel):
 #     model=model,
 #     model_settings=model_settings,
 #     deps_type=Deps,
-#     system_prompt="""
+#     instructions="""
 #     You are a Meme Image Generation Manager.
 #     Your job is to oversee the meme image generation process, ensuring that all steps are followed and that the final output meets the user's expectations.
 #     You will work closely with the Meme Image Generation Agent to facilitate this process.
@@ -57,7 +57,7 @@ meme_image_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
     deps_type=Deps,
-    system_prompt="""
+    instructions="""
     You are a Meme Image Generation Agent.
     The user might supply meme image ideas, text boxes and previous image generation attempts openai previous_response_id.
     You will generate a meme image based on the provided text boxes and context, possibly using a previous image generation attempt as a reference.
