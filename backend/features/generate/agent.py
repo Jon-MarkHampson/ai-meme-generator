@@ -39,8 +39,7 @@ logfire.instrument_pydantic_ai()
 AI_IMAGE_BUCKET = os.getenv("AI_IMAGE_BUCKET", "memes")  # Default bucket name
 
 model_settings = OpenAIResponsesModelSettings(
-    openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")],
-    allow_tools=True,
+    openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
 )
 model = OpenAIResponsesModel("gpt-4.1-2025-04-14")
 
