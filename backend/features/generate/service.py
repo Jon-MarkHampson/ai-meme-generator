@@ -279,7 +279,8 @@ def chat_stream(
                     ):
                         error_resp = ChatMessage(
                             role="model",
-                            content="I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content.",
+                            content="I'm sorry, but I can't create that meme as it was flagged by the content safety system. "
+                            "Please try a different caption or theme that doesn't contain potentially harmful content.",
                             timestamp=datetime.now(timezone.utc),
                         )
                     else:
