@@ -58,13 +58,12 @@ async def health_check():
 async def db_health_check():
     logger.info("Database health check endpoint called")
     is_healthy = check_db_connection()
-    if is_healthy:
-        return {"Database Health Check - status": "ok"}
-    else:
-        return {
-            "Database Health Check - status": "error",
-            "message": "Database connection failed",
-        }
+    try:
+        check_db_connection()
+        return {"status": "ok", "db": "connected"}
+    except Exception as e:
+        logger.error(f"Database health check failed: {e}")
+        return {"status": "error", "db": "not connected"}
 
 
 # Default to localhost if not set
