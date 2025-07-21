@@ -1,15 +1,6 @@
+import logging
 from sqlmodel import SQLModel, Session, create_engine, text
 from sqlalchemy.exc import OperationalError
-from entities.user import User
-from entities.meme_templates import MemeTemplate
-from entities.template_embeddings import TemplateEmbedding
-from entities.caption_requests import CaptionRequest
-from entities.caption_variants import CaptionVariant
-from entities.user_memes import UserMeme
-from entities.image_variants import ImageVariant
-from entities.chat_conversations import Conversation
-from entities.chat_messages import Message
-import logging
 
 from config import settings
 
