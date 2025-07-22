@@ -40,7 +40,7 @@ app = FastAPI(lifespan=lifespan)
 # configure logfire
 logfire.configure()
 logfire.instrument_httpx()
-logfire.instrument_pydantic()
+# logfire.instrument_pydantic()
 logfire.instrument_pydantic_ai()
 logfire.instrument_fastapi(app, capture_headers=True)
 # logfire.instrument_psycopg(enable_commenter=True)
