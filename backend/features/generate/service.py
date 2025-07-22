@@ -9,6 +9,10 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from database.core import Session as SessionClass, engine
 from openai import OpenAI
+from openai.types.responses import WebSearchToolParam
+from pydantic_ai.models.openai import (
+    OpenAIResponsesModelSettings,
+)
 
 from pydantic_ai.messages import (
     ModelMessagesTypeAdapter,
@@ -172,7 +176,7 @@ def chat_stream(
     manager_model: str = "gpt-4.1-2025-04-14",
 ) -> StreamingResponse:
     # Debug check the model being used
-    print(f"Using model: {manager_model}")
+    logger.info(f"Using model: {manager_model}")
 
     # Check conversation exists first, then close this session
     conv = session.get(ConversationEntity, conversation_id)
@@ -219,11 +223,18 @@ def chat_stream(
                     session=stream_session,
                     conversation_id=conversation_id,
                 )
-
+                model_settings = OpenAIResponsesModelSettings(
+                    openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
+                )
                 # ===== plain-text streaming =====
                 try:
+                    print(manager_agent.model_settings)
                     async with manager_agent.run_stream(
-                        prompt, model=manager_model, message_history=history, deps=deps
+                        prompt,
+                        # model=manager_model,
+                        # model_settings=model_settings,
+                        message_history=history,
+                        deps=deps,
                     ) as result:
                         # use .stream_text to get raw LLM output (no JSON/schema parsing)
                         async for text_piece in result.stream_text(debounce_by=0.01):
