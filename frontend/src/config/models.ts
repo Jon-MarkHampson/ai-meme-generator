@@ -50,17 +50,6 @@ export const AI_MODELS: ModelConfig[] = [
     costPer1kTokens: 0.008,
   },
   {
-    id: "openai:gpt-4.1-nano",
-    name: "GPT-4.1 Nano",
-    description: "Ultra-fast for simple tasks",
-    capabilities: ["text"],
-    pricing: "low",
-    speed: "fast",
-    isEnabled: true,
-    maxTokens: 64000,
-    costPer1kTokens: 0.004,
-  },
-  {
     id: "openai:o1-mini",
     name: "O1 Mini",
     description: "Reasoning-focused model",

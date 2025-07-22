@@ -91,11 +91,13 @@ export function ModelSelector({
                                                             )} */}
                                                         </div>
                                                         <span className="text-xs text-muted-foreground">{model.description}</span>
+                                                        {/*
                                                         {model.capabilities && (
                                                             <div className="text-xs text-muted-foreground">
                                                                 Capabilities: {model.capabilities.join(', ')}
                                                             </div>
                                                         )}
+                                                        */}
                                                         {showMetadata && (
                                                             <div className="flex gap-1">
                                                                 <span className="text-xs text-muted-foreground ">

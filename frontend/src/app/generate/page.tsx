@@ -26,7 +26,7 @@ const WELCOME: ChatMessage[] = [
     {
         role: "model",
         content:
-            "👋 Hey there! Let's make some memes! Do you have an idea, shall we brainstorm or shall I surprise you?",
+            "👋 Hey there! Let's make some memes! \nDo you have an idea, shall we brainstorm, search the web or shall I surprise you?",
         timestamp: new Date().toISOString(),
     },
 ];
