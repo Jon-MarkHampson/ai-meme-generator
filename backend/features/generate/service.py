@@ -9,10 +9,6 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from database.core import Session as SessionClass, engine
 from openai import OpenAI
-from openai.types.responses import WebSearchToolParam
-from pydantic_ai.models.openai import (
-    OpenAIResponsesModelSettings,
-)
 
 from pydantic_ai.messages import (
     ModelMessagesTypeAdapter,
@@ -25,7 +21,7 @@ from pydantic_ai.messages import (
 from entities.chat_conversations import Conversation as ConversationEntity
 from entities.chat_messages import Message as MessageEntity
 from entities.user import User
-from .agent import manager_agent
+from .agent import create_manager_agent
 from .models import (
     ConversationRead,
     ConversationUpdate,
@@ -175,8 +171,12 @@ def chat_stream(
     current_user: User,
     manager_model: str = "gpt-4.1-2025-04-14",
 ) -> StreamingResponse:
-    # Debug check the model being used
-    logger.info(f"Using model: {manager_model}")
+    # Split manager_model into parts if needed
+    provider, model = manager_model.split(":")
+    print(f"Using model: {model} from provider: {provider}")
+
+    # Debug print the model being used
+    logger.info(f"Using model: {model} from provider: {provider}")
 
     # Check conversation exists first, then close this session
     conv = session.get(ConversationEntity, conversation_id)
@@ -223,16 +223,14 @@ def chat_stream(
                     session=stream_session,
                     conversation_id=conversation_id,
                 )
-                model_settings = OpenAIResponsesModelSettings(
-                    openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
-                )
+
+                # Create the manager agent with the specified model
+                manager_agent = create_manager_agent(model=model)
+
                 # ===== plain-text streaming =====
                 try:
-                    print(manager_agent.model_settings)
                     async with manager_agent.run_stream(
                         prompt,
-                        # model=manager_model,
-                        # model_settings=model_settings,
                         message_history=history,
                         deps=deps,
                     ) as result:

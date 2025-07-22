@@ -1,5 +1,6 @@
 # backend/features/generate/agent.py
 import os
+import logging
 import logfire
 from dotenv import load_dotenv
 from typing import List
@@ -30,6 +31,9 @@ from .helpers import convert_response_to_png
 from .agent_instructions.manager_agent import manager_agent_instructions
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
 logfire.configure()
 logfire.instrument_pydantic_ai()
 
@@ -355,19 +359,11 @@ Do not include any extra text, markdown, or explanations—output ONLY the JSON 
 
 
 # ─── Manager Agent ──────────────────────────────────────────────────────────
-manager_agent = Agent(
-    model=model,
-    model_settings=model_settings,
-    deps_type=Deps,
-    history_processors=[summarize_old_messages],
-    instructions="""
-    You are a helpful assistant that searches the web, using the inbuilt web_search_preview tool to fetch up-to-date context.
-    """,
-    output_type=str,
-)
+
+# ─── Manager Tools as Plain Functions ──────────────────────────────────────
+import asyncio
 
 
-@manager_agent.tool
 async def meme_theme_factory(
     ctx: RunContext[Deps], keywords: List[str], image_context: str = ""
 ) -> MemeCaptionAndContext:
@@ -379,7 +375,6 @@ async def meme_theme_factory(
     return r.output
 
 
-@manager_agent.tool
 def meme_image_generation(
     ctx: RunContext[Deps],
     text_boxes: dict[str, str],
@@ -424,7 +419,6 @@ def meme_image_generation(
     return f"![]({image_url})"
 
 
-@manager_agent.tool
 def meme_image_modification(
     ctx: RunContext[Deps],
     modification_request: str,
@@ -452,8 +446,6 @@ def meme_image_modification(
     return f"![]({image_url})"
 
 
-# ─── Meme Caption Refinement Tool ──────────────────────────────────────────
-@manager_agent.tool
 def meme_caption_refinement(
     ctx: RunContext[Deps], caption: str, image_context: str = ""
 ) -> MemeCaptionAndContext:
@@ -465,8 +457,6 @@ def meme_caption_refinement(
     return r.output
 
 
-# ─── Meme Random Inspiration Tool ──────────────────────────────────────────
-@manager_agent.tool
 def meme_random_inspiration(ctx: RunContext[Deps]) -> MemeCaptionAndContext:
     """
     Generate a random meme caption and context.
@@ -476,7 +466,6 @@ def meme_random_inspiration(ctx: RunContext[Deps]) -> MemeCaptionAndContext:
     return r.output
 
 
-@manager_agent.tool
 def favourite_meme_in_db(ctx: RunContext[Deps]) -> str:
     """
     Mark a meme as favourite in the database.
@@ -515,7 +504,6 @@ def favourite_meme_in_db(ctx: RunContext[Deps]) -> str:
     return f"Marked meme {favourited_meme_id} as favourite."
 
 
-@manager_agent.tool
 def fetch_previous_image_id(ctx: RunContext[Deps]) -> str:
     """
     Fetch the previous image ID for a given meme.
@@ -546,7 +534,6 @@ def fetch_previous_image_id(ctx: RunContext[Deps]) -> str:
     return user_meme.openai_response_id
 
 
-@manager_agent.tool
 def fetch_previous_response_id(ctx: RunContext[Deps]) -> str:
     """
     Fetch the previous response ID for a given image ID.
@@ -577,7 +564,6 @@ def fetch_previous_response_id(ctx: RunContext[Deps]) -> str:
     return user_meme.openai_response_id
 
 
-@manager_agent.tool
 def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     """
     Summarise the current user request and update the conversation with the summary.
@@ -614,6 +600,36 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     # Return a message that will trigger the conversation update stream
     # The streaming service will detect this pattern and emit a conversation update
     return f"CONVERSATION_UPDATE:{ctx.deps.conversation_id}:{summary}:{updated_conversation.updated_at.isoformat()}"
+
+
+# ─── Factory for Manager Agent ─────────────────────────────────────────────
+def create_manager_agent(model: OpenAIResponsesModel):
+    web_model_settings = OpenAIResponsesModelSettings(
+        openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
+    )
+    # Debug print incoming model
+    print(f"Creating manager agent with model: {model}")
+    model_typed = OpenAIResponsesModel(model)
+    agent = Agent(
+        model=model_typed,
+        model_settings=web_model_settings,
+        deps_type=Deps,
+        tools=[
+            meme_theme_factory,
+            meme_image_generation,
+            meme_image_modification,
+            meme_caption_refinement,
+            meme_random_inspiration,
+            favourite_meme_in_db,
+            fetch_previous_image_id,
+            fetch_previous_response_id,
+            summarise_request,
+        ],
+        history_processors=[summarize_old_messages],
+        instructions=manager_agent_instructions,
+        output_type=str,
+    )
+    return agent
 
 
 # Helper function to safely handle database operations in agent context
