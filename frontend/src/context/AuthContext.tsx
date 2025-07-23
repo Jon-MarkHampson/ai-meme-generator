@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number | null>(null)
   const [hasRecentActivity, setHasRecentActivity] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false) // Track manual logout
+  const [sessionExpired, setSessionExpired] = useState(false) // Track session expiry
   const router = useRouter()
 
   // expose the state setters to logoutSilently()
@@ -109,6 +110,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initial auth check
   useEffect(() => {
+    // Don't try to fetch profile if session has already expired
+    if (sessionExpired) {
+      setLoading(false);
+      return;
+    }
+
     fetchProfile()
       .then((u) => {
         setUser(u);
@@ -119,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSessionTimeRemaining(null);
       })
       .finally(() => setLoading(false))
-  }, [checkTokenExpiry])
+  }, [checkTokenExpiry, sessionExpired])
 
   // Handle session expiry warnings and redirect
   useEffect(() => {
@@ -129,9 +136,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Session has expired (but not due to manual logout)
       console.warn('Session has expired - logging out user');
 
-      // Clear user state immediately
+      // Clear user state immediately and mark session as expired
       setUser(null);
       setSessionTimeRemaining(null);
+      setSessionExpired(true);
 
       // Force redirect to login page if we're not already on a public route
       if (typeof window !== 'undefined' && !isPublicRoute(window.location.pathname)) {
@@ -193,11 +201,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, checkTokenExpiry]); // Removed refreshSession to prevent cycles
 
   const login = async (email: string, password: string) => {
-    console.log('DEBUG: Starting login process...');
     try {
-      await apiLogin(email, password);
-      const u = await fetchProfile();
+      await apiLogin(email, password); // This sets the HTTP-only cookie
+      const u = await fetchProfile(); // Fetch the user profile
       setUser(u);
+      setSessionExpired(false); // Reset session expired flag on successful login
       checkTokenExpiry();
     } catch (error) {
       console.error('DEBUG: Login failed:', error);
@@ -215,6 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // backend doesn't set httpOnly cookie on signup, so we store it temporarily:
     document.cookie = `access_token=${access_token}; path=/;`
     setUser(newUser)
+    setSessionExpired(false); // Reset session expired flag on successful signup
     checkTokenExpiry()
   }
 
@@ -231,6 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(null);              // clear client-side user
     setSessionTimeRemaining(null);
+    setSessionExpired(false);   // Reset session expired flag
     setIsLoggingOut(false);     // Reset the flag
     router.push("/?logout=success");  // Add logout parameter to prevent auth required toast
   }
