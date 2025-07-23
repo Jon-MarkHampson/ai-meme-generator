@@ -186,18 +186,37 @@ export default function GalleryPage() {
                         ))
                     ) : (
                         // Show placeholder when no favorites or loading
-                        <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                            <div className="p-1">
-                                <Card>
-                                    <CardContent className="flex aspect-square items-center justify-center p-6">
-                                        <div className="text-center text-muted-foreground">
-                                            <p className="text-lg">No favorite memes yet!</p>
-                                            <p className="text-sm mt-2">Start creating and favoriting memes to see them here.</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </CarouselItem>
+                        <>
+                            {/* Show placeholder when no favorites or loading */}
+                            <CarouselItem className="md:basis-1/2 lg:basis-1/3">
+                                <div className="p-0 m-0 flex items-center justify-center">
+                                    <Card>
+                                        <CardContent className="flex aspect-[3/4] w-[300px]">
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem className="md:basis-1/2 lg:basis-1/3">
+                                <div className="p-0 m-0 flex items-center justify-center">
+                                    <Card>
+                                        <CardContent className="flex aspect-[3/4] w-[300px] items-center justify-center p-6">
+                                            <div className="text-center text-muted-foreground">
+                                                <p className="text-lg">No favorite memes yet!</p>
+                                                <p className="text-sm mt-2">Start creating and favoriting memes to see them here.</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </CarouselItem>
+                            <CarouselItem className="md:basis-1/2 lg:basis-1/3">
+                                <div className="p-0 m-0 flex items-center justify-center">
+                                    <Card>
+                                        <CardContent className="flex aspect-[3/4] w-[300px]">
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </CarouselItem>
+                        </>
                     )}
                 </CarouselContent>
                 <CarouselPrevious />
