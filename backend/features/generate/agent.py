@@ -11,12 +11,14 @@ import time
 from openai.types.responses import WebSearchToolParam
 from openai import BadRequestError
 from pydantic_ai import Agent, RunContext, ModelRetry
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.usage import UsageLimits
 from pydantic_ai.models.openai import (
     OpenAIResponsesModel,
     OpenAIResponsesModelSettings,
 )
+from pydantic_ai.models.anthropic import AnthropicModel
 from .models import MemeCaptionAndContext, ImageResult, Deps
 
 from features.image_storage.service import upload_image_to_supabase
@@ -357,11 +359,7 @@ Do not include any extra text, markdown, or explanations—output ONLY the JSON 
     output_type=MemeCaptionAndContext,
 )
 
-
-# ─── Manager Agent ──────────────────────────────────────────────────────────
-
 # ─── Manager Tools as Plain Functions ──────────────────────────────────────
-import asyncio
 
 
 async def meme_theme_factory(
@@ -603,8 +601,8 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
 
 
 # ─── Factory for Manager Agent ─────────────────────────────────────────────
-def create_manager_agent(model: OpenAIResponsesModel):
-    web_model_settings = OpenAIResponsesModelSettings(
+def create_manager_agent_openai(model: OpenAIResponsesModel):
+    settings = OpenAIResponsesModelSettings(
         openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
     )
     # Debug print incoming model
@@ -612,7 +610,36 @@ def create_manager_agent(model: OpenAIResponsesModel):
     model_typed = OpenAIResponsesModel(model)
     agent = Agent(
         model=model_typed,
-        model_settings=web_model_settings,
+        model_settings=settings,
+        deps_type=Deps,
+        tools=[
+            meme_theme_factory,
+            meme_image_generation,
+            meme_image_modification,
+            meme_caption_refinement,
+            meme_random_inspiration,
+            favourite_meme_in_db,
+            fetch_previous_image_id,
+            fetch_previous_response_id,
+            summarise_request,
+        ],
+        history_processors=[summarize_old_messages],
+        instructions=manager_agent_instructions,
+        output_type=str,
+    )
+    return agent
+
+
+def create_manager_agent_anthropic(provider, model: AnthropicModel):
+    # Debug print incoming model and provider
+    print(f"Creating manager agent with model: {model} and provider: {provider}")
+    extra_body = {
+        "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}]
+    }
+    model_typed = AnthropicModel(model)
+    agent = Agent(
+        model=model_typed,
+        model_settings=ModelSettings(extra_body=extra_body),
         deps_type=Deps,
         tools=[
             meme_theme_factory,
