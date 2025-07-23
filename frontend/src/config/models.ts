@@ -15,6 +15,7 @@ export interface ModelConfig {
 }
 
 export const AI_MODELS: ModelConfig[] = [
+  // OpenAI Models
   {
     id: "openai:gpt-4o",
     name: "GPT-4o",
@@ -59,6 +60,41 @@ export const AI_MODELS: ModelConfig[] = [
     isEnabled: true,
     maxTokens: 128000,
     costPer1kTokens: 0.012,
+  },
+  
+  // Anthropic Claude Models
+  {
+    id: "anthropic:claude-sonnet-4-20250514",
+    name: "Claude Sonnet 4",
+    description: "Latest Claude model with enhanced reasoning",
+    capabilities: ["text", "reasoning", "analysis", "vision"],
+    pricing: "high",
+    speed: "medium",
+    isEnabled: true,
+    maxTokens: 200000,
+    costPer1kTokens: 0.015,
+  },
+  {
+    id: "anthropic:claude-3-7-sonnet-20250219",
+    name: "Claude Sonnet 3.7",
+    description: "Enhanced version of Claude 3.5 Sonnet",
+    capabilities: ["text", "reasoning", "analysis", "vision"],
+    pricing: "high",
+    speed: "medium",
+    isEnabled: true,
+    maxTokens: 200000,
+    costPer1kTokens: 0.012,
+  },
+  {
+    id: "anthropic:claude-3-5-sonnet-latest",
+    name: "Claude Sonnet 3.5",
+    description: "Latest Claude 3.5 Sonnet with improvements",
+    capabilities: ["text", "reasoning", "analysis", "vision"],
+    pricing: "medium",
+    speed: "medium",
+    isEnabled: true,
+    maxTokens: 200000,
+    costPer1kTokens: 0.008,
   },
 ];
 
