@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from '@/context/AuthContext';
 import { AuthGuard } from '@/components/AuthGuard';
 import { NavBar } from "@/components/NavBar";
+import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
@@ -43,7 +44,7 @@ export function generateViewport() {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AuthGuard>
               <main>{children}</main>
             </AuthGuard>
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

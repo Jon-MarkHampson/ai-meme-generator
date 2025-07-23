@@ -42,13 +42,13 @@ API.interceptors.response.use(
         // Clear any auth cookies client-side
         clearAuthCookies();
 
-        // Only redirect if we're not already on a public route
-        if (!isPublicRoute(window.location.pathname)) {
-          // Use replace to avoid back button issues
-          // Add a small delay to ensure state updates complete
-          setTimeout(() => {
-            window.location.replace("/?session=expired");
-          }, 100);
+        // Only redirect if we're not already on a public route and we're in browser
+        if (
+          typeof window !== "undefined" &&
+          !isPublicRoute(window.location.pathname)
+        ) {
+          // Use replace to avoid back button issues and ensure immediate redirect
+          window.location.replace("/?session=expired");
         }
       } catch (cleanupError) {
         console.error("Error during session cleanup:", cleanupError);
