@@ -105,48 +105,85 @@ export function streamChat(
   onError: (err: Error) => void
 ): () => void {
   const controller = new AbortController();
-  fetch(
-    `${API.defaults.baseURL}/generate/conversations/${conversationId}/stream/`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ manager_model, prompt }),
-      signal: controller.signal,
-      // this tells fetch to include HttpOnly cookie
-      credentials: "include",
-    }
-  )
-    .then((res) => {
+
+  const processStream = async () => {
+    try {
+      const res = await fetch(
+        `${API.defaults.baseURL}/generate/conversations/${conversationId}/stream/`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ manager_model, prompt }),
+          signal: controller.signal,
+          // this tells fetch to include HttpOnly cookie
+          credentials: "include",
+        }
+      );
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (!res.body) throw new Error("No response body");
+
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
-      return reader
-        .read()
-        .then(function pump({ done, value }): Promise<void> | undefined {
-          if (done) return;
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+
+          // Check if the controller was aborted
+          if (controller.signal.aborted) {
+            break;
+          }
+
+          if (done) break;
+
           buf += dec.decode(value, { stream: true });
           const lines = buf.split("\n");
           buf = lines.pop()!; // leave incomplete chunk
+
           for (const line of lines) {
             if (line.trim()) {
-              const parsed = JSON.parse(line) as StreamMessage;
-              if ("type" in parsed && parsed.type === "conversation_update") {
-                // Handle conversation update
-                onConversationUpdate(parsed);
-              } else {
-                // Handle regular chat message
-                onMessage(parsed as ChatMessage, conversationId);
+              try {
+                const parsed = JSON.parse(line) as StreamMessage;
+                if ("type" in parsed && parsed.type === "conversation_update") {
+                  // Handle conversation update
+                  onConversationUpdate(parsed);
+                } else {
+                  // Handle regular chat message
+                  onMessage(parsed as ChatMessage, conversationId);
+                }
+              } catch (parseError) {
+                console.warn(
+                  "Failed to parse stream message:",
+                  line,
+                  parseError
+                );
               }
             }
           }
-          return reader.read().then(pump);
-        });
-    })
-    .catch(onError);
+        }
+      } finally {
+        // Always clean up the reader
+        try {
+          reader.releaseLock();
+        } catch (e) {
+          // Reader might already be released
+        }
+      }
+    } catch (error) {
+      // Don't call onError if the operation was aborted
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      onError(error as Error);
+    }
+  };
+
+  // Start the stream processing
+  processStream();
 
   return () => controller.abort();
 }
