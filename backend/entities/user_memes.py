@@ -21,22 +21,6 @@ class UserMeme(SQLModel, table=True):
             ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
         ),
     )
-    meme_template_id: Optional[str] = (
-        Field(  # Remove optional once meme templates table is created
-            sa_column=Column(
-                ForeignKey("meme_templates.id", ondelete="SET NULL"),
-                nullable=True,
-                index=True,
-            ),
-        )
-    )
-    caption_variant_id: Optional[str] = Field(
-        sa_column=Column(
-            ForeignKey("caption_variants.id", ondelete="SET NULL"),
-            nullable=True,
-            index=True,
-        )
-    )
     image_url: str = Field(nullable=False)
     openai_response_id: str = Field(nullable=False)
     is_favorite: bool = Field(default=False, nullable=False)
