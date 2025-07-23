@@ -1,6 +1,6 @@
 // components/FavoriteToggle.tsx
 import { useState, useEffect } from "react";
-import { HeartMinus, HeartPlus, Loader2 } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { toggleFavorite, getMemeByUrl } from "@/lib/gallery";
 
@@ -85,15 +85,16 @@ export function FavoriteToggle({
             onPressedChange={handleToggle}
             disabled={isLoading || isInitializing}
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-            className="data-[state=on]:bg-red-100 data-[state=on]:text-red-600 hover:bg-red-50"
+            className="data-[state=on]:bg-red-100/10 data-[state=on]:text-red-600 hover:bg-red-50 data-[state=on]:hover:bg-red-50"
         >
             {isLoading || isInitializing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
             ) : isFavorite ? (
-                <HeartMinus className="h-4 w-4" />
+                <Heart className="h-4 w-4 fill-red-600" />
             ) : (
-                <HeartPlus className="h-4 w-4" />
-            )}
-        </Toggle>
+                <Heart className="h-4 w-4" />
+            )
+            }
+        </Toggle >
     );
 }
