@@ -601,45 +601,28 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
 
 
 # ─── Factory for Manager Agent ─────────────────────────────────────────────
-def create_manager_agent_openai(model: OpenAIResponsesModel):
-    settings = OpenAIResponsesModelSettings(
-        openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
-    )
-    # Debug print incoming model
-    print(f"Creating manager agent with model: {model}")
-    model_typed = OpenAIResponsesModel(model)
+def create_manager_agent(provider, model):
+    # Debug print incoming model and provider
+    print(f"Creating manager agent with model: {model} and provider: {provider}")
+    if provider == "openai":
+        settings = OpenAIResponsesModelSettings(
+            openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
+        )
+        model_typed = OpenAIResponsesModel(model)
+    elif provider == "anthropic":
+        extra_body = {
+            "tools": [
+                {"type": "web_search_20250305", "name": "web_search", "max_uses": 1}
+            ]
+        }
+        settings = ModelSettings(extra_body=extra_body)
+        model_typed = AnthropicModel(model)
+    else:
+        raise ValueError(f"Unsupported provider: {provider}")
+    # Create the agent with the specified model and settings
     agent = Agent(
         model=model_typed,
         model_settings=settings,
-        deps_type=Deps,
-        tools=[
-            meme_theme_factory,
-            meme_image_generation,
-            meme_image_modification,
-            meme_caption_refinement,
-            meme_random_inspiration,
-            favourite_meme_in_db,
-            fetch_previous_image_id,
-            fetch_previous_response_id,
-            summarise_request,
-        ],
-        history_processors=[summarize_old_messages],
-        instructions=manager_agent_instructions,
-        output_type=str,
-    )
-    return agent
-
-
-def create_manager_agent_anthropic(provider, model: AnthropicModel):
-    # Debug print incoming model and provider
-    print(f"Creating manager agent with model: {model} and provider: {provider}")
-    extra_body = {
-        "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 1}]
-    }
-    model_typed = AnthropicModel(model)
-    agent = Agent(
-        model=model_typed,
-        model_settings=ModelSettings(extra_body=extra_body),
         deps_type=Deps,
         tools=[
             meme_theme_factory,
