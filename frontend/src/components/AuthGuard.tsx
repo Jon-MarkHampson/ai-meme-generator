@@ -12,11 +12,14 @@ export function AuthGuard({ children }: PropsWithChildren) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [showSessionWarning, setShowSessionWarning] = useState(false);
+    const [localCountdown, setLocalCountdown] = useState<number | null>(null);
 
     // Use refs to prevent infinite loops
     const hasShownSessionExpiredRef = useRef(false);
     const hasShownAuthRequiredRef = useRef(false);
     const hasShownLogoutSuccessRef = useRef(false);
+    const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const toastIdRef = useRef<string | number | null>(null);
 
     const isPublic = PUBLIC_ROUTES.includes(pathname as (typeof PUBLIC_ROUTES)[number]);
 
@@ -52,26 +55,115 @@ export function AuthGuard({ children }: PropsWithChildren) {
 
     // Monitor session time remaining and show warnings
     useEffect(() => {
+        // Always sync local countdown with backend value when it changes
+        if (sessionTimeRemaining !== null && sessionTimeRemaining > 0) {
+            setLocalCountdown(sessionTimeRemaining);
+        }
+
+        // Clean up existing interval when sessionTimeRemaining changes significantly
+        // (e.g., when session is refreshed due to activity)
+        if (countdownIntervalRef.current && sessionTimeRemaining !== null && sessionTimeRemaining > 120) {
+            // Session was refreshed, clear countdown and warning
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+            setShowSessionWarning(false);
+            setLocalCountdown(null);
+            if (toastIdRef.current) {
+                toast.dismiss(toastIdRef.current);
+                toastIdRef.current = null;
+            }
+            return;
+        }
+
         if (sessionTimeRemaining !== null && sessionTimeRemaining > 0) {
             // 5-minute sessions: Show warning when 1 minute or less remaining
-            if (sessionTimeRemaining <= 60 && !showSessionWarning) {
+            if (sessionTimeRemaining <= 61 && !showSessionWarning) {
                 setShowSessionWarning(true);
-                const secondsLeft = sessionTimeRemaining;
 
-                toast.warning(`Session expires in ${secondsLeft} second${secondsLeft !== 1 ? 's' : ''}`, {
+                // Show initial toast
+                toastIdRef.current = toast.warning(`Session expires in ${sessionTimeRemaining} second${sessionTimeRemaining !== 1 ? 's' : ''}`, {
                     description: 'Your session will expire soon due to inactivity. Move your mouse or click to extend.',
-                    duration: 10000,
+                    duration: Infinity,
                 });
+
+                // Start local countdown timer only if we don't already have one
+                if (!countdownIntervalRef.current) {
+                    countdownIntervalRef.current = setInterval(() => {
+                        setLocalCountdown(prev => {
+                            if (prev === null || prev <= 1) {
+                                // When local countdown reaches 0, redirect to expired page
+                                if (prev === 1) {
+                                    setTimeout(() => {
+                                        router.replace('/?session=expired');
+                                    }, 100);
+                                }
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                }
             }
 
-            // Hide warning if session time increases (user activity refreshed token)
-            if (sessionTimeRemaining > 60 && showSessionWarning) {
+            // Hide warning if session time increases significantly (user activity refreshed token)
+            if (sessionTimeRemaining > 120 && showSessionWarning) {
                 setShowSessionWarning(false);
+                setLocalCountdown(null);
+                if (countdownIntervalRef.current) {
+                    clearInterval(countdownIntervalRef.current);
+                    countdownIntervalRef.current = null;
+                }
+                if (toastIdRef.current) {
+                    toast.dismiss(toastIdRef.current);
+                    toastIdRef.current = null;
+                }
             }
         } else {
             setShowSessionWarning(false);
+            setLocalCountdown(null);
+            if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+            }
+            if (toastIdRef.current) {
+                toast.dismiss(toastIdRef.current);
+                toastIdRef.current = null;
+            }
         }
-    }, [sessionTimeRemaining, showSessionWarning]);
+    }, [sessionTimeRemaining]); // Remove showSessionWarning from dependencies to prevent loops
+
+    // Update toast with local countdown
+    useEffect(() => {
+        if (showSessionWarning && localCountdown !== null && localCountdown > 0 && toastIdRef.current) {
+            // Use a more stable approach - only update if the message would actually change
+            const message = `Session expires in ${localCountdown} second${localCountdown !== 1 ? 's' : ''}`;
+
+            // Update the toast without creating a new one
+            toast.warning(message, {
+                description: 'Your session will expire soon due to inactivity. Move your mouse or click to extend.',
+                duration: Infinity,
+                id: toastIdRef.current,
+            });
+        }
+        // If countdown reaches 0, dismiss the warning toast
+        else if (showSessionWarning && localCountdown === 0 && toastIdRef.current) {
+            toast.dismiss(toastIdRef.current);
+            toastIdRef.current = null;
+            setShowSessionWarning(false);
+        }
+    }, [localCountdown]); // Remove showSessionWarning from dependencies to prevent loops
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+            }
+            if (toastIdRef.current) {
+                toast.dismiss(toastIdRef.current);
+            }
+        };
+    }, []);
 
     // Handle authentication redirects
     useEffect(() => {
