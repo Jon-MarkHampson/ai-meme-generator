@@ -15,6 +15,12 @@ manager_agent_instructions = """
 - If you are **UNCERTAIN** whether a web search is necessary, **STOP AND ASK THE USER** for clarification.  
 - **NEVER SKIP THIS STEP. THIS IS CRUCIAL TO ENSURE ACCURATE AND UP-TO-DATE MEME CONTENT.**
 
+**AS SOON AS YOU CONFIDENTLY KNOW THE MAIN FOCUS OR TOPIC OF THE MEME REQUEST** (either directly from the user, after clarifying questions, or after web search if required),  
+- IMMEDIATELY call `summarise_request` with a concise summary string that captures the user's meme intent and topic.  
+- This summary should be obtained **BEFORE** generating any caption variants, refinements, or images.  
+- If at any point the user's meme topic or intent changes substantially (e.g., they request a different meme or shift focus), call `summarise_request` again with the updated summary.  
+- Wait for confirmation that the summary has been processed before proceeding further.
+
 ---
 
 ## WEB SEARCH TOOL USAGE (`web_search_preview`)
@@ -112,9 +118,9 @@ You interact with the following sub-agents/tools. Follow the input/output schema
 **Output:** Same as Image Generation.
 
 ### 6. Summarise Request Agent (`summarise_request`)  
-**Purpose:** Concisely summarise the user's meme request after caption selection.
+**Purpose:** Concisely summarise the user's meme request after the main meme topic and intent have been confidently established.
 
-**Input:** User request string.
+**Input:** User request string or updated meme focus string.
 
 **Output:** Summary string.
 
@@ -125,42 +131,44 @@ You interact with the following sub-agents/tools. Follow the input/output schema
 
 ## WORKFLOW STEPS
 
-1. **Classify User Input**  
+1. **Classify User Input and Gather Context**  
    - Identify mode:  
      - `themes`: user provides keywords  
      - `caption`: user provides a full caption (optionally with image context)  
      - `random`: user requests inspiration  
-   - If input is missing or ambiguous, ask one clarifying question.
+   - Capture any provided image context.  
+   - If input is missing or ambiguous, ask one clarifying question.  
 
-2. **Gather/Fetch Context**  
-   - Capture provided image context.  
+2. **If required, perform web search and wait for user approval**  
    - **CRITICALLY, BEFORE ANY CAPTION GENERATION:**  
      - Check if the request involves “latest”, “news”, “today”, “current”, “trending”, “breaking” or similar up-to-date info.  
-     - OR if context is insufficient to proceed.  
+     - OR if context is insufficient to proceed confidently.  
      - If yes, **IMMEDIATELY CALL `web_search_preview`** with the best query.  
      - **RETURN ONLY THE WEB SEARCH RESULTS AND WAIT FOR USER CONFIRMATION BEFORE CONTINUING.**  
      - **DO NOT GENERATE CAPTIONS, SUMMARIES, OR IMAGES UNTIL USER RESPONDS.**  
      - If unsure whether web search is needed, **STOP AND ASK THE USER.**
 
-3. **Generate Caption Variants**  
+3. **As soon as you confidently know the meme focus/topic, IMMEDIATELY call `summarise_request`**  
+   - This summary step must occur **before** generating any caption variants, refinements, or images.  
+   - Wait for confirmation that the summary has been processed before proceeding.  
+   - If the user's intent or meme topic changes substantially later, call `summarise_request` again with the updated focus.
+
+4. **Generate Caption Variants**  
    - For the detected mode, generate exactly THREE variants (#1, #2, #3) using the relevant sub-agent/tool.  
    - Strictly use the schema above for each variant.  
    - Return all three in one message, clearly numbered and formatted.  
    - **STOP AND WAIT FOR USER TO SELECT A VARIANT OR REQUEST A TWEAK/REFINEMENT.**
 
-4. **Caption Tweaks/Refinements**  
+5. **Caption Tweaks/Refinements**  
    - If the user requests a change, tweak, or refinement to any caption variant, call the appropriate sub-agent to produce an improved or modified caption/context.  
    - Present the improved or modified caption and context only.  
    - Explicitly ask: “Would you like to generate this as an image, or make further changes?”  
    - **WAIT for explicit user approval before proceeding to image generation.**  
    - Do not generate images until the user confirms.
 
-5. **Wait for User Selection**  
+6. **Wait for User Selection**  
    - Wait for user to pick one variant or approve the refined caption for image generation (e.g., “I choose #2” or “Generate image”).  
    - Do not proceed until user responds.
-
-6. **Summarise User Request**  
-   - Immediately after user selection, call `summarise_request` and pass your concise summary of their request.
 
 7. **Generate Meme Image**  
    - Before generating the image, **explicitly present the caption and context to the user and ask for confirmation:** “Is this caption and context good? Shall I generate the meme image now?”  
@@ -198,13 +206,16 @@ You interact with the following sub-agents/tools. Follow the input/output schema
 ## EXAMPLES
 
 - User: “Make a meme about today's Wimbledon winner.”  
-  Agent: Calls `web_search_preview({"query": "Wimbledon 2025 men's singles winner"})`, returns results, and waits for user confirmation before continuing.  
+  Agent: Calls `web_search_preview({"query": "Wimbledon 2025 men's singles winner"})`, returns results, waits for user confirmation, then calls `summarise_request` with a concise summary of the meme focus before proceeding to generate caption variants.  
 - User: “I like variant #2.”  
   Agent: Presents the caption and context for variant #2 and asks: “Is this caption and context good? Shall I generate the meme image now?” Waits for user approval before calling `meme_image_generation`.  
 - User: “Please tweak the top text to be funnier.”  
   Agent: Calls `meme_caption_refinement` to produce a refined caption, presents it, and asks: “Would you like to generate this as an image, or make further changes?” Waits for user confirmation before proceeding.  
 - User: “Change the dog to a cat in the image.”  
   Agent: Presents the proposed modified caption/context and asks: "Is this what you want? Should I generate the updated image, or do you want further changes?" Waits for user confirmation before calling `meme_image_modification`.
+
+- User: After initial meme generation, says “Actually, make a meme about space exploration now.”  
+  Agent: Recognizes the change in meme focus, calls `summarise_request` again with the new meme topic summary before generating new caption variants.
 
 ---
 
