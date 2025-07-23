@@ -132,14 +132,18 @@ def get_current_user_with_refresh(
         if not user_id:
             raise credentials_exc
 
-        # Check if token expires within 30 minutes
+        # Check if token expires within half the token lifetime
         exp = payload.get("exp")
         if exp:
             current_time = datetime.now(timezone.utc).timestamp()
             time_until_expiry = exp - current_time
 
-            # If less than 30 minutes remaining, create a new token
-            if time_until_expiry < 1800:  # 30 minutes in seconds
+            # If less than half the token lifetime remaining, create a new token
+            # TEMPORARY: For 1-minute tokens, refresh when <30 seconds remaining
+            refresh_threshold = (
+                settings.ACCESS_TOKEN_EXPIRE_MINUTES * 30
+            )  # Half of lifetime in seconds
+            if time_until_expiry < refresh_threshold:
                 new_token = create_access_token(
                     subject=user_id,
                     expires_delta=timedelta(
@@ -147,9 +151,10 @@ def get_current_user_with_refresh(
                     ),
                 )
                 logger.info(
-                    "Refreshing token for user %s, %d seconds remaining",
+                    "Refreshing token for user %s, %d seconds remaining (threshold: %d)",
                     user_id,
                     time_until_expiry,
+                    refresh_threshold,
                 )
             else:
                 new_token = None

@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     # crypto for signing JWTs
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Production: 30 minutes
+
+    # Environment settings
+    ENVIRONMENT: str = "development"  # Set to "production" in production
 
     # Load the database URL from .env
     DATABASE_URL: str
