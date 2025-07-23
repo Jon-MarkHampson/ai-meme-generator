@@ -13,6 +13,7 @@ from .service import (
     get_password_hash,
     create_access_token,
     get_current_user,
+    get_token_from_cookie_or_header,
 )
 from database.core import get_session
 from config import settings
@@ -95,8 +96,8 @@ def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,  # only over HTTPS
-        samesite="lax",  # or "strict"
+        secure=settings.ENVIRONMENT == "production",  # Secure cookies in production
+        samesite="strict",  # Strict for better security
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # convert minutes to seconds
         path="/",
     )
@@ -125,8 +126,8 @@ def refresh_session(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,  # only over HTTPS
-        samesite="lax",
+        secure=settings.ENVIRONMENT == "production",  # Secure cookies in production
+        samesite="strict",  # Strict for better security
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -144,3 +145,40 @@ def logout():
     )
     response.delete_cookie("access_token", path="/")
     return response
+
+
+@router.get("/session-status")
+def get_session_status(
+    token: str = Depends(get_token_from_cookie_or_header),
+):
+    """
+    Get the current session status including time remaining.
+    Returns session expiry details.
+    """
+    from jose import jwt
+    from datetime import datetime, timezone
+
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+
+        exp = payload.get("exp")
+        if exp:
+            current_time = datetime.now(timezone.utc).timestamp()
+            time_remaining = max(0, int(exp - current_time))
+        else:
+            time_remaining = 0
+
+        return {
+            "authenticated": True,
+            "time_remaining": time_remaining,
+            "expires_at": exp,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid session",
+        )
