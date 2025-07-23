@@ -1,5 +1,5 @@
 // components/FavoriteToggle.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HeartMinus, HeartPlus, Loader2 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { toggleFavorite, getMemeByUrl } from "@/lib/gallery";
@@ -15,15 +15,39 @@ interface FavoriteToggleProps {
 export function FavoriteToggle({
     imageUrl,
     memeId,
-    initialIsFavorite = false,
+    initialIsFavorite,
     size = "sm",
     onToggle
 }: FavoriteToggleProps) {
-    const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
+    const [isFavorite, setIsFavorite] = useState(initialIsFavorite ?? false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(initialIsFavorite === undefined);
+
+    // Fetch initial favorite status if not provided
+    useEffect(() => {
+        if (initialIsFavorite !== undefined) {
+            setIsInitializing(false);
+            return;
+        }
+
+        const fetchInitialStatus = async () => {
+            try {
+                const meme = await getMemeByUrl(imageUrl);
+                if (meme) {
+                    setIsFavorite(meme.is_favorite);
+                }
+            } catch (error) {
+                console.error("Error fetching initial favorite status:", error);
+            } finally {
+                setIsInitializing(false);
+            }
+        };
+
+        fetchInitialStatus();
+    }, [imageUrl, initialIsFavorite]);
 
     const handleToggle = async () => {
-        if (isLoading) return;
+        if (isLoading || isInitializing) return;
 
         setIsLoading(true);
         try {
@@ -59,11 +83,11 @@ export function FavoriteToggle({
             size={size}
             pressed={isFavorite}
             onPressedChange={handleToggle}
-            disabled={isLoading}
+            disabled={isLoading || isInitializing}
             aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
             className="data-[state=on]:bg-red-100 data-[state=on]:text-red-600 hover:bg-red-50"
         >
-            {isLoading ? (
+            {isLoading || isInitializing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
             ) : isFavorite ? (
                 <HeartMinus className="h-4 w-4" />
