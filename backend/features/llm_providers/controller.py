@@ -9,7 +9,10 @@ import logging
 
 from entities.user import User
 from features.auth.service import get_current_user
-from .multi_provider_service import get_model_availability, get_all_providers_availability
+from .multi_provider_service import (
+    get_model_availability,
+    get_all_providers_availability,
+)
 from .models import ModelAvailabilityResponse, LLMProvidersResponse
 
 logger = logging.getLogger(__name__)
@@ -22,7 +25,7 @@ async def check_model_availability(
 ) -> ModelAvailabilityResponse:
     """
     Check which models are currently available from all providers.
-    
+
     LEGACY ENDPOINT: Use /availability/detailed for full provider information.
 
     Returns:
@@ -57,7 +60,7 @@ async def check_detailed_model_availability(
 ) -> LLMProvidersResponse:
     """
     Check detailed availability information from all providers.
-    
+
     Returns provider-specific information including error states, cache status,
     and individual provider availability.
 
@@ -111,15 +114,23 @@ async def debug_models(
     Debug endpoint to see all configured models and their availability.
     """
     try:
-        from .multi_provider_service import get_fallback_availability, _openai_provider, _anthropic_provider
-        
+        from .multi_provider_service import (
+            get_fallback_availability,
+            _openai_provider,
+            _anthropic_provider,
+        )
+
         # Get all supported models from providers
-        openai_models = [{"id": m.id, "name": m.name} for m in _openai_provider.supported_models]
-        anthropic_models = [{"id": m.id, "name": m.name} for m in _anthropic_provider.supported_models]
-        
+        openai_models = [
+            {"id": m.id, "name": m.name} for m in _openai_provider.supported_models
+        ]
+        anthropic_models = [
+            {"id": m.id, "name": m.name} for m in _anthropic_provider.supported_models
+        ]
+
         # Get current availability
         availability_result = get_model_availability(current_user.id)
-        
+
         return {
             "openai_models": openai_models,
             "anthropic_models": anthropic_models,
@@ -129,7 +140,7 @@ async def debug_models(
             "total_available": availability_result.enabled_count,
             "total_models": availability_result.total_count,
         }
-        
+
     except Exception as e:
         logger.error(f"Error in debug models endpoint: {e}")
         return {"error": str(e)}
