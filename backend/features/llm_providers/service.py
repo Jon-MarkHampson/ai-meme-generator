@@ -20,13 +20,19 @@ _model_availability_cache: Dict[str, bool] = {}
 _cache_timestamp = 0
 CACHE_DURATION = 5 * 60  # 5 minutes in seconds
 
-# List of models to check (should match your frontend config)
+# List of models to check (should match your frontend config - now includes Claude models)
 MODELS_TO_CHECK = [
+    # OpenAI Models
     "openai:gpt-4o",
     "openai:gpt-4.1-2025-04-14",
     "openai:gpt-4.1-mini",
     "openai:gpt-4.1-nano",
     "openai:o1-mini",
+    
+    # Anthropic Claude Models
+    "anthropic:claude-sonnet-4-20250514",
+    "anthropic:claude-3-7-sonnet-20250219",
+    "anthropic:claude-3-5-sonnet-latest",
 ]
 
 
