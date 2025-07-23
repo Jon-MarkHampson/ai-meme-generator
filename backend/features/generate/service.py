@@ -21,7 +21,7 @@ from pydantic_ai.messages import (
 from entities.chat_conversations import Conversation as ConversationEntity
 from entities.chat_messages import Message as MessageEntity
 from entities.user import User
-from .agent import create_manager_agent_openai, create_manager_agent_anthropic
+from .agent import create_manager_agent
 from .models import (
     ConversationRead,
     ConversationUpdate,
@@ -169,7 +169,7 @@ def chat_stream(
     prompt: str,
     session: Session,
     current_user: User,
-    manager_model: str = "gpt-4.1-2025-04-14",
+    manager_model: str = "openai:gpt-4.1-2025-04-14",  # fallback to OpenAI GPT-4.1
 ) -> StreamingResponse:
     # Split manager_model into parts if needed
     provider, model = manager_model.split(":")
@@ -223,18 +223,12 @@ def chat_stream(
                     session=stream_session,
                     conversation_id=conversation_id,
                 )
-                # for now smoke test anthropic
-                provider = "anthropic"
-                model = "claude-sonnet-4-20250514"
+                # For now smoke test anthropic (TEMPORARY)
+                # Forcing use of Claude Sonnet 4 model
+                # provider = "anthropic"
+                # model = "claude-sonnet-4-20250514"
                 # Create the manager agent with the specified model
-                if provider == "openai":
-                    manager_agent = create_manager_agent_openai(
-                        provider=provider, model=model
-                    )
-                elif provider == "anthropic":
-                    manager_agent = create_manager_agent_anthropic(
-                        provider=provider, model=model
-                    )
+                manager_agent = create_manager_agent(provider=provider, model=model)
 
                 # ===== plain-text streaming =====
                 try:
