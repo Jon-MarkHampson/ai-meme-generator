@@ -33,12 +33,13 @@ export async function apiSignup(
 export async function apiLogin(
   email: string,
   password: string
-): Promise<{ access_token: string; token_type: string }> {
-  const resp = await API.post<{ access_token: string; token_type: string }>(
+): Promise<{ token_type: string }> {
+  const resp = await API.post<{ token_type: string }>(
     "/auth/login",
     new URLSearchParams({ username: email, password }).toString(),
     { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
   );
+  // Note: The actual access_token is set as an HTTP-only cookie by the backend
   return resp.data;
 }
 
@@ -84,6 +85,26 @@ export async function apiDeleteAccount(password: string): Promise<void> {
 export async function getSession(): Promise<User | null> {
   try {
     return await fetchProfile();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get session status including time remaining.
+ * Returns session info or null if unauthorized.
+ */
+export async function getSessionStatus(): Promise<{
+  time_remaining: number;
+  expires_at: number;
+} | null> {
+  try {
+    const resp = await API.get<{
+      authenticated: boolean;
+      time_remaining: number;
+      expires_at: number;
+    }>("/auth/session-status");
+    return resp.data;
   } catch {
     return null;
   }

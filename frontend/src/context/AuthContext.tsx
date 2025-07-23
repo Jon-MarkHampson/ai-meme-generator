@@ -1,16 +1,21 @@
 'use client'
 
 import React, { createContext, useState, useEffect, ReactNode, useContext, useCallback } from 'react'
-import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile, apiRefreshSession } from '@/lib/auth'
+import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile, apiRefreshSession, getSessionStatus } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
-import { getAccessTokenFromCookies, getTokenTimeRemaining } from '@/lib/authUtils'
+import { isPublicRoute } from '@/lib/authUtils'
+import { toast } from 'sonner';
 
 // Mutable reference that can be used outside React (e.g. axios interceptor)
 let setUserRef: React.Dispatch<React.SetStateAction<User | null>> | null = null;
+let setIsLoggingOutRef: React.Dispatch<React.SetStateAction<boolean>> | null = null;
 
 /** Clears user state without navigation—handy for 401 interceptors */
 export function logoutSilently() {
+  setIsLoggingOutRef?.(true); // Prevent session expiry toasts
   setUserRef?.(null);
+  // Note: We don't reset setIsLoggingOutRef here because the session expiry 
+  // redirect will handle the final cleanup
 }
 
 interface AuthContextType {
@@ -35,56 +40,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number | null>(null)
+  const [hasRecentActivity, setHasRecentActivity] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false) // Track manual logout
   const router = useRouter()
 
-  // expose the state setter to logoutSilently()
+  // expose the state setters to logoutSilently()
   setUserRef = setUser;
+  setIsLoggingOutRef = setIsLoggingOut;
 
-  // Function to check token expiry and calculate remaining time
-  const checkTokenExpiry = useCallback(() => {
-    if (typeof window === 'undefined') return;
+  // Function to check token expiry using backend endpoint
+  const checkTokenExpiry = useCallback(async () => {
+    try {
+      const sessionStatus = await getSessionStatus();
+      const remaining = sessionStatus?.time_remaining ?? 0;
+      setSessionTimeRemaining(remaining);
 
-    const token = getAccessTokenFromCookies();
-    if (!token) {
+      // 5-minute sessions: Refresh when less than 1 minute remaining and user is active
+      if (remaining < 60 && remaining > 30 && hasRecentActivity) {
+        // Refresh when less than 1 minute remaining, more than 30 seconds left, and user is active
+        console.warn(`Session expires in ${remaining} seconds - refreshing due to user activity`);
+        refreshSession();
+      } else if (remaining < 60 && remaining > 30 && !hasRecentActivity) {
+        console.log(`Session expires in ${remaining} seconds but no recent activity - letting it expire naturally`);
+      } else if (remaining <= 60 && remaining > 0) {
+        console.log(`Session expires in ${remaining} seconds, activity: ${hasRecentActivity}`);
+      }
+    } catch (error) {
+      console.log('DEBUG: Error checking session status:', error);
       setSessionTimeRemaining(null);
-      return;
-    }
-
-    const remaining = getTokenTimeRemaining(token);
-    if (remaining === null) {
-      setSessionTimeRemaining(null);
-      setUser(null);
-      return;
-    }
-
-    if (remaining <= 0) {
-      // Token is expired
-      setSessionTimeRemaining(0);
-      setUser(null);
-      return;
-    }
-
-    setSessionTimeRemaining(remaining);
-
-    // If less than 10 minutes remaining, try to refresh the session
-    if (remaining < 600 && remaining > 0) {
-      console.warn(`Session expires in ${Math.floor(remaining / 60)} minutes - attempting refresh`);
-      refreshSession();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasRecentActivity]);
 
   // Function to refresh session by making an authenticated API call
   const refreshSession = useCallback(async () => {
     try {
       // Call the dedicated refresh endpoint
+      console.trace('DEBUG: refreshSession() called from:');
       await apiRefreshSession();
       console.log('Session refreshed successfully');
 
       // Recheck token expiry after refresh
-      setTimeout(checkTokenExpiry, 1000);
+      setTimeout(() => {
+        checkTokenExpiry();
+      }, 1000);
     } catch (error) {
       console.warn('Failed to refresh session:', error);
+      // Show user-friendly message for session refresh failure
+      toast.error('Unable to extend session. Please save your work and log in again.');
     }
   }, [checkTokenExpiry]);
 
@@ -93,8 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       checkTokenExpiry();
 
-      // Check every 30 seconds
-      const interval = setInterval(checkTokenExpiry, 30000);
+      // 5-minute sessions: Check every 10 seconds for frequent monitoring
+      const interval = setInterval(() => {
+        checkTokenExpiry();
+      }, 10000);
 
       return () => clearInterval(interval);
     } else {
@@ -118,20 +123,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Handle session expiry warnings and redirect
   useEffect(() => {
-    if (sessionTimeRemaining !== null && sessionTimeRemaining <= 0 && user) {
-      // Session has expired
+    console.log(`DEBUG: Session expiry check - remaining: ${sessionTimeRemaining}, user: ${user ? 'logged in' : 'null'}`);
+
+    if (sessionTimeRemaining !== null && sessionTimeRemaining <= 0 && user && !isLoggingOut) {
+      // Session has expired (but not due to manual logout)
       console.warn('Session has expired - logging out user');
 
       // Clear user state immediately
       setUser(null);
       setSessionTimeRemaining(null);
 
-      // Let the API interceptor handle the redirect to avoid race conditions
-      // The API interceptor will handle 401 errors and redirect appropriately
+      // Force redirect to login page if we're not already on a public route
+      if (typeof window !== 'undefined' && !isPublicRoute(window.location.pathname)) {
+        console.log('DEBUG: Redirecting to login page due to expired session');
+        window.location.replace("/?session=expired");
+      }
     }
-  }, [sessionTimeRemaining, user]);
-
-  // Add activity detection to extend sessions
+  }, [sessionTimeRemaining, user, isLoggingOut]);  // Add activity detection to extend sessions
   useEffect(() => {
     if (!user) return;
 
@@ -139,18 +147,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let activityTimer: NodeJS.Timeout;
 
     const handleActivity = () => {
+      // Mark that user has recent activity
+      setHasRecentActivity(true);
+
       // Clear existing timer
       if (activityTimer) {
         clearTimeout(activityTimer);
       }
 
-      // Set timer to refresh session after 5 minutes of activity
+      // 5-minute sessions: Clear recent activity flag after 30 seconds of inactivity
       activityTimer = setTimeout(() => {
-        // Only refresh if less than 10 minutes remaining to avoid spam
-        if (sessionTimeRemaining && sessionTimeRemaining < 600) {
-          refreshSession();
-        }
-      }, 5 * 60 * 1000); // 5 minutes
+        console.log('User marked as inactive after 30 seconds of no activity');
+        setHasRecentActivity(false);
+      }, 30 * 1000); // 30 seconds
+    };
+
+    // Handle page visibility changes (user switching tabs/coming back)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // User came back to the tab, check token immediately
+        checkTokenExpiry();
+      }
     };
 
     // Add event listeners
@@ -158,8 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.addEventListener(event, handleActivity, true);
     });
 
-    // Initial activity setup
-    handleActivity();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Do NOT call handleActivity() immediately - let user actually do something first
+    // This prevents automatic "active" state that would allow unwanted refreshes
 
     return () => {
       // Cleanup
@@ -169,14 +188,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       activityEvents.forEach(event => {
         document.removeEventListener(event, handleActivity, true);
       });
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, sessionTimeRemaining, refreshSession]);
+  }, [user, checkTokenExpiry]); // Removed refreshSession to prevent cycles
 
   const login = async (email: string, password: string) => {
-    await apiLogin(email, password)
-    const u = await fetchProfile()
-    setUser(u)
-    checkTokenExpiry()
+    console.log('DEBUG: Starting login process...');
+    try {
+      await apiLogin(email, password);
+      const u = await fetchProfile();
+      setUser(u);
+      checkTokenExpiry();
+    } catch (error) {
+      console.error('DEBUG: Login failed:', error);
+      throw error;
+    }
   }
 
   const signup = async (firstName: string, lastName: string, email: string, password: string) => {
@@ -193,14 +219,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
+    setIsLoggingOut(true); // Prevent session expiry toasts during manual logout
+
     try {
       await apiLogout();        // clear cookie server-side
+      toast.success('Successfully logged out');
     } catch {
-      // optional: show a toast if it fails
+      // Even if server logout fails, clear client state
+      toast.info('Logged out locally');
     }
+
     setUser(null);              // clear client-side user
     setSessionTimeRemaining(null);
-    router.push("/");           // send them to homepage or login
+    setIsLoggingOut(false);     // Reset the flag
+    router.push("/?logout=success");  // Add logout parameter to prevent auth required toast
   }
 
   // ─── updateProfile: PATCH /users/me then re‐fetch /users/me ───

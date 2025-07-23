@@ -55,8 +55,9 @@ export function middleware(req: NextRequest) {
     return redirectToIndex(req, "missing");
   }
 
-  // 2) Validate token structure and expiry
-  if (isTokenExpired(token, 30)) {
+  // 2) Validate token structure and expiry - allow 1 minute grace period
+  if (isTokenExpired(token, 60)) {
+    console.warn("Middleware: Token expired, redirecting to index");
     return redirectToIndex(req, "expired");
   }
 
