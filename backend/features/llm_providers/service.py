@@ -28,7 +28,6 @@ MODELS_TO_CHECK = [
     "openai:gpt-4.1-mini",
     "openai:gpt-4.1-nano",
     "openai:o1-mini",
-    
     # Anthropic Claude Models
     "anthropic:claude-sonnet-4-20250514",
     "anthropic:claude-3-7-sonnet-20250219",

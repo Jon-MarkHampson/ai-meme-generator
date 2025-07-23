@@ -61,7 +61,7 @@ export const AI_MODELS: ModelConfig[] = [
     maxTokens: 128000,
     costPer1kTokens: 0.012,
   },
-  
+
   // Anthropic Claude Models
   {
     id: "anthropic:claude-sonnet-4-20250514",
