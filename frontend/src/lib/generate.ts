@@ -169,7 +169,7 @@ export function streamChat(
         // Always clean up the reader
         try {
           reader.releaseLock();
-        } catch (e) {
+        } catch {
           // Reader might already be released
         }
       }

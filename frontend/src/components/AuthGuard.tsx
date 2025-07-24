@@ -129,7 +129,8 @@ export function AuthGuard({ children }: PropsWithChildren) {
                 toastIdRef.current = null;
             }
         }
-    }, [sessionTimeRemaining]); // Remove showSessionWarning from dependencies to prevent loops
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sessionTimeRemaining]); // Remove showSessionWarning and router from dependencies to prevent loops
 
     // Update toast with local countdown
     useEffect(() => {
@@ -150,6 +151,7 @@ export function AuthGuard({ children }: PropsWithChildren) {
             toastIdRef.current = null;
             setShowSessionWarning(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [localCountdown]); // Remove showSessionWarning from dependencies to prevent loops
 
     // Cleanup on unmount
