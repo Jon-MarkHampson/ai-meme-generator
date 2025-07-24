@@ -81,11 +81,19 @@ export async function apiDeleteAccount(password: string): Promise<void> {
 /**
  * Attempts to fetch the current user's profile to verify session.
  * Returns the User if logged in, or null if unauthorized or error.
+ * This function expects potential 401s and handles them gracefully.
  */
 export async function getSession(): Promise<User | null> {
   try {
     return await fetchProfile();
-  } catch {
+  } catch (error: unknown) {
+    const apiError = error as { response?: { status?: number } };
+    // 401 is expected when not logged in - don't treat as an error
+    if (apiError.response?.status === 401) {
+      return null;
+    }
+    // For other errors, log and return null
+    console.warn("Unexpected error fetching session:", error);
     return null;
   }
 }
@@ -93,6 +101,7 @@ export async function getSession(): Promise<User | null> {
 /**
  * Get session status including time remaining.
  * Returns session info or null if unauthorized.
+ * This function expects 401s when not logged in and handles them gracefully.
  */
 export async function getSessionStatus(): Promise<{
   time_remaining: number;
@@ -105,7 +114,14 @@ export async function getSessionStatus(): Promise<{
       expires_at: number;
     }>("/auth/session-status");
     return resp.data;
-  } catch {
+  } catch (error: unknown) {
+    const apiError = error as { response?: { status?: number } };
+    // 401 is expected when not logged in - don't treat as an error
+    if (apiError.response?.status === 401) {
+      return null;
+    }
+    // For other errors, log and return null
+    console.warn("Unexpected error fetching session status:", error);
     return null;
   }
 }

@@ -1,7 +1,7 @@
 // lib/api.ts
 import axios from "axios";
 import { logoutSilently } from "@/context/AuthContext";
-import { clearAuthCookies, isPublicRoute } from "@/lib/authUtils";
+import { clearAuthCookies, isPublicRoute } from "@/lib/authRoutes";
 
 const API = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000",
@@ -28,11 +28,17 @@ API.interceptors.response.use(
   (response) => response,
   async (error: {
     response?: { status?: number };
+    config?: { url?: string };
     code?: string;
     message?: string;
   }) => {
-    // Handle 401 Unauthorized (session expired)
-    if (error.response?.status === 401 && !isHandling401) {
+    // Handle 401 Unauthorized (session expired) - but only for actual API calls
+    // Ignore 401s from auth checks and session-status calls since those are expected
+    const isAuthEndpoint =
+      error.config?.url?.includes("/auth/") ||
+      error.config?.url?.includes("/users/me");
+
+    if (error.response?.status === 401 && !isHandling401 && !isAuthEndpoint) {
       isHandling401 = true;
 
       try {

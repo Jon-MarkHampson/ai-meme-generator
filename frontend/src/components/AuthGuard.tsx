@@ -3,7 +3,7 @@
 import { PropsWithChildren, useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { PUBLIC_ROUTES } from '@/lib/authRoutes';
+import { isPublicRoute } from '@/lib/authRoutes';
 import { toast } from 'sonner';
 
 export function AuthGuard({ children }: PropsWithChildren) {
@@ -17,11 +17,10 @@ export function AuthGuard({ children }: PropsWithChildren) {
     // Use refs to prevent infinite loops
     const hasShownSessionExpiredRef = useRef(false);
     const hasShownAuthRequiredRef = useRef(false);
-    const hasShownLogoutSuccessRef = useRef(false);
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const toastIdRef = useRef<string | number | null>(null);
 
-    const isPublic = PUBLIC_ROUTES.includes(pathname as (typeof PUBLIC_ROUTES)[number]);
+    const isPublic = isPublicRoute(pathname);
 
     // Extract URL parameters with stable values
     const sessionParam = searchParams.get('session');
