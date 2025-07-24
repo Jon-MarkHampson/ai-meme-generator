@@ -19,7 +19,7 @@ export function middleware(req: NextRequest) {
   // If no auth cookie, redirect to login
   if (!hasAuthCookie) {
     const url = req.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/";
     url.searchParams.set("auth", "required");
     return NextResponse.redirect(url);
   }
