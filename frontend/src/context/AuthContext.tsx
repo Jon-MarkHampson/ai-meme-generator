@@ -3,7 +3,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext, useCallback } from 'react'
 import { apiLogin, apiLogout, apiSignup, fetchProfile, User, apiUpdateProfile, apiRefreshSession, getSessionStatus } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
-import { isPublicRoute } from '@/lib/authUtils'
+import { isPublicRoute } from '@/lib/authRoutes'
 import { toast } from 'sonner';
 
 // Mutable reference that can be used outside React (e.g. axios interceptor)
@@ -97,10 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) {
       checkTokenExpiry();
 
-      // 5-minute sessions: Check every 10 seconds for frequent monitoring
+      // 5-minute sessions: Check every 30 seconds for reasonable monitoring
+      // This is less aggressive but still provides good UX
       const interval = setInterval(() => {
         checkTokenExpiry();
-      }, 10000);
+      }, 30000);
 
       return () => clearInterval(interval);
     } else {
@@ -108,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, checkTokenExpiry]);
 
-  // Initial auth check
+  // Initial auth check - ONLY when needed to avoid unnecessary 401s
   useEffect(() => {
     // Don't try to fetch profile if session has already expired
     if (sessionExpired) {
@@ -116,17 +117,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    fetchProfile()
-      .then((u) => {
-        setUser(u);
-        checkTokenExpiry();
+    // Check if we're in browser and get current path
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
+    const currentPath = window.location.pathname;
+
+    // If we're on a public route, don't make any auth checks
+    if (isPublicRoute(currentPath)) {
+      setUser(null);
+      setSessionTimeRemaining(null);
+      setLoading(false);
+      return;
+    }
+
+    // Only check auth status if we're on a protected route
+    // This prevents 401 errors when landing on public pages
+    getSessionStatus()
+      .then((sessionInfo) => {
+        if (sessionInfo) {
+          // We have a valid session, fetch the full profile
+          setSessionTimeRemaining(sessionInfo.time_remaining);
+          return fetchProfile()
+            .then((u) => {
+              setUser(u);
+            });
+        } else {
+          // No valid session on protected route - redirect to login
+          setUser(null);
+          setSessionTimeRemaining(null);
+          if (typeof window !== 'undefined') {
+            window.location.replace('/login?auth=required');
+          }
+        }
       })
       .catch(() => {
+        // Handle any errors by clearing user state and redirecting
         setUser(null);
         setSessionTimeRemaining(null);
+        if (typeof window !== 'undefined') {
+          window.location.replace('/login?auth=required');
+        }
       })
       .finally(() => setLoading(false))
-  }, [checkTokenExpiry, sessionExpired])
+  }, [sessionExpired])
 
   // Handle session expiry warnings and redirect
   useEffect(() => {

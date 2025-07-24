@@ -101,7 +101,11 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your first name" {...field} />
+                      <Input
+                        placeholder="Enter your first name"
+                        autoComplete="given-name"
+                        {...field}
+                      />
                     </FormControl>
                     {form.formState.errors.firstName && (
                       <p className="mt-1 text-sm text-red-600">
@@ -120,7 +124,11 @@ export default function SignupPage() {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your last name" {...field} />
+                      <Input
+                        placeholder="Enter your last name"
+                        autoComplete="family-name"
+                        {...field}
+                      />
                     </FormControl>
                     {form.formState.errors.lastName && (
                       <p className="mt-1 text-sm text-red-600">
@@ -142,6 +150,7 @@ export default function SignupPage() {
                       <Input
                         type="email"
                         placeholder="Enter your email"
+                        autoComplete="email"
                         {...field}
                       />
                     </FormControl>
@@ -165,6 +174,7 @@ export default function SignupPage() {
                       <Input
                         type="password"
                         placeholder="Choose a strong password"
+                        autoComplete="new-password"
                         {...field}
                       />
                     </FormControl>
@@ -188,6 +198,7 @@ export default function SignupPage() {
                       <Input
                         type="password"
                         placeholder="Retype your password"
+                        autoComplete="new-password"
                         {...field}
                       />
                     </FormControl>

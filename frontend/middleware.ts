@@ -1,95 +1,34 @@
-// middleware.ts
+// middleware.ts - Simplified for HTTP-only cookie auth
 import { NextRequest, NextResponse } from "next/server";
-import { isTokenExpired, decodeJWT, type JWTPayload } from "@/lib/authUtils";
-
-// Enhanced helper with better logging and cleanup
-function redirectToIndex(req: NextRequest, reason: string) {
-  const url = req.nextUrl.clone();
-  url.pathname = "/";
-
-  // Add query param to indicate session expiry for UX
-  if (reason === "expired") {
-    url.searchParams.set("session", "expired");
-  }
-
-  const response = NextResponse.redirect(url);
-
-  // Clear all auth-related cookies
-  response.cookies.set("access_token", "", {
-    maxAge: 0,
-    path: "/",
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "strict",
-  });
-
-  // Clear any other auth cookies if they exist
-  response.cookies.set("refresh_token", "", {
-    maxAge: 0,
-    path: "/",
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "strict",
-  });
-
-  return response;
-}
+import { PROTECTED_ROUTES } from "@/lib/authRoutes";
 
 export function middleware(req: NextRequest) {
-  // Define protected routes - these should match the routes in authRoutes.ts
-  const protectedRoutes = ["/generate", "/profile", "/gallery"];
-
   // Check if current path needs protection
-  const needsAuth = protectedRoutes.some((route) =>
-    req.nextUrl.pathname.startsWith(route)
-  );
+  const needsAuth = PROTECTED_ROUTES.some((route) => {
+    const baseRoute = route.replace("/:path*", "");
+    return req.nextUrl.pathname.startsWith(baseRoute);
+  });
 
   if (!needsAuth) {
     return NextResponse.next();
   }
 
-  const token = req.cookies.get("access_token")?.value;
+  // Check if we have an auth cookie (basic check only)
+  const hasAuthCookie = req.cookies.get("access_token");
 
-  // 1) No token → redirect to index
-  if (!token) {
-    return redirectToIndex(req, "missing");
+  // If no auth cookie, redirect to login
+  if (!hasAuthCookie) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("auth", "required");
+    return NextResponse.redirect(url);
   }
 
-  // 2) Validate token structure and expiry - allow 1 minute grace period
-  if (isTokenExpired(token, 60)) {
-    console.warn("Middleware: Token expired, redirecting to index");
-    return redirectToIndex(req, "expired");
-  }
-
-  try {
-    const payload = decodeJWT(token);
-
-    // Check if token has required fields
-    if (!payload || !payload.exp || !payload.sub) {
-      throw new Error("Invalid token structure");
-    }
-
-    // Optional: Check if token is too old (issued more than X hours ago)
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (payload.iat && currentTime - payload.iat > 24 * 60 * 60) {
-      // 24 hours
-      throw new Error("Token too old");
-    }
-  } catch (error) {
-    // Log the error reason for debugging (in production, use proper logging)
-    console.warn(
-      `Session validation failed: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`
-    );
-    return redirectToIndex(req, "expired");
-  }
-
-  // 3) Valid token → allow request through
+  // Let the request through - server will validate the actual token
   return NextResponse.next();
 }
 
-// Static config that Next.js can parse at build time
+// Use the same routes as defined in authRoutes.ts
 export const config = {
   matcher: ["/generate/:path*", "/profile/:path*", "/gallery/:path*"],
 };

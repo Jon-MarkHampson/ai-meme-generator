@@ -26,7 +26,11 @@ export default function LoginPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: {
+      email: '',
+      password: ''
+    },
+    mode: 'onChange'
   });
 
   // 1) Redirect away if already logged in
@@ -47,7 +51,7 @@ export default function LoginPage() {
       const msg = error.response?.data?.detail || 'Login failed.';
       setFormError(msg);
       if (error.response?.status === 401) {
-        form.setValue('password', '');
+        form.resetField('password');
       }
     } finally {
       setIsSubmitting(false);
@@ -89,6 +93,7 @@ export default function LoginPage() {
                         type="email"
                         placeholder="john@example.com"
                         disabled={isSubmitting}
+                        autoComplete="username"
                         {...field}
                       />
                     </FormControl>
@@ -113,6 +118,7 @@ export default function LoginPage() {
                         type="password"
                         placeholder="••••••••"
                         disabled={isSubmitting}
+                        autoComplete="current-password"
                         {...field}
                       />
                     </FormControl>
