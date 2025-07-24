@@ -1,5 +1,6 @@
 // frontend/src/app/layout.tsx
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from '@/context/AuthContext';
 import { AuthGuard } from '@/components/AuthGuard';
@@ -9,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   title: "AI Meme Generator",
   description: "Interactively create memes powered by AI",
   openGraph: {
@@ -53,9 +55,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           <AuthProvider>
             <NavBar />
-            <AuthGuard>
-              <main>{children}</main>
-            </AuthGuard>
+            <Suspense fallback={
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+              </div>
+            }>
+              <AuthGuard>
+                <main>{children}</main>
+              </AuthGuard>
+            </Suspense>
             <Toaster />
           </AuthProvider>
         </ThemeProvider>
