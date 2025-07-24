@@ -67,9 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Auto-refresh if user is active and less than 1 minute remaining
+      // Auto-refresh only if user is VERY recently active (within 30s) and session between 30-60s
       if (remaining < 60 && remaining > 30 && hasRecentActivity) {
-        console.log('🔄 [AUTH DEBUG] Session < 60s and user active - attempting refresh');
+        console.log('🔄 [AUTH DEBUG] Session < 60s and user recently active - attempting refresh');
         try {
           await apiRefreshSession();
           console.log('✅ [AUTH DEBUG] Session refreshed successfully');
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           toast.error('Unable to extend session. Please save your work and log in again.');
         }
       } else if (remaining < 60) {
-        console.log(`⚠️ [AUTH DEBUG] Session < 60s but user not active (hasRecentActivity: ${hasRecentActivity})`);
+        console.log(`⚠️ [AUTH DEBUG] Session < 60s but user not recently active (hasRecentActivity: ${hasRecentActivity}) - allowing countdown`);
       }
     } catch (error) {
       console.error('❌ [AUTH DEBUG] Session check failed:', error);
@@ -126,12 +126,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setHasRecentActivity(true);
       }
 
-      // Reset inactivity timer (2 minutes)
+      // Reset inactivity timer (30 seconds - shorter window)
       clearTimeout(activityTimer);
       activityTimer = setTimeout(() => {
-        console.log('😴 [AUTH DEBUG] 2 minutes of inactivity - marking user as inactive');
+        console.log('😴 [AUTH DEBUG] 30 seconds of inactivity - marking user as inactive');
         setHasRecentActivity(false);
-      }, 2 * 60 * 1000);
+      }, 30 * 1000); // 30 seconds instead of 2 minutes
     };
 
     // Attach event listeners
