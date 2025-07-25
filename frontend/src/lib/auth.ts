@@ -34,11 +34,11 @@ export async function apiLogin(
   email: string,
   password: string
 ): Promise<{ token_type: string }> {
-  const resp = await API.post<{ token_type: string }>(
-    "/auth/login",
-    new URLSearchParams({ username: email, password }).toString(),
-    { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-  );
+  const form = new URLSearchParams({ username: email, password });
+  const resp = await API.post<{ token_type: string }>("/auth/login", form, {
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  });
+
   // Note: The actual access_token is set as an HTTP-only cookie by the backend
   return resp.data;
 }
