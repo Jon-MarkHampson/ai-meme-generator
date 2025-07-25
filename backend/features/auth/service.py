@@ -108,71 +108,71 @@ def get_current_user(
     return user
 
 
-def get_current_user_with_refresh(
-    token: str = Depends(get_token_from_cookie_or_header),
-    session: Session = Depends(get_session),
-) -> tuple[User, str | None]:
-    """
-    Returns the authenticated User instance and a new token if refresh is needed.
-    This version checks if the token is close to expiry and generates a new one.
-    """
-    credentials_exc = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+# def get_current_user_with_refresh(
+#     token: str = Depends(get_token_from_cookie_or_header),
+#     session: Session = Depends(get_session),
+# ) -> tuple[User, str | None]:
+#     """
+#     Returns the authenticated User instance and a new token if refresh is needed.
+#     This version checks if the token is close to expiry and generates a new one.
+#     """
+#     credentials_exc = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
 
-    try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM],
-        )
-        user_id: str = payload.get("sub")
-        if not user_id:
-            raise credentials_exc
+#     try:
+#         payload = jwt.decode(
+#             token,
+#             settings.JWT_SECRET,
+#             algorithms=[settings.JWT_ALGORITHM],
+#         )
+#         user_id: str = payload.get("sub")
+#         if not user_id:
+#             raise credentials_exc
 
-        # Check if token expires within half the token lifetime
-        exp = payload.get("exp")
-        if exp:
-            current_time = datetime.now(timezone.utc).timestamp()
-            time_until_expiry = exp - current_time
+#         # Check if token expires within half the token lifetime
+#         exp = payload.get("exp")
+#         if exp:
+#             current_time = datetime.now(timezone.utc).timestamp()
+#             time_until_expiry = exp - current_time
 
-            # If less than half the token lifetime remaining, create a new token
-            # TEMPORARY: For 1-minute tokens, refresh when <30 seconds remaining
-            refresh_threshold = (
-                settings.ACCESS_TOKEN_EXPIRE_MINUTES * 30
-            )  # Half of lifetime in seconds
-            if time_until_expiry < refresh_threshold:
-                new_token = create_access_token(
-                    subject=user_id,
-                    expires_delta=timedelta(
-                        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-                    ),
-                )
-                logger.info(
-                    "Refreshing token for user %s, %d seconds remaining (threshold: %d)",
-                    user_id,
-                    time_until_expiry,
-                    refresh_threshold,
-                )
-            else:
-                new_token = None
-        else:
-            new_token = None
+#             # If less than half the token lifetime remaining, create a new token
+#             # TEMPORARY: For 1-minute tokens, refresh when <30 seconds remaining
+#             refresh_threshold = (
+#                 settings.ACCESS_TOKEN_EXPIRE_MINUTES * 30
+#             )  # Half of lifetime in seconds
+#             if time_until_expiry < refresh_threshold:
+#                 new_token = create_access_token(
+#                     subject=user_id,
+#                     expires_delta=timedelta(
+#                         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+#                     ),
+#                 )
+#                 logger.info(
+#                     "Refreshing token for user %s, %d seconds remaining (threshold: %d)",
+#                     user_id,
+#                     time_until_expiry,
+#                     refresh_threshold,
+#                 )
+#             else:
+#                 new_token = None
+#         else:
+#             new_token = None
 
-    except ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except JWTError:
-        raise credentials_exc
+#     except ExpiredSignatureError:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Token expired",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+#     except JWTError:
+#         raise credentials_exc
 
-    user = session.get(User, user_id)
-    if not user:
-        raise credentials_exc
+#     user = session.get(User, user_id)
+#     if not user:
+#         raise credentials_exc
 
-    logger.info("Authenticated user %s", user.id)
-    return user, new_token
+#     logger.info("Authenticated user %s", user.id)
+#     return user, new_token
