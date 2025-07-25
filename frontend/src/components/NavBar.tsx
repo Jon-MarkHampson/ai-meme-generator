@@ -1,4 +1,3 @@
-// frontend/src/components/NavBar.tsx
 'use client'
 
 import Link from 'next/link'
@@ -11,6 +10,10 @@ export function NavBar() {
     const router = useRouter()
 
     const handleLogout = async () => {
+        // Broadcast logout to other tabs
+        const channel = new BroadcastChannel('auth');
+        channel.postMessage('logout');
+        channel.close();
         await logout()
         router.replace('/?logout=success')
     }
