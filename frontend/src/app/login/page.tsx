@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { DEFAULT_PROTECTED_ROUTE } from '@/lib/authRoutes'
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +37,7 @@ export default function LoginPage() {
   // 1) Redirect away if already logged in
   useEffect(() => {
     if (user) {
-      router.replace('/generate');
+      router.replace(DEFAULT_PROTECTED_ROUTE);
     }
   }, [user, router]);
 
@@ -45,7 +46,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(values.email, values.password);
-      router.push('/generate');
+      router.replace(DEFAULT_PROTECTED_ROUTE);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string }; status?: number } };
       const msg = error.response?.data?.detail || 'Login failed.';

@@ -6,6 +6,7 @@ export const PROTECTED_ROUTES = [
 ];
 
 export const PUBLIC_ROUTES = ["/", "/login", "/signup"];
+export const DEFAULT_PROTECTED_ROUTE = "/generate";
 
 /**
  * Check if a given pathname is a public route

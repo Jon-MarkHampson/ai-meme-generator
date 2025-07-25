@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { DEFAULT_PROTECTED_ROUTE } from '@/lib/authRoutes'
 
 // Shadcn/UI imports
 import { Button } from '@/components/ui/button'
@@ -66,7 +67,7 @@ export default function SignupPage() {
         values.email,
         values.password
       )
-      router.push('/generate')
+      router.replace(DEFAULT_PROTECTED_ROUTE)
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       const message =
