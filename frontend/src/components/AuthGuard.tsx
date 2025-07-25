@@ -1,3 +1,4 @@
+// AuthGuard.tsx
 'use client';
 import { PropsWithChildren, useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
