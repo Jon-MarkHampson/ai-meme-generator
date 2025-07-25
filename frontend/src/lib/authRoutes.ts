@@ -47,3 +47,10 @@ export function clearAuthCookies(): void {
   document.cookie =
     "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 }
+
+/**
+ * Determines if a given API URL is part of authentication endpoints
+ */
+export function isAuthApiRoute(url: string): boolean {
+  return url.startsWith("/auth/") || url.startsWith("/users/me");
+}
