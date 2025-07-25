@@ -1,12 +1,21 @@
 // lib/api.ts
 import axios from "axios";
-import { logoutSilently } from "@/context/AuthContext";
+import axiosRetry from "axios-retry";
 import { clearAuthCookies, isPublicRoute } from "@/lib/authRoutes";
+import authEvents from "@/lib/authEvents";
+import { isAuthApiRoute } from "@/lib/authRoutes";
 
 const API = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000",
   withCredentials: true,
   timeout: 10000, // 10 second timeout
+});
+
+// Automatically retry failed network requests with exponential backoff
+axiosRetry(API, {
+  retries: 3,
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: axiosRetry.isNetworkError, // retry on network errors
 });
 
 // Track if we're already handling a 401 to prevent multiple redirects
@@ -26,56 +35,38 @@ API.interceptors.request.use(
 // Response interceptor for handling session expiry
 API.interceptors.response.use(
   (response) => response,
-  async (error: {
-    response?: { status?: number };
-    config?: { url?: string };
-    code?: string;
-    message?: string;
-  }) => {
-    // Handle 401 Unauthorized (session expired) - but only for actual API calls
-    // Ignore 401s from auth checks and session-status calls since those are expected
-    const isAuthEndpoint =
-      error.config?.url?.includes("/auth/") ||
-      error.config?.url?.includes("/users/me");
+  async (error: any) => {
+    // Determine if this is an auth endpoint via shared helper
+    const url = error?.config?.url || "";
+    const isAuthEndpoint = isAuthApiRoute(url);
 
+    // Handle 401 Unauthorized
     if (error.response?.status === 401 && !isHandling401 && !isAuthEndpoint) {
       isHandling401 = true;
-
       try {
-        // Clear user state using the shared function
-        logoutSilently();
-
-        // Clear any auth cookies client-side
+        authEvents.emit("logout");
         clearAuthCookies();
-
-        // Only redirect if we're not already on a public route and we're in browser
         if (
           typeof window !== "undefined" &&
           !isPublicRoute(window.location.pathname)
         ) {
-          // Use replace to avoid back button issues and ensure immediate redirect
           window.location.replace("/?session=expired");
         }
       } catch (cleanupError) {
         console.error("Error during session cleanup:", cleanupError);
       } finally {
-        // Reset the flag after a brief delay
         setTimeout(() => {
           isHandling401 = false;
         }, 1000);
       }
     }
 
-    // Handle network errors
-    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
-      console.error("Request timeout or network error");
-      // You might want to show a toast notification here
-    }
-
-    // Handle 403 Forbidden (insufficient permissions)
+    // Optionally handle other statuses
     if (error.response?.status === 403) {
       console.error("Insufficient permissions");
-      // You might want to show a toast notification here
+    }
+    if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+      console.error("Request timeout or network error");
     }
 
     return Promise.reject(error);
