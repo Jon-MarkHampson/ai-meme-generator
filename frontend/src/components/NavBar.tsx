@@ -4,9 +4,16 @@
 import Link from 'next/link'
 import { useAuth } from '@/context/AuthContext'
 import { ModeToggle } from '@/components/ui/mode-toggle'
+import { useRouter } from 'next/navigation'
 
 export function NavBar() {
     const { user, logout } = useAuth()
+    const router = useRouter()
+
+    const handleLogout = async () => {
+        await logout()
+        router.replace('/?logout=success')
+    }
 
     return (
         <header
@@ -28,7 +35,7 @@ export function NavBar() {
             <div className="flex items-center space-x-4">
                 {user ? (
                     <button
-                        onClick={logout}
+                        onClick={handleLogout}
                         className="text-sm text-destructive"
                     >
                         Logout
