@@ -238,7 +238,7 @@ export default function ChatPage() {
         setMsgs(WELCOME);
     };
 
-    // ─── Finally, your JSX ────────────────────────────────────────
+    // ─── Finally, JSX ────────────────────────────────────────
     return (
         <div className="fixed inset-x-0 top-[5rem] bottom-0 overflow-hidden">
             <SidebarProvider>
