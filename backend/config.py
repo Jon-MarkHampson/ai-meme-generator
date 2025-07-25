@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # crypto for signing JWTs
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Production: 30 minutes
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 5  # Production: 5 minutes
 
     # Environment settings
     ENVIRONMENT: str = "development"  # Set to "production" in production
