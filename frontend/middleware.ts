@@ -11,20 +11,12 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const hasAuth = req.cookies.has("access_token");
 
-  // Handle unauthenticated users trying to access protected routes
+  // Only redirect to login if trying to access protected routes without cookie
+  // Let SessionContext handle validation for auth pages - don't redirect here
   if (!hasAuth && isProtectedRoute(pathname)) {
-    return NextResponse.redirect(new URL(HOME_ROUTE, req.url));
-  }
-
-  // Handle authenticated users trying to access auth pages
-  if (hasAuth && AUTH_ROUTES.includes(pathname as any)) {
-    // Preserve redirect param if coming from a protected route
-    const redirect = req.nextUrl.searchParams.get("redirect");
-    const destination =
-      redirect && isProtectedRoute(redirect)
-        ? redirect
-        : DEFAULT_PROTECTED_ROUTE;
-    return NextResponse.redirect(new URL(destination, req.url));
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();

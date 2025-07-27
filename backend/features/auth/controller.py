@@ -44,8 +44,8 @@ def signup(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # Change to: secure=settings.ENVIRONMENT == "production"
-        samesite="lax",  # Changed from "strict" to "lax" for cross-origin
+        secure=settings.ENVIRONMENT == "production",  # False for development, True for production
+        samesite="lax",  # Allows cross-origin cookies for development
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -79,8 +79,8 @@ def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # Change to: secure=settings.ENVIRONMENT == "production"
-        samesite="lax",  # Changed from "strict" to "lax"
+        secure=settings.ENVIRONMENT == "production",  # False for development, True for production
+        samesite="lax",  # Allows cross-origin cookies for development
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -105,8 +105,8 @@ def refresh_session(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # Change to: secure=settings.ENVIRONMENT == "production"
-        samesite=None,  # Changed from "strict" to "lax" - Now change to None for testing!
+        secure=settings.ENVIRONMENT == "production",  # False for development, True for production
+        samesite="lax",  # Allows cross-origin cookies for development
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
