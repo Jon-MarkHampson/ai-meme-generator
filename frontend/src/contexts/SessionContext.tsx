@@ -51,9 +51,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         router.push(HOME_ROUTE);
     }, [router]);
 
+    // Track refresh attempts to prevent race conditions
+    const refreshInProgressRef = useRef<boolean>(false);
+
     // Refresh session
     const refreshSession = useCallback(async () => {
         if (!state.isAuthenticated) return;
+
+        // Prevent concurrent refresh attempts
+        if (refreshInProgressRef.current) {
+            console.log('[Session] Refresh already in progress, skipping');
+            return;
+        }
 
         // Don't try to refresh if we're already showing warning (session about to expire)
         if (warningToastIdRef.current) {
@@ -61,6 +70,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
+        refreshInProgressRef.current = true;
+        
         try {
             await apiRefreshSession();
             console.log('[Session] Token refreshed successfully');
@@ -73,6 +84,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             }
             // If refresh fails, logout user
             logout();
+        } finally {
+            refreshInProgressRef.current = false;
         }
     }, [state.isAuthenticated, logout]);
 
@@ -253,6 +266,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 dismissSessionWarning(warningToastIdRef.current);
                 warningToastIdRef.current = null;
             }
+            // Reset refresh flag on cleanup
+            refreshInProgressRef.current = false;
         };
     }, [state.isAuthenticated, handleActivity, refreshSession]);
 
