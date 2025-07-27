@@ -25,7 +25,7 @@ export function ModelSelector({
     onModelChange,
     className = "",
     showMetadata = true,
-    showDebugInfo = process.env.NODE_ENV === 'development'
+    showDebugInfo = false
 }: ModelSelectorProps) {
     const availableModels = getAvailableModels();
     const selectedModelConfig = getModelById(selectedModel);
