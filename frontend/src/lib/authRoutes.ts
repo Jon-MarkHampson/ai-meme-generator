@@ -1,56 +1,58 @@
-// authRoutes.ts - Single source of truth for auth routing logic
-export const PROTECTED_ROUTES = [
-  "/generate/:path*",
-  "/profile/:path*",
-  "/gallery/:path*",
-];
-
-export const PUBLIC_ROUTES = ["/", "/login", "/signup"];
-export const DEFAULT_PROTECTED_ROUTE = "/generate";
+// frontend/src/lib/authRoutes.ts
 
 /**
- * Check if a given pathname is a public route
+ * Core route definitions
  */
-export function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.includes(pathname);
-}
+export const PROTECTED_ROUTES = ["/generate", "/profile", "/gallery"] as const;
+export const PUBLIC_ROUTES = ["/", "/login", "/signup"] as const;
+export const AUTH_ROUTES = ["/login", "/signup"] as const;
+export const DEFAULT_PROTECTED_ROUTE = "/generate";
+export const LOGIN_ROUTE = "/login";
+export const HOME_ROUTE = "/";
 
 /**
- * Check if a given pathname is a protected route
- * Handles pattern matching for routes with :path* wildcards
+ * Check if a pathname requires authentication
  */
 export function isProtectedRoute(pathname: string): boolean {
-  // First check exact matches in public routes
-  if (isPublicRoute(pathname)) {
-    return false;
+  return PROTECTED_ROUTES.some((route) => pathname.startsWith(route));
+}
+
+/**
+ * Check if a pathname is publicly accessible
+ */
+export function isPublicRoute(pathname: string): boolean {
+  return PUBLIC_ROUTES.includes(pathname as any);
+}
+
+/**
+ * Get login URL with optional redirect
+ */
+export function getLoginUrl(redirectTo?: string): string {
+  if (!redirectTo || isPublicRoute(redirectTo)) {
+    return LOGIN_ROUTE;
   }
 
-  // Check if it matches any protected route pattern
-  return PROTECTED_ROUTES.some((route) => {
-    if (route.includes("/:path*")) {
-      // Convert route pattern to a prefix match
-      const baseRoute = route.replace("/:path*", "");
-      return pathname.startsWith(baseRoute);
-    }
-    return pathname === route;
-  });
+  const params = new URLSearchParams({ redirect: redirectTo });
+  return `${LOGIN_ROUTE}?${params}`;
 }
 
 /**
- * Clears authentication cookies
+ * Get redirect path after login
  */
-export function clearAuthCookies(): void {
-  if (typeof window === "undefined") return;
+export function getPostLoginRedirect(
+  requestedPath?: string | null,
+  searchParams?: URLSearchParams
+): string {
+  // Check URL params first
+  const redirectParam = searchParams?.get("redirect");
+  if (redirectParam && isProtectedRoute(redirectParam)) {
+    return redirectParam;
+  }
 
-  document.cookie =
-    "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-  document.cookie =
-    "refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-}
+  // Check requested path
+  if (requestedPath && isProtectedRoute(requestedPath)) {
+    return requestedPath;
+  }
 
-/**
- * Determines if a given API URL is part of authentication endpoints
- */
-export function isAuthApiRoute(url: string): boolean {
-  return url.startsWith("/auth/") || url.startsWith("/users/me");
+  return DEFAULT_PROTECTED_ROUTE;
 }

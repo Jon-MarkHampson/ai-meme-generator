@@ -1,34 +1,28 @@
-// middleware.ts - Simplified for HTTP-only cookie auth
+// frontend/src/middleware.ts
 import { NextRequest, NextResponse } from "next/server";
-import { PROTECTED_ROUTES } from "@/lib/authRoutes";
+import {
+  isProtectedRoute,
+  HOME_ROUTE,
+  DEFAULT_PROTECTED_ROUTE,
+  AUTH_ROUTES,
+} from "@/lib/authRoutes";
 
 export function middleware(req: NextRequest) {
-  // Check if current path needs protection
-  const needsAuth = PROTECTED_ROUTES.some((route) => {
-    const baseRoute = route.replace("/:path*", "");
-    return req.nextUrl.pathname.startsWith(baseRoute);
-  });
+  const { pathname } = req.nextUrl;
+  const hasAuth = req.cookies.has("access_token");
 
-  if (!needsAuth) {
-    return NextResponse.next();
+  // Only redirect to login if trying to access protected routes without cookie
+  // Let SessionContext handle validation for auth pages - don't redirect here
+  if (!hasAuth && isProtectedRoute(pathname)) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Check if we have an auth cookie (basic check only)
-  const hasAuthCookie = req.cookies.get("access_token");
-
-  // If no auth cookie, redirect to login
-  if (!hasAuthCookie) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/";
-    url.searchParams.set("auth", "required");
-    return NextResponse.redirect(url);
-  }
-
-  // Let the request through - server will validate the actual token
   return NextResponse.next();
 }
 
-// Use the same routes as defined in authRoutes.ts
+// Let Next.js handle all routes - we'll check protection dynamically
 export const config = {
-  matcher: ["/generate/:path*", "/profile/:path*", "/gallery/:path*"],
+  matcher: "/((?!api|_next/static|_next/image|favicon.ico).*)",
 };
