@@ -2,6 +2,8 @@
 "use client";
 
 import { useSession } from "@/contexts/SessionContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -10,9 +12,17 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, fallback }: AuthGuardProps) {
   const { state } = useSession();
+  const router = useRouter();
 
-  // Show loading while validating or if not authenticated
-  if (state.isValidating || !state.isAuthenticated) {
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!state.isValidating && !state.isAuthenticated) {
+      router.push("/login");
+    }
+  }, [state.isValidating, state.isAuthenticated, router]);
+
+  // Show loading while validating
+  if (state.isValidating) {
     return (
       fallback || (
         <div className="flex items-center justify-center min-h-screen">
@@ -20,6 +30,11 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
         </div>
       )
     );
+  }
+
+  // If not authenticated, show nothing (redirect is in progress)
+  if (!state.isAuthenticated) {
+    return null;
   }
 
   // User is authenticated, show content

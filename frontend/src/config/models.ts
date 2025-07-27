@@ -394,27 +394,29 @@ export function getDataSourceInfo(): {
   };
 }
 
-// Debug utility function - can be called from browser console
-(globalThis as Record<string, unknown>).__debugModelAvailability = function () {
-  const dataSource = getDataSourceInfo();
-  const availableModels = getAvailableModels();
+// Debug utility function - only available in development
+if (process.env.NODE_ENV === 'development') {
+  (globalThis as Record<string, unknown>).__debugModelAvailability = function () {
+    const dataSource = getDataSourceInfo();
+    const availableModels = getAvailableModels();
 
-  console.log("🔍 Model Availability Debug Report", {
-    timestamp: new Date().toISOString(),
-    dataSource: dataSource,
-    cache: modelAvailabilityCache,
-    configuredModels: AI_MODELS.length,
-    availableModels: availableModels.length,
-    modelsList: availableModels.map((m) => ({
-      id: m.id,
-      name: m.name,
-      enabled: m.isEnabled,
-    })),
-  });
+    console.log("🔍 Model Availability Debug Report", {
+      timestamp: new Date().toISOString(),
+      dataSource: dataSource,
+      cache: modelAvailabilityCache,
+      configuredModels: AI_MODELS.length,
+      availableModels: availableModels.length,
+      modelsList: availableModels.map((m) => ({
+        id: m.id,
+        name: m.name,
+        enabled: m.isEnabled,
+      })),
+    });
 
-  return {
-    dataSource,
-    cache: modelAvailabilityCache,
-    availableModels: availableModels.map((m) => m.name),
+    return {
+      dataSource,
+      cache: modelAvailabilityCache,
+      availableModels: availableModels.map((m) => m.name),
+    };
   };
-};
+}
