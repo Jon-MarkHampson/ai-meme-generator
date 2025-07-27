@@ -1,3 +1,4 @@
+// frontend/src/app/profile/edit-profile/page.tsx
 'use client';
 
 import React, { useState } from "react";
@@ -6,8 +7,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import { useAuth } from "@/context/AuthContext";
-import { apiDeleteAccount } from "@/lib/auth";
+import { AuthGuard } from "@/components/AuthGuard";
+import { useSession } from "@/contexts/SessionContext";
+import { apiUpdateProfile, apiDeleteAccount } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -87,9 +89,10 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
-export default function EditProfilePage() {
+function EditProfileContent() {
   const router = useRouter();
-  const { user, updateProfile, logout } = useAuth();
+  const { state, logout } = useSession();
+  const user = state.user;
 
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -117,46 +120,45 @@ export default function EditProfilePage() {
     setUpdateError(null);
     setIsUpdating(true);
 
-    // Build a *camelCase* payload to match the TS signature of `updateProfile`.
-    const payloadForAuthContext: {
-      currentPassword: string;
-      firstName?: string;
-      lastName?: string;
+    // Build a payload to match the API signature
+    const payload: {
+      current_password: string;
+      first_name?: string;
+      last_name?: string;
       email?: string;
       password?: string;
     } = {
-      currentPassword: values.currentPassword,
+      current_password: values.currentPassword,
     };
 
     if (values.firstName && values.firstName !== user?.first_name) {
-      payloadForAuthContext.firstName = values.firstName;
+      payload.first_name = values.firstName;
     }
     if (values.lastName && values.lastName !== user?.last_name) {
-      payloadForAuthContext.lastName = values.lastName;
+      payload.last_name = values.lastName;
     }
     if (values.email && values.email !== user?.email) {
-      payloadForAuthContext.email = values.email;
+      payload.email = values.email;
     }
     if (values.password) {
-      payloadForAuthContext.password = values.password;
+      payload.password = values.password;
     }
 
     // If no other field changed, simply bail
     if (
-      payloadForAuthContext.firstName === undefined &&
-      payloadForAuthContext.lastName === undefined &&
-      payloadForAuthContext.email === undefined &&
-      payloadForAuthContext.password === undefined
+      payload.first_name === undefined &&
+      payload.last_name === undefined &&
+      payload.email === undefined &&
+      payload.password === undefined
     ) {
       setIsUpdating(false);
       return;
     }
 
     try {
-      // Now pass the correct camelCase object.  AuthContext.updateProfile
-      // is responsible for internally converting camelCase → snake_case
-      await updateProfile(payloadForAuthContext);
-      router.push("/profile");
+      await apiUpdateProfile(payload);
+      // Refresh the page to get updated user data
+      window.location.href = "/profile";
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
       setUpdateError(error.response?.data?.detail || "Failed to update profile.");
@@ -170,7 +172,7 @@ export default function EditProfilePage() {
     setIsDeleting(true);
     try {
       await apiDeleteAccount(deletePassword);
-      logout();
+      await logout();
       router.push("/");
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } };
@@ -181,7 +183,11 @@ export default function EditProfilePage() {
   }
 
   if (!user) {
-    return null; // or a loading spinner
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
+      </div>
+    );
   }
 
   return (
@@ -205,7 +211,7 @@ export default function EditProfilePage() {
             </Alert>
           )}
 
-          {/* ========= Wrap <form> inside Shadcn/UI’s <Form> for RHF context ========= */}
+          {/* ========= Wrap <form> inside Shadcn/UI's <Form> for RHF context ========= */}
           <Form {...methods}>
             <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-6">
               {/* — Current Password (always required) — */}
@@ -421,5 +427,14 @@ export default function EditProfilePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+
+export default function EditProfilePage() {
+  return (
+    <AuthGuard>
+      <EditProfileContent />
+    </AuthGuard>
   );
 }
