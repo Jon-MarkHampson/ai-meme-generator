@@ -87,12 +87,13 @@ function GalleryContent() {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full overflow-hidden">
-            <div className="mb-8 text-center">
-                <h1 className="text-2xl mt-16 font-bold ">Gallery</h1>
+        <div className="flex flex-col items-center justify-center w-full min-h-screen pt-16 px-4">
+            <div className="text-center mb-12">
+                <h1 className="text-2xl font-bold">Gallery</h1>
                 <p className="mt-4">Your favourite memes.</p>
             </div>
-            <Carousel
+            <div className="flex items-center justify-center w-full">
+                <Carousel
                 opts={{
                     align: "start",
                 }}
@@ -208,6 +209,7 @@ function GalleryContent() {
                 <CarouselPrevious />
                 <CarouselNext />
             </Carousel>
+            </div>
         </div>
     );
 }
