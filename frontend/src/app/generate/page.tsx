@@ -1,6 +1,8 @@
+// frontend/src/app/generate/page.tsx
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useSession } from "@/contexts/SessionContext";
+import { AuthGuard } from "@/components/AuthGuard";
 import {
     createConversation,
     streamChat,
@@ -31,9 +33,8 @@ const WELCOME: ChatMessage[] = [
     },
 ];
 
-
-export default function ChatPage() {
-    const { } = useAuth();
+function GenerateContent() {
+    const { } = useSession();
 
     // ─── Declare ALL your hooks first ─────────────────────────────
     const [convId, setConvId] = useState<string | null>(null);
@@ -316,5 +317,13 @@ export default function ChatPage() {
                 </div>
             </SidebarProvider>
         </div>
+    );
+}
+
+export default function GeneratePage() {
+    return (
+        <AuthGuard>
+            <GenerateContent />
+        </AuthGuard>
     );
 }

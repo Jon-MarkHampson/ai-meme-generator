@@ -2,8 +2,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from '@/context/AuthContext';
-import { AuthGuard } from '@/components/AuthGuard';
+import { SessionProvider } from '@/contexts/SessionContext';
 import { NavBar } from "@/components/NavBar";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -53,19 +52,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange
         >
-          <AuthProvider>
+          <SessionProvider>
             <NavBar />
             <Suspense fallback={
               <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             }>
-              <AuthGuard>
-                <main>{children}</main>
-              </AuthGuard>
+              <main>{children}</main>
             </Suspense>
             <Toaster />
-          </AuthProvider>
+          </SessionProvider>
         </ThemeProvider>
       </body>
     </html>

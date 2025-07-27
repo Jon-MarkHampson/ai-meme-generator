@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-from typing import Optional
 from ..users.models import UserRead
 
 
@@ -10,7 +9,7 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    user_id: Optional[str] = None
+    user_id: str | None = None
 
 
 class SignupResponse(BaseModel):

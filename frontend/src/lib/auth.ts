@@ -49,7 +49,13 @@ export async function fetchProfile(): Promise<User> {
 }
 
 export async function apiRefreshSession(): Promise<void> {
-  await API.post("/auth/refresh");
+  try {
+    await API.post("/auth/refresh");
+  } catch (error: any) {
+    // Re-throw the error so SessionContext can handle it,
+    // but don't add extra logging here to avoid noise
+    throw error;
+  }
 }
 
 export async function apiUpdateProfile(

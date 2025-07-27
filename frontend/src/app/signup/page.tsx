@@ -1,12 +1,15 @@
+// frontend/src/app/signup/page.tsx
 'use client'
 
-import { useContext, useState } from 'react'
-import { AuthContext } from '@/context/AuthContext'
+import { useEffect, useState } from 'react'
+import { useSession } from '@/contexts/SessionContext'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { DEFAULT_PROTECTED_ROUTE } from '@/lib/authRoutes'
+import { apiSignup } from '@/lib/auth'
+import { toast } from 'sonner'
 
 // Shadcn/UI imports
 import { Button } from '@/components/ui/button'
@@ -21,8 +24,7 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 /**
- * 1) Add confirmPassword to the schema
- * 2) Use .refine() so that if password is non-empty, confirmPassword must match
+ * Form schema with password confirmation validation
  */
 const formSchema = z
   .object({
@@ -40,7 +42,7 @@ const formSchema = z
 type FormValues = z.infer<typeof formSchema>
 
 export default function SignupPage() {
-  const { signup } = useContext(AuthContext)
+  const { state, revalidateSession } = useSession()
   const router = useRouter()
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -56,26 +58,53 @@ export default function SignupPage() {
     },
   })
 
+  // Redirect authenticated users away from signup page
+  useEffect(() => {
+    if (state.isAuthenticated && state.user) {
+      router.replace(DEFAULT_PROTECTED_ROUTE)
+    }
+  }, [state.isAuthenticated, state.user, router])
+
   async function onSubmit(values: FormValues) {
     setFormError(null)
     setIsSubmitting(true)
 
     try {
-      await signup(
+      // Call signup API
+      await apiSignup(
         values.firstName,
         values.lastName,
         values.email,
         values.password
       )
-      router.replace(DEFAULT_PROTECTED_ROUTE)
+
+      // Revalidate session to update state immediately
+      await revalidateSession();
+
+      // Success! Show toast and redirect
+      toast.success('Account created successfully! Welcome aboard!')
+
+      // Use router.push for client-side navigation
+      router.push(DEFAULT_PROTECTED_ROUTE)
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
+      const error = err as { response?: { data?: { detail?: string } } }
       const message =
         error.response?.data?.detail || 'Sign up failed. Please try again.'
+
       setFormError(message)
+      toast.error(message)
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // Show loading state during session validation
+  if (state.isValidating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
+      </div>
+    )
   }
 
   return (
@@ -93,7 +122,7 @@ export default function SignupPage() {
             </Alert>
           )}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* First Name Field */}
               <FormField
                 control={form.control}
@@ -105,6 +134,7 @@ export default function SignupPage() {
                       <Input
                         placeholder="Enter your first name"
                         autoComplete="given-name"
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
@@ -128,6 +158,7 @@ export default function SignupPage() {
                       <Input
                         placeholder="Enter your last name"
                         autoComplete="family-name"
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
@@ -152,6 +183,7 @@ export default function SignupPage() {
                         type="email"
                         placeholder="Enter your email"
                         autoComplete="email"
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
@@ -176,6 +208,7 @@ export default function SignupPage() {
                         type="password"
                         placeholder="Choose a strong password"
                         autoComplete="new-password"
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
@@ -200,6 +233,7 @@ export default function SignupPage() {
                         type="password"
                         placeholder="Retype your password"
                         autoComplete="new-password"
+                        disabled={isSubmitting}
                         {...field}
                       />
                     </FormControl>
