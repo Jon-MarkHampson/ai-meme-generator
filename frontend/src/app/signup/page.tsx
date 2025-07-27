@@ -42,7 +42,7 @@ const formSchema = z
 type FormValues = z.infer<typeof formSchema>
 
 export default function SignupPage() {
-  const { state } = useSession()
+  const { state, revalidateSession } = useSession()
   const router = useRouter()
   const [formError, setFormError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -78,11 +78,14 @@ export default function SignupPage() {
         values.password
       )
 
+      // Revalidate session to update state immediately
+      await revalidateSession();
+
       // Success! Show toast and redirect
       toast.success('Account created successfully! Welcome aboard!')
 
-      // Use window.location for hard refresh to ensure session is picked up
-      window.location.href = DEFAULT_PROTECTED_ROUTE
+      // Use router.push for client-side navigation
+      router.push(DEFAULT_PROTECTED_ROUTE)
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string } } }
       const message =

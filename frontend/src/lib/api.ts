@@ -18,8 +18,12 @@ API.interceptors.response.use(
       const isAuthEndpoint = error.config?.url?.includes("/auth/");
 
       if (!isAuthEndpoint && typeof window !== "undefined") {
-        // Redirect to home - the backend already cleared the cookies
-        window.location.href = HOME_ROUTE;
+        // Don't redirect automatically - let SessionContext handle it
+        // This prevents the infinite reload loop
+        console.log('[API] 401 detected, session expired - triggering logout event');
+        
+        // Dispatch custom event to notify SessionContext
+        window.dispatchEvent(new CustomEvent('session-expired'));
       }
     }
 

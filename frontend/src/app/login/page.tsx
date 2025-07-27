@@ -23,7 +23,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export default function LoginPage() {
-  const { state } = useSession();
+  const { state, revalidateSession } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formError, setFormError] = useState<string | null>(null);
@@ -46,15 +46,18 @@ export default function LoginPage() {
       // Call login API
       await apiLogin(values.email, values.password);
 
+      // Revalidate session to update state immediately
+      await revalidateSession();
+
       // Success! The SessionContext will detect the new session
-      toast.success('Welcome back!');
+      // toast.success('Welcome back!');
 
       // Redirect to intended destination
       const redirect = searchParams.get('redirect');
       const redirectTo = redirect || DEFAULT_PROTECTED_ROUTE;
 
-      // Use window.location for hard refresh to ensure session is picked up
-      window.location.href = redirectTo;
+      // Use router.push for client-side navigation
+      router.push(redirectTo);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { detail?: string }; status?: number } };
       const msg = error.response?.data?.detail || 'Login failed. Please check your credentials.';
@@ -69,6 +72,15 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   }
+
+  // Handle authenticated users
+  useEffect(() => {
+    if (state.isAuthenticated && state.user && !state.isValidating) {
+      const redirect = searchParams.get('redirect');
+      const redirectTo = redirect || DEFAULT_PROTECTED_ROUTE;
+      router.replace(redirectTo);
+    }
+  }, [state.isAuthenticated, state.user, state.isValidating, searchParams, router]);
 
   // Show loading state during session validation
   if (state.isValidating) {

@@ -3,15 +3,13 @@
 import Link from 'next/link'
 import { useSession } from '@/contexts/SessionContext'
 import { ModeToggle } from '@/components/ui/mode-toggle'
-import { useRouter } from 'next/navigation'
 
 export function NavBar() {
     const { state, logout } = useSession()
-    const router = useRouter()
 
     const handleLogout = async () => {
+        // SessionContext handles redirect after logout
         await logout()
-        router.push('/')
     }
 
     return (

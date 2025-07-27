@@ -17,6 +17,7 @@ interface SessionContextValue {
     state: SessionState;
     logout: () => Promise<void>;
     refreshSession: () => Promise<void>;
+    revalidateSession: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -29,6 +30,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
 
     const router = useRouter();
+    const [isInitialized, setIsInitialized] = useState(false);
 
     // Refs for timers
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -53,26 +55,35 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const refreshSession = useCallback(async () => {
         if (!state.isAuthenticated) return;
 
+        // Don't try to refresh if we're already showing warning (session about to expire)
+        if (warningToastIdRef.current) {
+            console.log('[Session] Skipping refresh - warning already shown, session expiring soon');
+            return;
+        }
+
         try {
             await apiRefreshSession();
-            console.log('Session refreshed');
-        } catch (error) {
-            console.error('Failed to refresh session:', error);
-            // If refresh fails, validate session status
-            const user = await getSession();
-            if (!user) {
-                logout();
+            console.log('[Session] Token refreshed successfully');
+        } catch (error: any) {
+            // Handle 401 gracefully - token already expired
+            if (error.response?.status === 401) {
+                console.log('[Session] Token expired during refresh, logging out gracefully');
+            } else {
+                console.error('[Session] Failed to refresh token:', error);
             }
+            // If refresh fails, logout user
+            logout();
         }
     }, [state.isAuthenticated, logout]);
 
-    // Handle user activity
+    // Handle user activity - just reset timers, don't recreate them
     const handleActivity = useCallback(() => {
         lastActivityRef.current = Date.now();
 
         // Clear existing timers
         if (inactivityTimerRef.current) {
             clearTimeout(inactivityTimerRef.current);
+            inactivityTimerRef.current = null;
         }
         if (warningTimerRef.current) {
             clearInterval(warningTimerRef.current);
@@ -85,11 +96,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             warningToastIdRef.current = null;
         }
 
-        // Reset inactivity timer
+        // Reset inactivity timer (only if authenticated)
         if (state.isAuthenticated) {
-            console.log('[Session] Activity detected, resetting timer');
             inactivityTimerRef.current = setTimeout(() => {
-                console.log('[Session] Inactivity timeout reached, showing warning');
+                console.log('[Session] Inactivity detected, showing session warning');
+                
                 // Start warning countdown
                 let seconds = SESSION_TIMING.WARNING_DURATION / 1000;
                 warningToastIdRef.current = showSessionWarning(seconds);
@@ -101,8 +112,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                     } else {
                         if (warningTimerRef.current) {
                             clearInterval(warningTimerRef.current);
+                            warningTimerRef.current = null;
                         }
-                        console.log('[Session] Warning countdown finished, logging out');
+                        console.log('[Session] Session expired due to inactivity');
                         logout();
                     }
                 }, 1000);
@@ -110,164 +122,145 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         }
     }, [state.isAuthenticated, logout]);
 
+    // Revalidate session function for manual refresh
+    const revalidateSession = useCallback(async () => {
+        console.log('[Session] Manually revalidating session...');
+        try {
+            const user = await getSession();
+            console.log('[Session] Revalidation result:', user);
+            
+            setState({
+                user,
+                isAuthenticated: !!user,
+                isValidating: false,
+            });
+        } catch (error) {
+            console.error('[Session] Revalidation error:', error);
+            setState({
+                user: null,
+                isAuthenticated: false,
+                isValidating: false,
+            });
+        }
+    }, []);
+
     // Initial session validation
     useEffect(() => {
+        if (isInitialized) return;
+
         const initializeSession = async () => {
-            console.log('[Session] Initializing session check...');
-            console.log('[Session] Current URL:', window.location.href);
-            console.log('[Session] All cookies:', document.cookie);
+            console.log('[Session] Initializing session validation...');
 
-            // Try multiple times to check for cookie (in case of timing issues)
-            let attempts = 0;
-            const maxAttempts = 5;
-
-            const checkForCookie = async () => {
-                attempts++;
-                console.log(`[Session] Cookie check attempt ${attempts}/${maxAttempts}`);
-                console.log('[Session] Cookies:', document.cookie);
-
-                const cookies = document.cookie.split(';');
-                const hasAuthCookie = cookies.some(cookie => {
-                    const trimmed = cookie.trim();
-                    console.log('[Session] Checking cookie:', trimmed);
-                    return trimmed.startsWith('access_token=');
+            try {
+                const user = await getSession();
+                setState({
+                    user,
+                    isAuthenticated: !!user,
+                    isValidating: false,
                 });
-
-                console.log('[Session] Has auth cookie:', hasAuthCookie);
-
-                if (hasAuthCookie) {
-                    // Cookie found! Stop checking and validate
-                    console.log('[Session] Auth cookie found! Validating session...');
-
-                    try {
-                        const user = await getSession();
-                        console.log('[Session] Session valid, user:', user);
-                        setState({
-                            user,
-                            isAuthenticated: !!user,
-                            isValidating: false,
-                        });
-                    } catch (error) {
-                        console.error('[Session] Session validation error:', error);
-                        setState({
-                            user: null,
-                            isAuthenticated: false,
-                            isValidating: false,
-                        });
-                    }
-                    return; // Important: exit the function after finding cookie
-                }
-
-                if (attempts < maxAttempts) {
-                    // Try again in 200ms
-                    setTimeout(checkForCookie, 200);
-                    return;
-                }
-
-                // No cookie found after all attempts
-                console.log('[Session] No auth cookie found after', attempts, 'attempts');
+                console.log('[Session] Session initialized -', user ? `authenticated as ${user.email}` : 'not authenticated');
+            } catch (error) {
+                console.error('[Session] Session validation failed:', error);
                 setState({
                     user: null,
                     isAuthenticated: false,
                     isValidating: false,
                 });
-            };
-
-            // Start checking
-            checkForCookie();
+            }
+            setIsInitialized(true);
         };
 
         // Add a small delay to ensure cookies are set after redirect
         setTimeout(initializeSession, 100);
-    }, []);
+    }, [isInitialized]);
 
-    // Periodic session validation for external logouts
+    // Listen for session expiry events from API interceptor
     useEffect(() => {
-        if (!state.isAuthenticated) return;
+        const handleSessionExpired = () => {
+            console.log('[Session] Received session-expired event, logging out');
+            logout();
+        };
 
-        // Check session validity every 10 seconds
-        const interval = setInterval(async () => {
-            try {
-                await getSession();
-            } catch (error) {
-                console.log('[Session] Session check failed, logging out');
-                // Session invalid, reset state
-                setState({
-                    user: null,
-                    isAuthenticated: false,
-                    isValidating: false,
-                });
-                // Redirect to home
-                router.push(HOME_ROUTE);
-            }
-        }, 10000); // Check every 10 seconds
-
-        return () => clearInterval(interval);
-    }, [state.isAuthenticated, router]);
+        window.addEventListener('session-expired', handleSessionExpired);
+        return () => window.removeEventListener('session-expired', handleSessionExpired);
+    }, [logout]);
 
     // Activity tracking
     useEffect(() => {
         if (!state.isAuthenticated) {
-            console.log('[Session] Not authenticated, skipping activity tracking');
             return;
         }
 
-        console.log('[Session] Setting up activity tracking');
+        console.log('[Session] Setting up activity tracking and session timers');
 
-        // Initial activity
-        handleActivity();
+        // Set up inactivity timer
+        inactivityTimerRef.current = setTimeout(() => {
+            console.log('[Session] Inactivity detected, showing session warning');
+            
+            // Start warning countdown
+            let seconds = SESSION_TIMING.WARNING_DURATION / 1000;
+            warningToastIdRef.current = showSessionWarning(seconds);
 
-        // Add event listeners
+            warningTimerRef.current = setInterval(() => {
+                seconds--;
+                if (seconds > 0 && warningToastIdRef.current) {
+                    updateSessionWarning(warningToastIdRef.current, seconds);
+                } else {
+                    if (warningTimerRef.current) {
+                        clearInterval(warningTimerRef.current);
+                        warningTimerRef.current = null;
+                    }
+                    console.log('[Session] Session expired due to inactivity');
+                    logout();
+                }
+            }, 1000);
+        }, SESSION_TIMING.INACTIVITY_TIMEOUT);
+
+        // Add event listeners for user activity
         const events = ACTIVITY_EVENTS;
         events.forEach(event => {
             document.addEventListener(event, handleActivity, { passive: true });
         });
 
-        // Set up refresh interval
-        refreshTimerRef.current = setInterval(refreshSession, SESSION_TIMING.REFRESH_INTERVAL);
+        // Set up refresh interval (only for active users)
+        refreshTimerRef.current = setInterval(() => {
+            // Only refresh if user is not in warning state (still active)
+            if (!warningToastIdRef.current) {
+                refreshSession();
+            }
+        }, SESSION_TIMING.REFRESH_INTERVAL);
 
         // Cleanup
         return () => {
-            console.log('[Session] Cleaning up activity tracking');
             events.forEach(event => {
                 document.removeEventListener(event, handleActivity);
             });
 
-            if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-            if (warningTimerRef.current) clearInterval(warningTimerRef.current);
-            if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
-            if (warningToastIdRef.current) dismissSessionWarning(warningToastIdRef.current);
+            // Clear all timers and reset refs
+            if (inactivityTimerRef.current) {
+                clearTimeout(inactivityTimerRef.current);
+                inactivityTimerRef.current = null;
+            }
+            if (warningTimerRef.current) {
+                clearInterval(warningTimerRef.current);
+                warningTimerRef.current = null;
+            }
+            if (refreshTimerRef.current) {
+                clearInterval(refreshTimerRef.current);
+                refreshTimerRef.current = null;
+            }
+            if (warningToastIdRef.current) {
+                dismissSessionWarning(warningToastIdRef.current);
+                warningToastIdRef.current = null;
+            }
         };
     }, [state.isAuthenticated, handleActivity, refreshSession]);
-
-    // Periodic session validation for external logouts
-    useEffect(() => {
-        if (!state.isAuthenticated) return;
-
-        // Check session validity every 10 seconds
-        const interval = setInterval(async () => {
-            try {
-                await getSession();
-            } catch (error) {
-                console.log('[Session] Session check failed, logging out');
-                // Session invalid, reset state
-                setState({
-                    user: null,
-                    isAuthenticated: false,
-                    isValidating: false,
-                });
-                // Redirect to home
-                router.push(HOME_ROUTE);
-            }
-        }, 10000); // Check every 10 seconds
-
-        return () => clearInterval(interval);
-    }, [state.isAuthenticated, router]);
 
     const value: SessionContextValue = {
         state,
         logout,
         refreshSession,
+        revalidateSession,
     };
 
     return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
