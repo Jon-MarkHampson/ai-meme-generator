@@ -1,3 +1,4 @@
+# backend/features/users/service.py
 import logging
 from fastapi import HTTPException, status
 from sqlmodel import Session

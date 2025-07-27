@@ -1,7 +1,9 @@
+// frontend/src/app/profile/page.tsx
 'use client'
-import { useContext } from 'react'
-import { AuthContext } from '@/context/AuthContext'
+
+import { useSession } from '@/contexts/SessionContext'
 import { useRouter } from 'next/navigation'
+import { AuthGuard } from '@/components/AuthGuard'
 
 // Shadcn/UI imports
 import { Button } from '@/components/ui/button'
@@ -15,16 +17,21 @@ import {
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 
-
-export default function ProfilePage() {
-  const { user, logout } = useContext(AuthContext)
+function ProfileContent() {
+  const { state, logout } = useSession()
   const router = useRouter()
 
+  const handleLogout = async () => {
+    await logout()
+    router.push('/')
+  }
+
+  const user = state.user
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-base text-neutral-500">Loading…</p>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
       </div>
     )
   }
@@ -66,10 +73,7 @@ export default function ProfilePage() {
           </Button>
           <Button
             variant="destructive"
-            onClick={() => {
-              logout()
-              router.push('/')
-            }}
+            onClick={handleLogout}
             className="w-full"
           >
             Log Out
@@ -77,5 +81,13 @@ export default function ProfilePage() {
         </CardFooter>
       </Card>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <AuthGuard>
+      <ProfileContent />
+    </AuthGuard>
   )
 }

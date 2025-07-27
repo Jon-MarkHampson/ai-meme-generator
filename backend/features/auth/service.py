@@ -1,15 +1,18 @@
+# backend/features/auth/service.py
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import Cookie, Depends, Header, HTTPException, status
 from jose import JWTError, ExpiredSignatureError, jwt
 from passlib.context import CryptContext
-from sqlmodel import Session
+from sqlalchemy.exc import IntegrityError
+from sqlmodel import Session, select
 
 from config import settings
 from database.core import get_session
 from entities.user import User
-from .models import TokenData
+from ..users.models import UserCreate
 
 logger = logging.getLogger(__name__)
 
@@ -17,51 +20,100 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    """
-    Verify a plaintext password against its hashed counterpart.
-    Returns True if they match, False otherwise.
-    """
+    """Verify a plaintext password against its hash."""
     return pwd_context.verify(plain, hashed)
 
 
 def get_password_hash(password: str) -> str:
-    """
-    Hash a plaintext password using bcrypt.
-    Returns the resulting hash.
-    """
+    """Hash a plaintext password."""
     return pwd_context.hash(password)
 
 
-def create_access_token(
-    subject: str,
-    expires_delta: timedelta,
-) -> str:
-    """
-    Create a JWT access token for a given subject (user ID), with the specified expiration delta.
-    Embeds 'sub' and 'exp' claims, signs with our secret, and returns the token string.
-    """
-    to_encode = {"sub": subject}
+def create_access_token(subject: str, expires_delta: timedelta) -> str:
+    """Create a JWT access token."""
     expire = datetime.now(timezone.utc) + expires_delta
-    to_encode["exp"] = expire
+    to_encode = {"sub": subject, "exp": expire}
     token = jwt.encode(
         to_encode,
         settings.JWT_SECRET,
         algorithm=settings.JWT_ALGORITHM,
     )
-    logger.info("Issued token for %s, expires at %s", subject, expire)
+    logger.info(f"Issued token for {subject}, expires at {expire}")
     return token
 
 
+def create_user_account(user_in: UserCreate, session: Session) -> User:
+    """Create a new user account."""
+    # Check if email exists
+    existing = session.exec(select(User).where(User.email == user_in.email)).first()
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+        )
+
+    # Create user
+    user = User(
+        first_name=user_in.first_name,
+        last_name=user_in.last_name,
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password),
+    )
+
+    session.add(user)
+    try:
+        session.commit()
+        session.refresh(user)
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
+        )
+
+    logger.info(f"Created new user account: {user.id}")
+    return user
+
+
+def authenticate_user(email: str, password: str, session: Session) -> User:
+    """Authenticate user with email and password."""
+    user = session.exec(select(User).where(User.email == email)).first()
+
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
+
+    logger.info(f"User {user.id} authenticated successfully")
+    return user
+
+
+def create_session_token(user_id: str) -> str:
+    """Create a new session token for a user."""
+    return create_access_token(
+        subject=user_id,
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+
+def refresh_user_session(user_id: str) -> str:
+    """Refresh a user's session token."""
+    logger.info(f"Refreshing session for user {user_id}")
+    return create_session_token(user_id)
+
+
 def get_token_from_cookie_or_header(
-    authorization: str | None = Header(None),
-    access_token: str | None = Cookie(None),
+    authorization: Optional[str] = Header(None),
+    access_token: Optional[str] = Cookie(None),
 ) -> str:
-    # 1) Try cookie first
+    """Extract token from cookie or Authorization header."""
+    # Prefer cookie
     if access_token:
         return access_token
-    # 2) Fallback to header
+
+    # Fallback to header
     if authorization and authorization.startswith("Bearer "):
         return authorization[7:]
+
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated",
@@ -73,106 +125,38 @@ def get_current_user(
     token: str = Depends(get_token_from_cookie_or_header),
     session: Session = Depends(get_session),
 ) -> User:
-    """
-    Returns the authenticated User instance.
-    """
-    credentials_exc = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
+    """Get the current authenticated user from token."""
     try:
         payload = jwt.decode(
             token,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],
         )
-        user_id: str = payload.get("sub")
+        user_id = payload.get("sub")
         if not user_id:
-            raise credentials_exc
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+            )
     except ExpiredSignatureError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
         )
     except JWTError:
-        raise credentials_exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
 
     user = session.get(User, user_id)
     if not user:
-        raise credentials_exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
 
-    logger.info("Authenticated user %s", user.id)
     return user
 
 
-# def get_current_user_with_refresh(
-#     token: str = Depends(get_token_from_cookie_or_header),
-#     session: Session = Depends(get_session),
-# ) -> tuple[User, str | None]:
-#     """
-#     Returns the authenticated User instance and a new token if refresh is needed.
-#     This version checks if the token is close to expiry and generates a new one.
-#     """
-#     credentials_exc = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-
-#     try:
-#         payload = jwt.decode(
-#             token,
-#             settings.JWT_SECRET,
-#             algorithms=[settings.JWT_ALGORITHM],
-#         )
-#         user_id: str = payload.get("sub")
-#         if not user_id:
-#             raise credentials_exc
-
-#         # Check if token expires within half the token lifetime
-#         exp = payload.get("exp")
-#         if exp:
-#             current_time = datetime.now(timezone.utc).timestamp()
-#             time_until_expiry = exp - current_time
-
-#             # If less than half the token lifetime remaining, create a new token
-#             # TEMPORARY: For 1-minute tokens, refresh when <30 seconds remaining
-#             refresh_threshold = (
-#                 settings.ACCESS_TOKEN_EXPIRE_MINUTES * 30
-#             )  # Half of lifetime in seconds
-#             if time_until_expiry < refresh_threshold:
-#                 new_token = create_access_token(
-#                     subject=user_id,
-#                     expires_delta=timedelta(
-#                         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-#                     ),
-#                 )
-#                 logger.info(
-#                     "Refreshing token for user %s, %d seconds remaining (threshold: %d)",
-#                     user_id,
-#                     time_until_expiry,
-#                     refresh_threshold,
-#                 )
-#             else:
-#                 new_token = None
-#         else:
-#             new_token = None
-
-#     except ExpiredSignatureError:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Token expired",
-#             headers={"WWW-Authenticate": "Bearer"},
-#         )
-#     except JWTError:
-#         raise credentials_exc
-
-#     user = session.get(User, user_id)
-#     if not user:
-#         raise credentials_exc
-
-#     logger.info("Authenticated user %s", user.id)
-#     return user, new_token
+def validate_session_status(user_id: str) -> dict:
+    """Get session status and time remaining."""
+    # This would typically check the token expiry
+    # For now, return a simple status
+    return {"authenticated": True, "user_id": user_id, "message": "Session is valid"}

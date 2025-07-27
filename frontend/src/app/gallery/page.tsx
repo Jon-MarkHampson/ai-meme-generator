@@ -1,8 +1,9 @@
+//  frontend/src/app/gallery/page.tsx 
 "use client";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useSession } from "@/contexts/SessionContext";
 import * as React from "react"
+import { AuthGuard } from "@/components/AuthGuard";
 import {
     FavouriteMemeRead,
     listFavourites,
@@ -25,23 +26,16 @@ import Image from "next/image"
 import { FavoriteToggle } from "@/components/FavoriteToggle";
 import { Loader2, Calendar, Download } from "lucide-react";
 
-export default function GalleryPage() {
-    const { user, loading } = useAuth();
-    const router = useRouter();
+function GalleryContent() {
+    const { state } = useSession();
+    const user = state.user;
     const [favourites, setFavourites] = useState<FavouriteMemeRead[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    console.log("Gallery page rendered. User:", user, "Loading:", loading);
+    console.log("Gallery page rendered. User:", user);
 
     // fetch favourites on load ───────────────────────────────
     useEffect(() => {
-        if (loading) return;
-
-        if (!user) {
-            router.push("/");
-            return;
-        }
-
         const fetchFavorites = async () => {
             try {
                 console.log("Fetching favorites...");
@@ -57,7 +51,7 @@ export default function GalleryPage() {
         };
 
         fetchFavorites();
-    }, [user, loading, router]);
+    }, []);
 
     // Handle favorite toggle (remove from list when unfavorited)
     const handleFavoriteToggle = (memeId: string) => {
@@ -84,18 +78,10 @@ export default function GalleryPage() {
         }
     };
 
-    if (loading || isLoading) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-        );
-    }
-
-    if (!user) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div>Please log in to view your gallery.</div>
             </div>
         );
     }
@@ -223,5 +209,13 @@ export default function GalleryPage() {
                 <CarouselNext />
             </Carousel>
         </div>
+    );
+}
+
+export default function GalleryPage() {
+    return (
+        <AuthGuard>
+            <GalleryContent />
+        </AuthGuard>
     );
 }
