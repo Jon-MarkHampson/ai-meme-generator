@@ -6,7 +6,7 @@ import { toast } from "sonner";
  */
 export function showSessionWarning(seconds: number): string | number {
   return toast.warning(`Session expires in ${seconds}s`, {
-    description: "Move your mouse to stay logged in",
+    description: "Due to inactivity.",
     duration: Infinity,
   });
 }
@@ -20,7 +20,7 @@ export function updateSessionWarning(
 ): void {
   toast.warning(`Session expires in ${seconds}s`, {
     id,
-    description: "Move your mouse to stay logged in",
+    description: "Due to inactivity.",
     duration: Infinity,
   });
 }
