@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     - ACCESS_TOKEN_EXPIRE_MINUTES: token expiration time in minutes
     """
 
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
     # crypto for signing JWTs
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
@@ -38,8 +40,6 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str
     ANTHROPIC_API_KEY: str
     LOGFIRE_TOKEN: str
-
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     AI_IMAGE_BUCKET: str
 
