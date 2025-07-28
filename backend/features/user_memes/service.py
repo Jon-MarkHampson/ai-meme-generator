@@ -58,7 +58,7 @@ def create_user_meme(
     session.commit()
     session.refresh(user_meme)
 
-    return user_meme
+    return UserMemeRead.model_validate(user_meme)
 
 
 def read_user_meme(
@@ -80,7 +80,7 @@ def read_user_meme(
             detail=f"UserMeme {meme_id!r} not found",
         )
 
-    return user_meme
+    return UserMemeRead.model_validate(user_meme)
 
 
 def read_latest_conversation_meme(
@@ -103,7 +103,7 @@ def read_latest_conversation_meme(
         return None
 
     logger.info(f"Latest meme for user {current_user.id} retrieved")
-    return user_meme
+    return UserMemeRead.model_validate(user_meme)
 
 
 def update_user_meme(
@@ -134,7 +134,7 @@ def update_user_meme(
     session.commit()
     session.refresh(user_meme)
 
-    return user_meme
+    return UserMemeRead.model_validate(user_meme)
 
 
 def delete_user_meme(
@@ -173,7 +173,9 @@ def list_user_memes(
         return UserMemeList(memes=[])
 
     logger.info(f"Listed {len(memes)} memes for user {current_user.id}")
-    return UserMemeList(memes=memes)
+    # Convert to Pydantic models:
+    meme_models = [UserMemeRead.model_validate(m) for m in memes]
+    return UserMemeList(memes=meme_models)
 
 
 def get_favorite_memes(
@@ -194,4 +196,6 @@ def get_favorite_memes(
     logger.info(
         f"Listed {len(favorite_memes)} favorite memes for user {current_user.id}"
     )
-    return UserMemeList(memes=favorite_memes)
+    # Convert to Pydantic models:
+    meme_models = [UserMemeRead.model_validate(m) for m in favorite_memes]
+    return UserMemeList(memes=meme_models)
