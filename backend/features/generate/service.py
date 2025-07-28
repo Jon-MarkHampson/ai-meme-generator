@@ -18,8 +18,8 @@ from pydantic_ai.messages import (
     TextPart,
 )
 
-from entities.chat_conversations import Conversation as ConversationEntity
-from entities.chat_messages import Message as MessageEntity
+from entities.conversations import Conversation as ConversationEntity
+from entities.messages import Message as MessageEntity
 from entities.user import User
 from .agent import create_manager_agent
 from .models import (
