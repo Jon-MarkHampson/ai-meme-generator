@@ -7,7 +7,7 @@ from sqlalchemy import Column, DateTime, ForeignKey
 
 
 class Conversation(SQLModel, table=True):
-    __tablename__ = "conversations"
+    __tablename__: str = "conversations"
 
     id: str = Field(
         default_factory=lambda: uuid4().hex,

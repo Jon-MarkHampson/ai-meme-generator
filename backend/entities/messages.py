@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 
 class Message(SQLModel, table=True):
-    __tablename__ = "messages"
+    __tablename__: str = "messages"
 
     id: str = Field(
         default_factory=lambda: uuid4().hex,
