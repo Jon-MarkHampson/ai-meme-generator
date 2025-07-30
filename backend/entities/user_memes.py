@@ -6,7 +6,7 @@ from sqlalchemy import Column, DateTime, ForeignKey
 
 
 class UserMeme(SQLModel, table=True):
-    __tablename__ = "user_memes"
+    __tablename__: str = "user_memes"
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     conversation_id: str = Field(
@@ -34,8 +34,6 @@ class UserMeme(SQLModel, table=True):
             f"id={self.id!r}, "
             f"conversation_id={self.conversation_id!r}, "
             f"user_id={self.user_id!r}, "
-            f"meme_template_id={self.meme_template_id!r}, "
-            f"caption_variant_id={self.caption_variant_id!r}, "
             f"image_url={self.image_url!r}, "
             f"openai_response_id={self.openai_response_id!r}, "
             f"is_favorite={self.is_favorite!r}, "
@@ -45,6 +43,6 @@ class UserMeme(SQLModel, table=True):
 
     def __str__(self):
         return (
-            f"UserMemes: User {self.user_id} created meme template {self.meme_template_id} "
+            f"UserMemes: User {self.user_id} created a meme with ID {self.id} "
             f"on {self.created_at} favorited: {self.is_favorite}"
         )
