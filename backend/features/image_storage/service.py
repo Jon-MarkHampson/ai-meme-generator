@@ -3,7 +3,7 @@ import uuid
 import logging
 from fastapi import HTTPException, status
 from storage3.exceptions import StorageApiError
-from supabase_client import supabase
+from database.supabase_client import supabase
 from entities.user import User
 
 logger = logging.getLogger(__name__)
