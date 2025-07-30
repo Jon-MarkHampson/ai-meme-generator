@@ -5,7 +5,7 @@ from sqlalchemy import Column, DateTime
 
 
 class User(SQLModel, table=True):
-    __tablename__ = "users"
+    __tablename__: str = "users"
 
     id: str = Field(default_factory=lambda: uuid4().hex, primary_key=True, index=True)
     first_name: str = Field(index=True, nullable=False)
