@@ -5,28 +5,16 @@ from typing import Optional
 
 from fastapi import Cookie, Depends, Header, HTTPException, status
 from jose import JWTError, ExpiredSignatureError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from config import settings
 from database.core import get_session
 from entities.user import User
-from ..users.models import UserCreate
+from ..users.models import UserCreate, UserRead
+from utils.security import get_password_hash, verify_password
 
 logger = logging.getLogger(__name__)
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def verify_password(plain: str, hashed: str) -> bool:
-    """Verify a plaintext password against its hash."""
-    return pwd_context.verify(plain, hashed)
-
-
-def get_password_hash(password: str) -> str:
-    """Hash a plaintext password."""
-    return pwd_context.hash(password)
 
 
 def create_access_token(subject: str, expires_delta: timedelta) -> str:
@@ -42,7 +30,7 @@ def create_access_token(subject: str, expires_delta: timedelta) -> str:
     return token
 
 
-def create_user_account(user_in: UserCreate, session: Session) -> User:
+def create_user_account(user_in: UserCreate, session: Session) -> UserRead:
     """Create a new user account."""
     # Check if email exists
     existing = session.exec(select(User).where(User.email == user_in.email)).first()
@@ -71,10 +59,10 @@ def create_user_account(user_in: UserCreate, session: Session) -> User:
         )
 
     logger.info(f"Created new user account: {user.id}")
-    return user
+    return UserRead.model_validate(user)
 
 
-def authenticate_user(email: str, password: str, session: Session) -> User:
+def authenticate_user(email: str, password: str, session: Session) -> UserRead:
     """Authenticate user with email and password."""
     user = session.exec(select(User).where(User.email == email)).first()
 
@@ -84,7 +72,7 @@ def authenticate_user(email: str, password: str, session: Session) -> User:
         )
 
     logger.info(f"User {user.id} authenticated successfully")
-    return user
+    return UserRead.model_validate(user)
 
 
 def create_session_token(user_id: str) -> str:

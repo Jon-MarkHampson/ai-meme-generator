@@ -5,7 +5,7 @@ from sqlmodel import Session
 
 from entities.user import User
 from .models import UserUpdate, UserDelete
-from features.auth.service import get_password_hash, pwd_context
+from utils.security import get_password_hash, verify_password
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ def update_current_user(
     supplied_old_pw = data.pop("current_password", None)
 
     # (always non‐None because Pydantic demands it)
-    if not pwd_context.verify(supplied_old_pw, current_user.hashed_password):
+    if not verify_password(supplied_old_pw, current_user.hashed_password):
         logger.warning(
             f"User {current_user.id} attempted to update profile with incorrect password."
         )
@@ -76,7 +76,7 @@ def delete_current_user(
     Verify that delete_in.password matches current_user.hashed_password.
     If not, raise 401. If it matches, delete and commit.
     """
-    if not pwd_context.verify(delete_in.password, current_user.hashed_password):
+    if not verify_password(delete_in.password, current_user.hashed_password):
         logger.warning(
             f"User {current_user.id} attempted to delete account with incorrect password."
         )
