@@ -1,156 +1,67 @@
+"""
+Meme generation controller handling AI-powered meme creation endpoints.
+
+This module provides the HTTP interface for the meme generation system,
+streaming AI responses in real-time to provide immediate user feedback.
+The streaming approach enhances user experience by showing progress
+during the multi-step generation process.
+"""
 import logging
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 
 from database.core import get_session
 from features.auth.service import get_current_user
 from entities.user import User
-from .models import (
-    ConversationRead,
-    ConversationUpdate,
-    MessageRead,
-    MessageCreate,
-    ChatRequest,
-    ChatMessage,
-)
-from .service import (
-    list_conversations_ordered,
-    create_conversation,
-    get_conversation,
-    update_conversation,
-    delete_conversation,
-    list_messages,
-    store_message,
-    chat_stream,
-)
+from .models import GenerateMemeRequest
+from .service import generate_meme_stream
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/generate", tags=["generate"])
 
-# Conversation CRUD
-
-
-@router.get(
-    "/conversations/",
-    response_model=List[ConversationRead],
-    summary="List all conversations for the current user.",
-)
-def read_conversations(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> List[ConversationRead]:
-    logger.info(f"Listing conversations for user {current_user.id}")
-    return list_conversations_ordered(session, current_user)
-
 
 @router.post(
-    "/conversations/",
-    response_model=ConversationRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Start a new conversation.",
+    "/meme",
+    summary="Generate a meme using AI",
 )
-def start_conversation(
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> ConversationRead:
-    logger.info(f"Creating conversation for user {current_user.id}")
-    return create_conversation(session, current_user)
-
-
-@router.get(
-    "/conversations/{conversation_id}",
-    response_model=ConversationRead,
-    summary="Get a single conversation.",
-)
-def read_conversation_route(
-    conversation_id: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> ConversationRead:
-    conv = get_conversation(conversation_id, session, current_user)
-    if not conv:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    return conv
-
-
-@router.patch(
-    "/conversations/{conversation_id}",
-    response_model=ConversationRead,
-    summary="Update a conversation's summary.",
-)
-def patch_conversation(
-    conversation_id: str,
-    updates: ConversationUpdate,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> ConversationRead:
-    logger.info(f"Updating conversation {conversation_id} for user {current_user.id}")
-    return update_conversation(conversation_id, updates, session, current_user)
-
-
-@router.delete(
-    "/conversations/{conversation_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete a conversation.",
-)
-def delete_conversation_route(
-    conversation_id: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> None:
-    logger.info(f"Deleting conversation {conversation_id} for user {current_user.id}")
-    delete_conversation(conversation_id, session, current_user)
-
-
-# Message CRUD
-
-
-@router.get(
-    "/conversations/{conversation_id}/messages/",
-    response_model=List[ChatMessage],
-    summary="List all messages in a conversation.",
-)
-def read_messages(
-    conversation_id: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> List[ChatMessage]:
-    return list_messages(conversation_id, session, current_user)
-
-
-@router.post(
-    "/conversations/{conversation_id}/messages/",
-    response_model=MessageRead,
-    status_code=status.HTTP_201_CREATED,
-    summary="Append a message to a conversation.",
-)
-def post_message(
-    conversation_id: str,
-    payload: MessageCreate,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-) -> MessageRead:
-    return store_message(conversation_id, payload, session, current_user)
-
-
-# Streaming chat endpoint
-
-
-@router.post(
-    "/conversations/{conversation_id}/stream/",
-    summary="Stream chat within a conversation.",
-)
-def stream_conversation(
-    conversation_id: str,
-    request: ChatRequest,
+def generate_meme(
+    request: GenerateMemeRequest,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
     """
-    Opens a streaming response that yields newline-delimited JSON ChatMessage objects.
+    Stream AI-generated meme creation in real-time.
+    
+    Processes user prompts through a multi-agent workflow that:
+    1. Analyzes the request to determine meme style
+    2. Generates appropriate captions and context
+    3. Creates the final meme image with text overlay
+    4. Stores the result for user access
+    
+    The streaming response uses Server-Sent Events (SSE) to push
+    updates as the AI agents work, providing transparency into
+    the generation process.
+    
+    Args:
+        request: Contains prompt, conversation ID, and model selection
+        session: Database session for persistence operations
+        current_user: Authenticated user making the request
+        
+    Returns:
+        StreamingResponse: SSE stream with generation updates and final result
+        
+    Note:
+        Frontend should handle SSE parsing to display progress messages
+        and render the final meme image when complete.
     """
-    return chat_stream(
-        conversation_id, request.prompt, session, current_user, request.manager_model
+    logger.info(f"Generating meme for user {current_user.id}")
+    
+    # Delegate to service layer for business logic and streaming
+    return generate_meme_stream(
+        prompt=request.prompt,
+        conversation_id=request.conversation_id,
+        manager_model=request.manager_model,
+        session=session,
+        current_user=current_user,
     )
