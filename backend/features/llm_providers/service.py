@@ -1,3 +1,29 @@
+"""
+AI model availability service managing multi-provider integration.
+
+This service provides real-time availability checking for AI models from multiple
+providers (OpenAI, Anthropic) with intelligent caching and fallback mechanisms.
+It enables the frontend to dynamically adjust model selection based on current
+availability and user preferences.
+
+Key features:
+- Real-time model availability checking via provider APIs
+- Intelligent caching system (5-minute TTL) to reduce API overhead
+- Graceful fallback when provider APIs are unavailable
+- Multi-provider support (OpenAI, Anthropic Claude models)
+- Comprehensive logging for debugging and monitoring
+
+Architecture:
+- Cache-first approach with automatic refresh on expiration
+- Exception handling with fallback to "all models available" assumption
+- User-scoped requests for audit logging and future personalization
+- Configurable model lists that match frontend selections
+
+Performance considerations:
+- API calls are cached to prevent rate limiting
+- Background refresh prevents user-facing delays
+- Fallback ensures service availability even during provider outages
+"""
 import logging
 import time
 from typing import Dict
