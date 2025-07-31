@@ -1,4 +1,7 @@
-// frontend/src/components/ChatBubble.tsx
+/**
+ * Chat bubble component for displaying user and AI messages.
+ * Supports markdown rendering with security measures.
+ */
 import { FC } from "react";
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,27 +9,40 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { FavoriteToggle } from "./FavoriteToggle";
 
-// URL sanitization function to prevent XSS
+/**
+ * Sanitize URLs to prevent XSS (Cross-Site Scripting) attacks.
+ * Only allows http and https protocols, blocking potentially dangerous
+ * protocols like javascript:, data:, or file:
+ * 
+ * @param url - The URL string to sanitize
+ * @returns Safe URL or null if unsafe/invalid
+ */
 function sanitizeUrl(url: string): string | null {
   if (!url || typeof url !== 'string') return null;
   
   try {
     const parsed = new URL(url);
-    // Only allow http and https protocols
+    // Whitelist approach: only allow safe protocols
     if (!['http:', 'https:'].includes(parsed.protocol)) {
       return null;
     }
-    // Return the original URL if it's safe
     return url;
   } catch {
-    // Invalid URL
+    // Invalid URLs are rejected for safety
     return null;
   }
 }
 
-// Check if URL is a valid image URL
+/**
+ * Check if a URL points to an image file based on extension.
+ * Supports common web image formats including query parameters.
+ * 
+ * @param url - The URL to check
+ * @returns true if URL ends with image extension
+ */
 function isImageUrl(url: string): boolean {
   if (!url) return false;
+  // Regex matches image extensions, ignoring query parameters
   return /\.(jpeg|jpg|gif|png|svg|webp)(\?[^]*)?$/i.test(url);
 }
 
@@ -44,9 +60,6 @@ export const ChatBubble: FC<{ text: string; isUser: boolean; isLoading?: boolean
                         <Skeleton className="h-4 w-[280px]" />
                         <div className="relative">
                             <Skeleton className="h-[80px] w-[300px] rounded-xl" />
-                            {/* <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-sm text-muted-foreground font-medium">Generating...</span>
-                            </div> */}
                         </div>
                         <div className="space-y-2">
                             <Skeleton className="h-4 w-[240px]" />
