@@ -1,275 +1,168 @@
-from datetime import datetime, timezone
+"""
+Meme generation service orchestrating AI agents and streaming responses.
+
+This service manages the complex workflow of AI-powered meme generation,
+coordinating multiple specialized agents while streaming real-time updates
+to the frontend. It handles conversation history, error recovery, and
+content safety filtering.
+
+Key responsibilities:
+- Agent orchestration with configurable AI models
+- Real-time streaming of generation progress
+- Conversation history management
+- Error handling with user-friendly messages
+- Content moderation compliance
+"""
 import json
 import logging
-from typing import List
+from datetime import datetime, timezone
 import httpx
 import asyncio
-from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from database.core import Session as SessionClass, engine
 from openai import OpenAI
+from pydantic_ai.messages import ModelMessagesTypeAdapter
 
-from pydantic_ai.messages import (
-    ModelMessagesTypeAdapter,
-    ModelRequest,
-    ModelResponse,
-    UserPromptPart,
-    TextPart,
-)
-
-from entities.conversations import Conversation as ConversationEntity
 from entities.messages import Message as MessageEntity
+from entities.conversations import Conversation as ConversationEntity
 from entities.user import User
+from features.messages.models import ChatMessage, MessageCreate
+from features.messages.service import create_message
+from features.conversations.service import update_conversation as update_conversation_service
+from features.conversations.models import ConversationUpdate
 from .agent import create_manager_agent
-from .models import (
-    ConversationRead,
-    ConversationUpdate,
-    MessageRead,
-    MessageCreate,
-    ChatMessage,
-    ConversationUpdateMessage,
-    Deps,
-)
-
+from .models import Deps, ConversationUpdateSignal
 
 logger = logging.getLogger(__name__)
-
 client = OpenAI()
 
 
-def list_conversations_ordered(
-    session: Session, current_user: User
-) -> List[ConversationRead]:
-    stmt = (
-        select(ConversationEntity)
-        .where(ConversationEntity.user_id == current_user.id)
-        .order_by(ConversationEntity.updated_at.desc())
-    )
-    convs = session.exec(stmt).all()
-    return [c for c in convs]
-
-
-def create_conversation(session: Session, current_user: User) -> ConversationRead:
-    conv = ConversationEntity(user_id=current_user.id)
-    session.add(conv)
-    session.commit()
-    session.refresh(conv)
-    return conv
-
-
-def get_conversation(
-    conversation_id: str, session: Session, current_user: User
-) -> ConversationRead:
-    conv = session.get(ConversationEntity, conversation_id)
-    if not conv or conv.user_id != current_user.id:
-        return None
-    return conv
-
-
-def update_conversation(
-    conversation_id: str,
-    updates: ConversationUpdate,
-    session: Session,
-    current_user: User,
-) -> ConversationRead:
-    conv = session.get(ConversationEntity, conversation_id)
-    if not conv or conv.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    if updates.summary is not None:
-        conv.summary = updates.summary
-    conv.updated_at = datetime.now(timezone.utc)
-    session.add(conv)
-    session.commit()
-    session.refresh(conv)
-    return conv
-
-
-def delete_conversation(
-    conversation_id: str, session: Session, current_user: User
-) -> None:
-    conv = session.get(ConversationEntity, conversation_id)
-    if not conv or conv.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    session.delete(conv)
-    session.commit()
-
-
-def list_messages(
-    conversation_id: str,
-    session: Session,
-    current_user: User,
-) -> List[ChatMessage]:
-    out: List[ChatMessage] = []
-
-    conv = session.get(ConversationEntity, conversation_id)
-    if not conv or conv.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    stmt = (
-        select(MessageEntity)
-        .where(MessageEntity.conversation_id == conversation_id)
-        .order_by(MessageEntity.created_at)
-    )
-    rows = session.exec(stmt).all()
-
-    for row in rows:
-        # row.message_list is already a Python list[dict]
-        msgs = ModelMessagesTypeAdapter.validate_python(row.message_list)
-
-        for m in msgs:
-            # catch **all** user‐prompt parts, not just the first one
-            if isinstance(m, ModelRequest):
-                for part in m.parts:
-                    if isinstance(part, UserPromptPart):
-                        out.append(
-                            ChatMessage(
-                                role="user",
-                                content=part.content,
-                                timestamp=part.timestamp,
-                            )
-                        )
-
-            # catch **all** text parts of the model response
-            elif isinstance(m, ModelResponse):
-                for part in m.parts:
-                    if isinstance(part, TextPart):
-                        out.append(
-                            ChatMessage(
-                                role="model",
-                                content=part.content,
-                                timestamp=m.timestamp,
-                            )
-                        )
-
-    return out
-
-
-def store_message(
-    conversation_id: str,
-    payload: MessageCreate,
-    session: Session,
-    current_user: User,
-) -> MessageRead:
-    conv = session.get(ConversationEntity, conversation_id)
-    if not conv or conv.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    msg = MessageEntity(
-        conversation_id=conversation_id,
-        message_list=payload.message_list,
-    )
-    session.add(msg)
-    session.commit()
-    session.refresh(msg)
-    return msg
-
-
-def chat_stream(
-    conversation_id: str,
+def generate_meme_stream(
     prompt: str,
+    conversation_id: str,
+    manager_model: str,
     session: Session,
     current_user: User,
-    manager_model: str = "openai:gpt-4.1-2025-04-14",  # fallback to OpenAI GPT-4.1
 ) -> StreamingResponse:
-    # Split manager_model into parts if needed
+    """
+    Generate a meme using AI agents with streaming response.
+    
+    This function creates a streaming response that yields chat messages
+    as the AI processes the request and generates meme content.
+    
+    Args:
+        prompt: User's meme generation request
+        conversation_id: ID of the conversation to add messages to
+        manager_model: AI model to use in format "provider:model"
+        session: Database session for queries
+        current_user: Authenticated user making the request
+        
+    Returns:
+        StreamingResponse that yields JSON chat messages
+        
+    Raises:
+        ValueError: If conversation not found or user unauthorized
+    """
+    
+    # Parse model selection format (e.g., "openai:gpt-4")
     provider, model = manager_model.split(":")
-    print(f"Using model: {model} from provider: {provider}")
-
-    # Debug print the model being used
     logger.info(f"Using model: {model} from provider: {provider}")
-
-    # Check conversation exists first, then close this session
-    conv = session.get(ConversationEntity, conversation_id)
-    if not conv or conv.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Conversation not found")
-
-    # Extract user ID before the session is closed to avoid DetachedInstanceError
+    
+    # Verify conversation ownership for security
+    conversation = session.get(ConversationEntity, conversation_id)
+    if not conversation or conversation.user_id != current_user.id:
+        raise ValueError("Conversation not found")
+    
+    # Cache user ID to avoid database lookups in async context
     user_id = current_user.id
-
+    
     async def streamer():
-        user_msg = ChatMessage(
+        """
+        Async generator producing Server-Sent Event stream.
+        
+        Yields JSON-encoded messages as the AI processes the request,
+        providing real-time feedback on meme generation progress.
+        """
+        # Echo user message immediately for UI responsiveness
+        user_message = ChatMessage(
             role="user",
             content=prompt,
             timestamp=datetime.now(timezone.utc),
         )
-        yield (user_msg.model_dump_json() + "\n").encode("utf-8")
-
-        # Create a new session for the streaming operations
-        # This prevents long-running connections from exhausting the pool
-
+        yield (user_message.model_dump_json() + "\n").encode("utf-8")
+        
+        # Create new session for async operations to avoid connection conflicts
         with SessionClass(engine) as stream_session:
             try:
-                # Re-fetch the user in the new session
+                # Re-fetch user in new session context
                 stream_current_user = stream_session.get(User, user_id)
                 if not stream_current_user:
-                    raise HTTPException(status_code=404, detail="User not found")
-
-                stmt = select(MessageEntity).where(
+                    raise ValueError("User not found")
+                
+                # Load conversation history for context
+                statement = select(MessageEntity).where(
                     MessageEntity.conversation_id == conversation_id
                 )
-                rows = stream_session.exec(stmt).all()
+                rows = stream_session.exec(statement).all()
                 history = []
                 for row in rows:
+                    # Deserialize stored message history
                     history.extend(
                         ModelMessagesTypeAdapter.validate_json(
                             json.dumps(row.message_list)
                         )
                     )
-
-                # Build dependencies with the new session
-                deps = Deps(
+                
+                # Bundle dependencies for agent access
+                dependencies = Deps(
                     client=client,
                     current_user=stream_current_user,
                     session=stream_session,
                     conversation_id=conversation_id,
                 )
-                # For now smoke test anthropic (TEMPORARY)
-                # Forcing use of Claude Sonnet 4 model
-                # provider = "anthropic"
-                # model = "claude-sonnet-4-20250514"
-                # Create the manager agent with the specified model
+                
+                # Create agent with selected AI model
                 manager_agent = create_manager_agent(provider=provider, model=model)
-
-                # ===== plain-text streaming =====
+                
                 try:
+                    # Stream agent responses with minimal buffering for responsiveness
                     async with manager_agent.run_stream(
                         prompt,
                         message_history=history,
-                        deps=deps,
+                        deps=dependencies,
                     ) as result:
-                        # use .stream_text to get raw LLM output (no JSON/schema parsing)
                         async for text_piece in result.stream_text(debounce_by=0.01):
-                            # Check if this is a conversation update signal
+                            # Handle special conversation update signals
                             if text_piece.startswith("CONVERSATION_UPDATE:"):
-                                # Parse the conversation update
                                 try:
-                                    _, conv_id, summary, updated_at = text_piece.split(
-                                        ":", 3
-                                    )
-                                    from .models import ConversationUpdateMessage
-
-                                    update_msg = ConversationUpdateMessage(
-                                        conversation_id=conv_id,
+                                    # Parse structured update signal
+                                    _, conversation_id_value, summary, updated_at = text_piece.split(":", 3)
+                                    update_message = ConversationUpdateSignal(
+                                        conversation_id=conversation_id_value,
                                         summary=summary,
-                                        updated_at=datetime.fromisoformat(updated_at),
                                     )
-                                    yield (update_msg.model_dump_json() + "\n").encode(
-                                        "utf-8"
+                                    yield (update_message.model_dump_json() + "\n").encode("utf-8")
+                                    
+                                    # Persist conversation summary update
+                                    update_conversation_service(
+                                        stream_session,
+                                        conversation_id_value,
+                                        stream_current_user.id,
+                                        ConversationUpdate(summary=summary)
                                     )
-                                    continue  # Don't send this as a regular chat message
+                                    continue
                                 except Exception as e:
-                                    logger.error(
-                                        f"Error parsing conversation update: {e}"
-                                    )
-                                    # Fall through to send as regular message if parsing fails
-
-                            # Send regular chat message
-                            resp_msg = ChatMessage(
+                                    logger.error(f"Error parsing conversation update: {e}")
+                            
+                            # Stream regular AI response content
+                            response_message = ChatMessage(
                                 role="model",
                                 content=text_piece,
                                 timestamp=result.timestamp(),
                             )
-                            yield (resp_msg.model_dump_json() + "\n").encode("utf-8")
+                            yield (response_message.model_dump_json() + "\n").encode("utf-8")
+                
                 except (
                     BrokenPipeError,
                     ConnectionResetError,
@@ -277,50 +170,50 @@ def chat_stream(
                     asyncio.CancelledError,
                     httpx.HTTPError,
                 ):
-                    # client disconnected; stop streaming gracefully
+                    # Silently handle client disconnections
                     return
                 except Exception as e:
-                    # Handle other errors including OpenAI moderation errors
                     logger.error(f"Error in agent stream: {e}")
-
-                    # Check if it's an OpenAI moderation error
+                    
+                    # Provide user-friendly error messages
                     error_message = str(e)
-                    if (
-                        "moderation_blocked" in error_message
-                        or "safety system" in error_message
-                    ):
-                        error_resp = ChatMessage(
+                    if "moderation_blocked" in error_message or "safety system" in error_message:
+                        # Content safety violation - guide user to appropriate content
+                        error_response = ChatMessage(
                             role="model",
                             content="I'm sorry, but I can't create that meme as it was flagged by the content safety system. "
                             "Please try a different caption or theme that doesn't contain potentially harmful content.",
                             timestamp=datetime.now(timezone.utc),
                         )
                     else:
-                        error_resp = ChatMessage(
+                        # Generic error fallback
+                        error_response = ChatMessage(
                             role="model",
                             content="I'm sorry, but I encountered an error while creating your meme. Please try again with a different request.",
                             timestamp=datetime.now(timezone.utc),
                         )
-
-                    yield (error_resp.model_dump_json() + "\n").encode("utf-8")
+                    
+                    yield (error_response.model_dump_json() + "\n").encode("utf-8")
                     return
-
-                # Store the final result in the database
+                
+                # Persist complete conversation exchange
                 full_json = result.new_messages_json()
                 payload = json.loads(full_json)
-                store_message(
-                    conversation_id,
-                    MessageCreate(
-                        conversation_id=conversation_id, message_list=payload
-                    ),
+                create_message(
                     stream_session,
-                    stream_current_user,
+                    conversation_id,
+                    stream_current_user.id,
+                    MessageCreate(
+                        conversation_id=conversation_id,
+                        message_list=payload
+                    ),
                 )
                 stream_session.commit()
-
+            
             except Exception as e:
+                # Ensure database consistency on errors
                 stream_session.rollback()
-                logger.error(f"Error in chat stream: {e}")
+                logger.error(f"Error in generate meme stream: {e}")
                 raise
-
+    
     return StreamingResponse(streamer(), media_type="text/plain")
