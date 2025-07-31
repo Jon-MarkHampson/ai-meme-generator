@@ -12,6 +12,8 @@ from features.image_storage.controller import router as upload_image_router
 from features.user_memes.controller import router as user_memes_router
 from features.generate.controller import router as generate_router
 from features.llm_providers.controller import router as llm_providers_router
+from features.conversations.controller import router as conversations_router
+from features.messages.controller import router as messages_router
 
 
 def register_routers(app: FastAPI):
@@ -26,3 +28,5 @@ def register_routers(app: FastAPI):
     app.include_router(user_memes_router)
     app.include_router(generate_router)
     app.include_router(llm_providers_router)
+    app.include_router(conversations_router)
+    app.include_router(messages_router)
