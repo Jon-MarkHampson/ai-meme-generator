@@ -1,3 +1,7 @@
+"""
+Main FastAPI application entry point for the AI Meme Generator.
+Handles app startup, database initialization, monitoring setup, and routing.
+"""
 import os
 import logging
 import logfire
@@ -13,11 +17,12 @@ from api import register_routers
 load_dotenv()
 
 
-# Read desired level from env (default to "INFO" if not provided)
+# Configure logging based on environment variable
 raw_level = os.getenv("LOG_LEVEL", LogLevels.info)
 configure_logging(raw_level)
 
 
+# Reduce noise from third-party libraries in logs
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -29,6 +34,15 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan context manager for startup and shutdown events.
+    
+    Args:
+        app: FastAPI application instance
+        
+    Yields:
+        None - allows app to run
+    """
     logger.info("Application startup: creating database tables")
     create_db_and_tables()
     yield
@@ -37,27 +51,34 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# configure logfire
+# Configure Logfire monitoring and instrumentation
 logfire.configure()
-logfire.instrument_httpx()
-# logfire.instrument_pydantic()
-logfire.instrument_pydantic_ai()
-logfire.instrument_fastapi(app, capture_headers=True)
-# logfire.instrument_psycopg(enable_commenter=True)
+logfire.instrument_httpx()  # Monitor HTTP requests
+logfire.instrument_pydantic_ai()  # Monitor AI agent interactions
+logfire.instrument_fastapi(app, capture_headers=True)  # Monitor FastAPI requests
 
 
-# Health check backend
 @app.get("/health/", summary="Health check")
 async def health_check():
+    """
+    Basic health check endpoint to verify the API is running.
+    
+    Returns:
+        Dict containing status information
+    """
     logger.info("Health check endpoint called")
     return {"Health Check - status": "ok"}
 
 
-# Database health check
 @app.get("/health/db", summary="Database health check")
 async def db_health_check():
+    """
+    Database connectivity health check endpoint.
+    
+    Returns:
+        Dict containing database connection status
+    """
     logger.info("Database health check endpoint called")
-    is_healthy = check_db_connection()
     try:
         check_db_connection()
         return {"status": "ok", "db": "connected"}
@@ -66,8 +87,8 @@ async def db_health_check():
         return {"status": "error", "db": "not connected"}
 
 
-# Default to localhost if not set
-# Walrus operator to assign FRONTEND_URL and use it in CORS
+# Configure CORS origins for frontend communication
+# Using walrus operator to assign and use FRONTEND_URL in one line
 origins = [
     FRONTEND_URL := os.getenv("FRONTEND_URL", "http://localhost:3000"),
 ]
