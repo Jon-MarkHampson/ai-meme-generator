@@ -1,30 +1,55 @@
-// lib/generate.ts
+/**
+ * AI meme generation and conversation management API client.
+ * 
+ * This module provides the frontend interface for interacting with the AI meme
+ * generation system, including conversation management, streaming responses,
+ * and message history. Handles Server-Sent Events for real-time AI responses.
+ * 
+ * Key features:
+ * - Conversation CRUD operations with backend persistence
+ * - Real-time streaming of AI responses via Server-Sent Events
+ * - Dual message types: chat messages and conversation metadata updates
+ * - Stream cancellation and error handling
+ * - Conversation sorting by activity for better UX
+ */
 import API from "./api";
 
+/** Conversation data structure from backend API */
 export interface ConversationRead {
-  id: string;
-  user_id: string;
-  summary?: string;
-  created_at: string;
-  updated_at: string;
+  id: string;              // Unique conversation identifier
+  user_id: string;         // Owner of the conversation
+  summary?: string;        // AI-generated conversation summary
+  created_at: string;      // ISO timestamp of creation
+  updated_at: string;      // ISO timestamp of last activity
 }
 
+/** Individual chat message in a conversation */
 export interface ChatMessage {
-  role: "user" | "model";
-  content: string;
-  timestamp: string;
+  role: "user" | "model";  // Message sender type
+  content: string;         // Message text content (supports markdown)
+  timestamp: string;       // ISO timestamp of message
 }
 
+/** Real-time conversation metadata update via SSE */
 export interface ConversationUpdateMessage {
-  type: "conversation_update";
-  conversation_id: string;
-  summary: string;
-  updated_at: string;
+  type: "conversation_update";  // Message type discriminator
+  conversation_id: string;      // Target conversation ID
+  summary: string;              // Updated conversation summary
+  updated_at: string;           // New timestamp for sorting
 }
 
+/** Union type for streaming message parsing */
 export type StreamMessage = ChatMessage | ConversationUpdateMessage;
 
-// Add utility function to sort conversations by updated_at descending
+/**
+ * Sort conversations by most recent activity first.
+ * 
+ * Used to maintain conversation list ordering in the sidebar,
+ * ensuring active conversations appear at the top.
+ * 
+ * @param conversations - Array of conversations to sort
+ * @returns New sorted array (original unchanged)
+ */
 export function sortConversationsByUpdatedAt(
   conversations: ConversationRead[]
 ): ConversationRead[] {
@@ -36,23 +61,19 @@ export function sortConversationsByUpdatedAt(
 
 // 1) Create a new conversation
 export async function createConversation(): Promise<ConversationRead> {
-  const { data } = await API.post<ConversationRead>("/generate/conversations/");
+  const { data } = await API.post<ConversationRead>("/conversations/");
   return data;
 }
 
 // 2) List all of a user’s conversations
 export async function listConversations(): Promise<ConversationRead[]> {
-  const { data } = await API.get<ConversationRead[]>(
-    "/generate/conversations/"
-  );
+  const { data } = await API.get<ConversationRead[]>("/conversations/");
   return data;
 }
 
 // 3) Fetch one conversation
 export async function getConversation(id: string): Promise<ConversationRead> {
-  const { data } = await API.get<ConversationRead>(
-    `/generate/conversations/${id}`
-  );
+  const { data } = await API.get<ConversationRead>(`/conversations/${id}`);
   return data;
 }
 
@@ -61,16 +82,15 @@ export async function updateConversation(
   id: string,
   summary: string
 ): Promise<ConversationRead> {
-  const { data } = await API.patch<ConversationRead>(
-    `/generate/conversations/${id}`,
-    { summary }
-  );
+  const { data } = await API.patch<ConversationRead>(`/conversations/${id}`, {
+    summary,
+  });
   return data;
 }
 
 // 5) Delete
 export async function deleteConversation(id: string): Promise<void> {
-  await API.delete<void>(`/generate/conversations/${id}`);
+  await API.delete<void>(`/conversations/${id}`);
 }
 
 // 6) List messages
@@ -78,24 +98,28 @@ export async function listMessages(
   conversationId: string
 ): Promise<ChatMessage[]> {
   const { data } = await API.get<ChatMessage[]>(
-    `/generate/conversations/${conversationId}/messages/`
+    `/messages/conversations/${conversationId}`
   );
   return data;
 }
 
-// 7) Append a message
-export async function postMessage(
-  conversationId: string,
-  content: string
-): Promise<ChatMessage> {
-  const { data } = await API.post<ChatMessage>(
-    `/generate/conversations/${conversationId}/messages/`,
-    { role: "user", content }
-  );
-  return data;
-}
+// Note: postMessage is not used - messages are created through the streaming endpoint
 
-// 8) Streaming chat
+/**
+ * Stream AI meme generation responses in real-time.
+ * 
+ * Establishes a Server-Sent Events connection to the backend for streaming
+ * AI responses as they're generated. Handles both chat messages and
+ * conversation metadata updates.
+ * 
+ * @param conversationId - Target conversation ID
+ * @param manager_model - AI model selection (e.g., "openai:gpt-4")
+ * @param prompt - User's meme generation request
+ * @param onMessage - Callback for chat message updates
+ * @param onConversationUpdate - Callback for metadata updates
+ * @param onError - Callback for error handling
+ * @returns Abort function to cancel the stream
+ */
 export function streamChat(
   conversationId: string,
   manager_model: string,
@@ -109,13 +133,17 @@ export function streamChat(
   const processStream = async () => {
     try {
       const res = await fetch(
-        `${API.defaults.baseURL}/generate/conversations/${conversationId}/stream/`,
+        `${API.defaults.baseURL}/generate/meme`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ manager_model, prompt }),
+          body: JSON.stringify({
+            prompt,
+            conversation_id: conversationId,
+            manager_model,
+          }),
           signal: controller.signal,
           // this tells fetch to include HttpOnly cookie
           credentials: "include",
