@@ -1,3 +1,13 @@
+/**
+ * Session management context with sophisticated timer-based authentication.
+ * 
+ * Provides centralized session state management with:
+ * - Multi-timer system (inactivity, warning, refresh)
+ * - Activity tracking across user interactions
+ * - Automatic token refresh for active users
+ * - Cross-tab session synchronization
+ * - Race condition prevention
+ */
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
@@ -8,16 +18,16 @@ import { showSessionWarning, updateSessionWarning, dismissSessionWarning } from 
 import { HOME_ROUTE } from '@/lib/authRoutes';
 
 interface SessionState {
-    user: User | null;
-    isAuthenticated: boolean;
-    isValidating: boolean;
+    user: User | null;          // Current authenticated user data
+    isAuthenticated: boolean;   // Whether user has valid session
+    isValidating: boolean;      // Whether session validation is in progress
 }
 
 interface SessionContextValue {
     state: SessionState;
-    logout: () => Promise<void>;
-    refreshSession: () => Promise<void>;
-    revalidateSession: () => Promise<void>;
+    logout: () => Promise<void>;           // Clear session and redirect to home
+    refreshSession: () => Promise<void>;   // Refresh authentication token
+    revalidateSession: () => Promise<void>; // Validate current session with backend
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -32,15 +42,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // Refs for timers
-    const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const lastActivityRef = useRef<number>(Date.now());
-    const warningToastIdRef = useRef<string | number | null>(null);
+    // Timer management for session lifecycle
+    const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);  // Main inactivity countdown
+    const warningTimerRef = useRef<NodeJS.Timeout | null>(null);     // Warning period timer
+    const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);     // Auto-refresh timer
+    const lastActivityRef = useRef<number>(Date.now());              // Last user activity timestamp
+    const warningToastIdRef = useRef<string | number | null>(null);   // Active warning toast ID
 
-    // Logout function
     const logout = useCallback(async () => {
+        /**
+         * Logout function that clears session and redirects to home.
+         * 
+         * Process:
+         * 1. Call backend logout API to clear server-side session
+         * 2. Clear local session state
+         * 3. Clear all timers
+         * 4. Dismiss any warning toasts
+         * 5. Redirect to home page
+         */
         try {
             await apiLogout();
         } catch (error) {
