@@ -1,4 +1,25 @@
-// frontend/src/app/generate/page.tsx
+/**
+ * AI Meme Generation Chat Interface
+ * 
+ * This component provides a conversational interface for creating AI-generated memes.
+ * Features include real-time streaming responses, conversation history management,
+ * model selection, and persistent conversation storage.
+ * 
+ * Key features:
+ * - Real-time streaming AI responses with Server-Sent Events
+ * - Conversation sidebar with history and search
+ * - Dynamic model selection (OpenAI, Anthropic)
+ * - Automatic conversation creation and management
+ * - Stream cancellation and error handling
+ * - Responsive chat interface with loading states
+ * 
+ * Technical implementation:
+ * - Uses streaming fetch API for real-time updates
+ * - Implements abort controllers for stream cancellation
+ * - Manages conversation state with React hooks
+ * - Handles race conditions in async operations
+ * - Provides optimistic UI updates for better UX
+ */
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/contexts/SessionContext";
@@ -24,6 +45,7 @@ import { ModelSelector } from "@/components/ModelSelector";
 import { useModelSelection } from "@/hooks/useModelSelection";
 
 
+// Welcome message displayed when starting a new conversation
 const WELCOME: ChatMessage[] = [
     {
         role: "model",
@@ -33,36 +55,52 @@ const WELCOME: ChatMessage[] = [
     },
 ];
 
+/**
+ * Main chat interface component handling AI meme generation.
+ * 
+ * Manages conversation state, streaming responses, and user interactions.
+ * Protected by AuthGuard to ensure only authenticated users can access.
+ */
 function GenerateContent() {
     const { } = useSession();
 
-    // ─── Declare ALL your hooks first ─────────────────────────────
+    // Component state management
+    // Active conversation state
     const [convId, setConvId] = useState<string | null>(null);
     const [msgs, setMsgs] = useState<ChatMessage[]>(WELCOME);
     const [convos, setConvos] = useState<ConversationRead[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    // ─── Model selection with smart hook ─────────────────────────────
+    
+    // AI model selection with persistent preference
     const { selectedModelId, changeModel } = useModelSelection({
         onModelChange: (model) => {
             console.log(`Model changed to: ${model.name} (${model.id})`);
         }
     });
+    
+    // Refs for stream management and auto-scrolling
     const abortRef = useRef<(() => void) | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
 
-    // ─── 1) scroll to bottom on new msgs ──────────────────────────
+    // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [msgs]);
 
-    // ─── List conversations on load ────────────────────────────────────
+    // Load conversation history on component mount
     useEffect(() => {
         listConversations()
-            .then(setConvos)
-            .catch(() => setConvos([]));
+            .then((data) => {
+                console.log("Conversations loaded:", data);
+                setConvos(data);
+            })
+            .catch((error) => {
+                console.error("Failed to load conversations:", error);
+                setConvos([]);
+            });
     }, []);
 
-    // ─── 3) whenever convId changes, load its history ─────────────
+    // Load message history when conversation changes
     useEffect(() => {
         if (!convId) return;
         listMessages(convId)
@@ -84,30 +122,37 @@ function GenerateContent() {
             });
     }, [convId]);
 
-    // 4) Reset to welcome when convId === null:
+    // Reset to welcome screen when no conversation selected
     useEffect(() => {
         if (convId === null) {
             setMsgs(WELCOME);
         }
     }, [convId]);
 
-    // ─── 4) on user send ─────────────────────────────────────────
+    /**
+     * Handle user message submission and AI response streaming.
+     * 
+     * Creates conversation if needed, streams AI response in real-time,
+     * and manages conversation state updates.
+     */
     const handleSend = async (text: string) => {
+        // Add user message to chat immediately for responsive UI
         setMsgs((prev) => [
             ...prev,
             { role: "user", content: text, timestamp: new Date().toISOString() },
         ]);
 
-        // Set loading state and add a skeleton message
+        // Show loading state while AI processes request
         setIsLoading(true);
 
+        // Create new conversation if this is the first message
         let id = convId;
         if (!id) {
             try {
                 const conv = await createConversation();
                 id = conv.id;
                 setConvId(id);
-                // Add new conversation and sort by updated_at
+                // Add new conversation to sidebar and sort by recency
                 setConvos(prev => {
                     const newList = prev ? [...prev, conv] : [conv];
                     return sortConversationsByUpdatedAt(newList);
@@ -127,18 +172,18 @@ function GenerateContent() {
             }
         }
 
-        // Abort any existing stream before starting a new one
+        // Cancel any existing stream to prevent conflicts
         if (abortRef.current) {
             abortRef.current();
         }
 
+        // Start streaming AI response
         abortRef.current = streamChat(
             id,
             selectedModelId,
             text,
             (msg: ChatMessage, streamConvId: string) => {
-                // Only update messages if this stream matches the current conversation
-                // Use 'id' instead of 'convId' because convId state update is async
+                // Prevent race conditions by validating stream source
                 if (streamConvId !== id) {
                     console.log(`Ignoring message from conversation ${streamConvId}, current is ${id}`);
                     return;
@@ -146,20 +191,22 @@ function GenerateContent() {
 
                 if (msg.role !== "model") return;
 
-                // Clear loading state on first model message
+                // Hide loading indicator once AI starts responding
                 setIsLoading(false);
 
+                // Update or append AI message (streaming updates existing message)
                 setMsgs((prev) => {
                     if (prev.length && prev[prev.length - 1].role === "model") {
+                        // Update existing message with new content
                         const copy = [...prev];
                         copy[copy.length - 1] = msg;
                         return copy;
                     }
+                    // Add new AI message
                     return [...prev, msg];
                 });
 
-                // When AI responds, the conversation is "updated", so reorder the list
-                // We can simulate an updated conversation by updating its updated_at timestamp
+                // Update conversation timestamp to reorder sidebar
                 if (convos && streamConvId) {
                     const currentConv = convos.find(c => c.id === streamConvId);
                     if (currentConv) {
@@ -172,9 +219,10 @@ function GenerateContent() {
                 }
             },
             (update: ConversationUpdateMessage) => {
-                // Handle conversation summary updates
+                // Handle real-time conversation metadata updates
                 console.log(`Received conversation update for ${update.conversation_id}: ${update.summary}`);
 
+                // Update conversation summary in sidebar
                 if (convos) {
                     const convToUpdate = convos.find(c => c.id === update.conversation_id);
                     if (convToUpdate) {
@@ -188,6 +236,7 @@ function GenerateContent() {
                 }
             },
             () => {
+                // Handle stream errors gracefully
                 setIsLoading(false);
                 setMsgs((prev) => [
                     ...prev,
@@ -201,13 +250,16 @@ function GenerateContent() {
         );
     };
 
-    // ─── Delete conversation handler ────────────────────────────────────
+    /**
+     * Delete a conversation and handle UI state cleanup.
+     * Resets to welcome screen if deleting the active conversation.
+     */
     const handleDeleteConversation = (id: string) => {
         const wasActive = id === convId;
         deleteConversation(id).then(() => {
-            // Remove the conversation from the list
+            // Remove conversation from sidebar
             setConvos(prev => prev?.filter(c => c.id !== id) ?? []);
-            // If the deleted one was active, always reset to welcome
+            // Reset to welcome if deleting active conversation
             if (wasActive) {
                 setConvId(null);
                 setMsgs(WELCOME);
@@ -215,10 +267,14 @@ function GenerateContent() {
         });
     };
 
-    // ─── Update conversation and reorder list ────────────────────────────────
+    /**
+     * Update conversation metadata and reorder by recency.
+     * Used for real-time summary updates and timestamp changes.
+     */
     const updateConversationInList = (updatedConv: ConversationRead) => {
         setConvos(prevConvos => {
             if (!prevConvos) return [updatedConv];
+            // Replace conversation and sort by most recent activity
             const updatedList = prevConvos.map(conv =>
                 conv.id === updatedConv.id ? updatedConv : conv
             );
@@ -320,6 +376,10 @@ function GenerateContent() {
     );
 }
 
+/**
+ * Protected page component that wraps the chat interface with authentication.
+ * Redirects unauthenticated users to login page.
+ */
 export default function GeneratePage() {
     return (
         <AuthGuard>
