@@ -16,7 +16,7 @@ Located in `/backend/` directory:
 
 ```bash
 # Install dependencies
-uv pip install pyproject.toml
+uv sync
 
 # Start development server
 uvicorn main:app --reload --app-dir .
@@ -57,29 +57,39 @@ npm run lint
   - `features/user_memes/`: User meme storage and management
   - `features/llm_providers/`: Multi-provider AI service abstraction (OpenAI, Anthropic)
   - `features/image_storage/`: Image upload and storage service
+  - `features/conversations/`: Chat conversation management
+  - `features/messages/`: Message history tracking
+  - `features/users/`: User profile management
+  - `utils/`: Shared utilities including password hashing and security functions
 - **Database**: SQLModel with Supabase PostgreSQL backend
 - **AI Integration**: Pydantic AI with multiple LLM providers
 - **Observability**: Logfire instrumentation for monitoring
 
 ### Frontend Structure
 - **App Router**: Next.js 15 with app directory structure
-- **Authentication**: Session-based auth with JWT tokens and context management
-- **UI Components**: shadcn/ui with Radix primitives and Tailwind CSS
+- **Authentication**: Multi-layered session management with JWT tokens
+  - Middleware for initial route protection
+  - SessionContext for central state management
+  - AuthGuard component for page-level protection
+  - Global 401 handler via custom events
+- **UI Components**: shadcn/ui with Radix primitives and Tailwind CSS v4
 - **State Management**: React Context for session and global state
 - **API Integration**: Axios with automatic retry and 401 handling
 
 ### Key Features
 - **AI Meme Generation**: Multi-step agent workflow for creating contextual memes
-- **Template System**: Pre-built classic meme templates with text overlay
+- **Template System**: 100+ pre-built classic meme templates with text overlay
 - **User Management**: Registration, login, profile management
 - **Gallery**: Browse and favorite generated memes
 - **Model Selection**: Choose between different AI providers and models
+- **Real-time Streaming**: Server-Sent Events for AI response streaming
 
 ### Authentication Flow
 - Users authenticate via `/auth/login` or `/auth/signup` endpoints
 - JWT tokens stored in HTTP-only cookies with refresh token mechanism  
-- Frontend uses session context to manage auth state
+- Frontend uses multi-timer session management (inactivity, warning, refresh)
 - Auth routes are protected with middleware and AuthGuard component
+- Cross-tab session synchronization for consistent auth state
 
 ### Meme Generation Process
 1. User inputs prompt via chat interface
@@ -89,6 +99,11 @@ npm run lint
 5. Generated meme is stored and returned to user
 
 ## Environment Setup
-- Backend requires environment variables for AI provider API keys, database connection, and JWT secrets
-- Frontend requires `NEXT_PUBLIC_BASE_URL` for API communication
+- Backend requires environment variables for AI provider API keys, database connection, JWT secrets, and Logfire token
+- Frontend requires `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_BASE_URL` for API communication
 - Both services use `.env` files for configuration
+
+## Testing
+Currently no test setup exists. When adding tests:
+- Backend: Use pytest with FastAPI test client
+- Frontend: Consider Jest/Vitest for unit tests and Playwright for E2E tests
