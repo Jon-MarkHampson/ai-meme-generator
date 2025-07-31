@@ -27,6 +27,7 @@ from features.user_memes.service import (
     update_user_meme,
     read_latest_conversation_meme,
 )
+from features.conversations.models import ConversationUpdate
 from features.user_memes.models import UserMemeCreate, UserMemeUpdate
 from .helpers import convert_response_to_png
 
@@ -568,7 +569,7 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     This also triggers a streaming update to notify the frontend.
     """
     # Import locally to avoid circular import
-    from .service import update_conversation
+    from features.conversations.service import update_conversation
 
     # Debug logging to help identify the issue
     print(f"Summarising user request: {user_request}")
@@ -579,15 +580,12 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     # Debug logging to help identify the issue
     print(f"Summarised request: {summary}")
 
-    # Update the conversation with the summary
-    from .models import ConversationUpdate
-
     def update_conversation_operation():
         return update_conversation(
             conversation_id=ctx.deps.conversation_id,
             updates=ConversationUpdate(summary=summary),
             session=ctx.deps.session,
-            current_user=ctx.deps.current_user,
+            user_id=ctx.deps.current_user.id,
         )
 
     updated_conversation = safe_db_operation(
