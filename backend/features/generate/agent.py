@@ -533,36 +533,6 @@ def fetch_previous_image_id(ctx: RunContext[Deps]) -> str:
     return user_meme.openai_response_id
 
 
-def fetch_previous_response_id(ctx: RunContext[Deps]) -> str:
-    """
-    Fetch the previous response ID for a given image ID.
-    This function retrieves the OpenAI response ID from the UserMeme model.
-    """
-
-    def read_latest_conversation_meme_operation():
-        return read_latest_conversation_meme(
-            conversation_id=ctx.deps.conversation_id,
-            session=ctx.deps.session,
-            current_user=ctx.deps.current_user,
-        )
-
-    user_meme = safe_db_operation(
-        read_latest_conversation_meme_operation, ctx.deps.session
-    )
-
-    # Add validation to ensure we have a valid response ID
-    if not user_meme:
-        raise ModelRetry("No previous meme found in this conversation.")
-
-    if not user_meme.openai_response_id:
-        raise ModelRetry("Previous meme does not have a valid OpenAI response ID.")
-
-    # Debug logging to help identify the issue
-    print(f"Retrieved response ID: {user_meme.openai_response_id}")
-
-    return user_meme.openai_response_id
-
-
 def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     """
     Summarise the current user request and update the conversation with the summary.
@@ -624,14 +594,13 @@ def create_manager_agent(provider, model):
         deps_type=Deps,
         tools=[
             meme_theme_factory,
-            meme_image_generation,
-            meme_image_modification,
             meme_caption_refinement,
             meme_random_inspiration,
-            favourite_meme_in_db,
-            fetch_previous_image_id,
-            fetch_previous_response_id,
             summarise_request,
+            meme_image_generation,
+            fetch_previous_image_id,
+            meme_image_modification,
+            favourite_meme_in_db,
         ],
         history_processors=[summarize_old_messages],
         instructions=manager_agent_instructions,
