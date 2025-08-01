@@ -1,10 +1,10 @@
 /**
  * AI meme generation and conversation management API client.
- * 
+ *
  * This module provides the frontend interface for interacting with the AI meme
  * generation system, including conversation management, streaming responses,
  * and message history. Handles Server-Sent Events for real-time AI responses.
- * 
+ *
  * Key features:
  * - Conversation CRUD operations with backend persistence
  * - Real-time streaming of AI responses via Server-Sent Events
@@ -16,37 +16,28 @@ import API from "./api";
 
 /** Conversation data structure from backend API */
 export interface ConversationRead {
-  id: string;              // Unique conversation identifier
-  user_id: string;         // Owner of the conversation
-  summary?: string;        // AI-generated conversation summary
-  created_at: string;      // ISO timestamp of creation
-  updated_at: string;      // ISO timestamp of last activity
+  id: string; // Unique conversation identifier
+  user_id: string; // Owner of the conversation
+  summary?: string; // AI-generated conversation summary
+  created_at: string; // ISO timestamp of creation
+  updated_at: string; // ISO timestamp of last activity
 }
 
 /** Individual chat message in a conversation */
 export interface ChatMessage {
-  role: "user" | "model";  // Message sender type
-  content: string;         // Message text content (supports markdown)
-  timestamp: string;       // ISO timestamp of message
+  role: "user" | "model"; // Message sender type
+  content: string; // Message text content (supports markdown)
+  timestamp: string; // ISO timestamp of message
 }
 
-/** Real-time conversation metadata update via SSE */
-export interface ConversationUpdateMessage {
-  type: "conversation_update";  // Message type discriminator
-  conversation_id: string;      // Target conversation ID
-  summary: string;              // Updated conversation summary
-  updated_at: string;           // New timestamp for sorting
-}
-
-/** Union type for streaming message parsing */
-export type StreamMessage = ChatMessage | ConversationUpdateMessage;
+// (ConversationUpdateMessage and StreamMessage removed)
 
 /**
  * Sort conversations by most recent activity first.
- * 
+ *
  * Used to maintain conversation list ordering in the sidebar,
  * ensuring active conversations appear at the top.
- * 
+ *
  * @param conversations - Array of conversations to sort
  * @returns New sorted array (original unchanged)
  */
@@ -107,16 +98,14 @@ export async function listMessages(
 
 /**
  * Stream AI meme generation responses in real-time.
- * 
+ *
  * Establishes a Server-Sent Events connection to the backend for streaming
- * AI responses as they're generated. Handles both chat messages and
- * conversation metadata updates.
- * 
+ * AI responses as they're generated. Handles chat messages in real-time.
+ *
  * @param conversationId - Target conversation ID
  * @param manager_model - AI model selection (e.g., "openai:gpt-4")
  * @param prompt - User's meme generation request
  * @param onMessage - Callback for chat message updates
- * @param onConversationUpdate - Callback for metadata updates
  * @param onError - Callback for error handling
  * @returns Abort function to cancel the stream
  */
@@ -125,30 +114,26 @@ export function streamChat(
   manager_model: string,
   prompt: string,
   onMessage: (msg: ChatMessage, streamConvId: string) => void,
-  onConversationUpdate: (update: ConversationUpdateMessage) => void,
   onError: (err: Error) => void
 ): () => void {
   const controller = new AbortController();
 
   const processStream = async () => {
     try {
-      const res = await fetch(
-        `${API.defaults.baseURL}/generate/meme`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            prompt,
-            conversation_id: conversationId,
-            manager_model,
-          }),
-          signal: controller.signal,
-          // this tells fetch to include HttpOnly cookie
-          credentials: "include",
-        }
-      );
+      const res = await fetch(`${API.defaults.baseURL}/generate/meme`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          conversation_id: conversationId,
+          manager_model,
+        }),
+        signal: controller.signal,
+        // this tells fetch to include HttpOnly cookie
+        credentials: "include",
+      });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       if (!res.body) throw new Error("No response body");
@@ -175,14 +160,8 @@ export function streamChat(
           for (const line of lines) {
             if (line.trim()) {
               try {
-                const parsed = JSON.parse(line) as StreamMessage;
-                if ("type" in parsed && parsed.type === "conversation_update") {
-                  // Handle conversation update
-                  onConversationUpdate(parsed);
-                } else {
-                  // Handle regular chat message
-                  onMessage(parsed as ChatMessage, conversationId);
-                }
+                const parsed = JSON.parse(line);
+                onMessage(parsed as ChatMessage, conversationId);
               } catch (parseError) {
                 console.warn(
                   "Failed to parse stream message:",

@@ -13,6 +13,7 @@ Key responsibilities:
 - Error handling with user-friendly messages
 - Content moderation compliance
 """
+
 import json
 import logging
 from datetime import datetime, timezone
@@ -29,10 +30,8 @@ from entities.conversations import Conversation as ConversationEntity
 from entities.user import User
 from features.messages.models import ChatMessage, MessageCreate
 from features.messages.service import create_message
-from features.conversations.service import update_conversation as update_conversation_service
-from features.conversations.models import ConversationUpdate
 from .agent import create_manager_agent
-from .models import Deps, ConversationUpdateSignal
+from .models import Deps
 
 logger = logging.getLogger(__name__)
 client = OpenAI()
@@ -47,40 +46,40 @@ def generate_meme_stream(
 ) -> StreamingResponse:
     """
     Generate a meme using AI agents with streaming response.
-    
+
     This function creates a streaming response that yields chat messages
     as the AI processes the request and generates meme content.
-    
+
     Args:
         prompt: User's meme generation request
         conversation_id: ID of the conversation to add messages to
         manager_model: AI model to use in format "provider:model"
         session: Database session for queries
         current_user: Authenticated user making the request
-        
+
     Returns:
         StreamingResponse that yields JSON chat messages
-        
+
     Raises:
         ValueError: If conversation not found or user unauthorized
     """
-    
+
     # Parse model selection format (e.g., "openai:gpt-4")
     provider, model = manager_model.split(":")
     logger.info(f"Using model: {model} from provider: {provider}")
-    
+
     # Verify conversation ownership for security
     conversation = session.get(ConversationEntity, conversation_id)
     if not conversation or conversation.user_id != current_user.id:
         raise ValueError("Conversation not found")
-    
+
     # Cache user ID to avoid database lookups in async context
     user_id = current_user.id
-    
+
     async def streamer():
         """
         Async generator producing Server-Sent Event stream.
-        
+
         Yields JSON-encoded messages as the AI processes the request,
         providing real-time feedback on meme generation progress.
         """
@@ -91,7 +90,7 @@ def generate_meme_stream(
             timestamp=datetime.now(timezone.utc),
         )
         yield (user_message.model_dump_json() + "\n").encode("utf-8")
-        
+
         # Create new session for async operations to avoid connection conflicts
         with SessionClass(engine) as stream_session:
             try:
@@ -99,7 +98,7 @@ def generate_meme_stream(
                 stream_current_user = stream_session.get(User, user_id)
                 if not stream_current_user:
                     raise ValueError("User not found")
-                
+
                 # Load conversation history for context
                 statement = select(MessageEntity).where(
                     MessageEntity.conversation_id == conversation_id
@@ -113,7 +112,7 @@ def generate_meme_stream(
                             json.dumps(row.message_list)
                         )
                     )
-                
+
                 # Bundle dependencies for agent access
                 dependencies = Deps(
                     client=client,
@@ -121,10 +120,10 @@ def generate_meme_stream(
                     session=stream_session,
                     conversation_id=conversation_id,
                 )
-                
+
                 # Create agent with selected AI model
                 manager_agent = create_manager_agent(provider=provider, model=model)
-                
+
                 try:
                     # Stream agent responses with minimal buffering for responsiveness
                     async with manager_agent.run_stream(
@@ -133,36 +132,16 @@ def generate_meme_stream(
                         deps=dependencies,
                     ) as result:
                         async for text_piece in result.stream_text(debounce_by=0.01):
-                            # Handle special conversation update signals
-                            if text_piece.startswith("CONVERSATION_UPDATE:"):
-                                try:
-                                    # Parse structured update signal
-                                    _, conversation_id_value, summary, updated_at = text_piece.split(":", 3)
-                                    update_message = ConversationUpdateSignal(
-                                        conversation_id=conversation_id_value,
-                                        summary=summary,
-                                    )
-                                    yield (update_message.model_dump_json() + "\n").encode("utf-8")
-                                    
-                                    # Persist conversation summary update
-                                    update_conversation_service(
-                                        stream_session,
-                                        conversation_id_value,
-                                        stream_current_user.id,
-                                        ConversationUpdate(summary=summary)
-                                    )
-                                    continue
-                                except Exception as e:
-                                    logger.error(f"Error parsing conversation update: {e}")
-                            
                             # Stream regular AI response content
                             response_message = ChatMessage(
                                 role="model",
                                 content=text_piece,
                                 timestamp=result.timestamp(),
                             )
-                            yield (response_message.model_dump_json() + "\n").encode("utf-8")
-                
+                            yield (response_message.model_dump_json() + "\n").encode(
+                                "utf-8"
+                            )
+
                 except (
                     BrokenPipeError,
                     ConnectionResetError,
@@ -174,10 +153,13 @@ def generate_meme_stream(
                     return
                 except Exception as e:
                     logger.error(f"Error in agent stream: {e}")
-                    
+
                     # Provide user-friendly error messages
                     error_message = str(e)
-                    if "moderation_blocked" in error_message or "safety system" in error_message:
+                    if (
+                        "moderation_blocked" in error_message
+                        or "safety system" in error_message
+                    ):
                         # Content safety violation - guide user to appropriate content
                         error_response = ChatMessage(
                             role="model",
@@ -192,10 +174,10 @@ def generate_meme_stream(
                             content="I'm sorry, but I encountered an error while creating your meme. Please try again with a different request.",
                             timestamp=datetime.now(timezone.utc),
                         )
-                    
+
                     yield (error_response.model_dump_json() + "\n").encode("utf-8")
                     return
-                
+
                 # Persist complete conversation exchange
                 full_json = result.new_messages_json()
                 payload = json.loads(full_json)
@@ -204,16 +186,15 @@ def generate_meme_stream(
                     conversation_id,
                     stream_current_user.id,
                     MessageCreate(
-                        conversation_id=conversation_id,
-                        message_list=payload
+                        conversation_id=conversation_id, message_list=payload
                     ),
                 )
                 stream_session.commit()
-            
+
             except Exception as e:
                 # Ensure database consistency on errors
                 stream_session.rollback()
                 logger.error(f"Error in generate meme stream: {e}")
                 raise
-    
+
     return StreamingResponse(streamer(), media_type="text/plain")

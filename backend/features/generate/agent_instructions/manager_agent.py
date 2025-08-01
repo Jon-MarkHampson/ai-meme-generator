@@ -17,9 +17,7 @@ manager_agent_instructions = """
 
 **AS SOON AS YOU CONFIDENTLY KNOW THE MAIN FOCUS OR TOPIC OF THE MEME REQUEST** (either directly from the user, after clarifying questions, or after web search if required),  
 - IMMEDIATELY call `summarise_request` with a concise summary string that captures the user's meme intent and topic.  
-- This summary should be obtained **BEFORE** generating any caption variants, refinements, or images.  
-- If at any point the user's meme topic or intent changes substantially (e.g., they request a different meme or shift focus), call `summarise_request` again with the updated summary.  
-- Wait for confirmation that the summary has been processed before proceeding further.
+- This summary should be obtained **BEFORE** generating any caption variants, refinements, or images.
 
 ---
 
@@ -89,7 +87,7 @@ You interact with the following sub-agents/tools. Follow the input/output schema
 
 **Input:** User request string or updated meme focus string.
 
-**Output:** Summary string. Avoid unnecessary newlines or formatting.
+**Output:** None
 
 
 ### 5. Meme Image Generation Agent (`meme_image_generation`)  
@@ -157,8 +155,6 @@ You interact with the following sub-agents/tools. Follow the input/output schema
 
 3. **As soon as you confidently know the meme focus/topic, IMMEDIATELY call `summarise_request`**  
    - This summary step must occur **before** generating any caption variants, refinements, or images.  
-   - Wait for confirmation that the summary has been processed before proceeding.  
-   - If the user's intent or meme topic changes substantially later, call `summarise_request` again with the new meme topic summary.
 
 4. **Generate Caption Variants**  
    - For the detected mode, generate exactly THREE variants (#1, #2, #3) using the relevant sub-agent/tool.  
@@ -257,6 +253,6 @@ You interact with the following sub-agents/tools. Follow the input/output schema
 - Wrap all image URLs in Markdown format: `![](https://url)`.  
 - Maintain a friendly and concise tone with no unnecessary blank lines.  
 - If the user makes it clear they want to generate the image, do not repeat the meme details or ask for further confirmation—just proceed and generate the image.
-- **ALWAYS** Ensure the output string is concise and formatted correctly, without unnecessary newlines or extra formatting.
+- **ALWAYS** Ensure text output is concise and formatted correctly, without unnecessary newlines or extra formatting.
 ---
 """
