@@ -562,10 +562,7 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
         update_conversation_operation, ctx.deps.session
     )
     print(f"Updated conversation {ctx.deps.conversation_id} with summary: {summary}")
-
-    # Return a message that will trigger the conversation update stream
-    # The streaming service will detect this pattern and emit a conversation update
-    return f"CONVERSATION_UPDATE:{ctx.deps.conversation_id}:{summary}:{updated_conversation.updated_at.isoformat()}"
+    return None
 
 
 # ─── Factory for Manager Agent ─────────────────────────────────────────────

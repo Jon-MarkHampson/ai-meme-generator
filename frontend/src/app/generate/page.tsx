@@ -30,7 +30,6 @@ import {
     listMessages,
     ChatMessage,
     ConversationRead,
-    ConversationUpdateMessage,
     listConversations,
     deleteConversation,
     sortConversationsByUpdatedAt,
@@ -43,6 +42,7 @@ import { ChatBubble } from "@/components/ChatBubble";
 import { ChatInput } from "@/components/ChatInput";
 import { ModelSelector } from "@/components/ModelSelector";
 import { useModelSelection } from "@/hooks/useModelSelection";
+import { useConversationSummary } from "@/hooks/useConversationSummary";
 
 
 // Welcome message displayed when starting a new conversation
@@ -70,14 +70,14 @@ function GenerateContent() {
     const [msgs, setMsgs] = useState<ChatMessage[]>(WELCOME);
     const [convos, setConvos] = useState<ConversationRead[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    
+
     // AI model selection with persistent preference
     const { selectedModelId, changeModel } = useModelSelection({
         onModelChange: (model) => {
             console.log(`Model changed to: ${model.name} (${model.id})`);
         }
     });
-    
+
     // Refs for stream management and auto-scrolling
     const abortRef = useRef<(() => void) | null>(null);
     const endRef = useRef<HTMLDivElement>(null);
@@ -218,23 +218,6 @@ function GenerateContent() {
                     }
                 }
             },
-            (update: ConversationUpdateMessage) => {
-                // Handle real-time conversation metadata updates
-                console.log(`Received conversation update for ${update.conversation_id}: ${update.summary}`);
-
-                // Update conversation summary in sidebar
-                if (convos) {
-                    const convToUpdate = convos.find(c => c.id === update.conversation_id);
-                    if (convToUpdate) {
-                        const updatedConv = {
-                            ...convToUpdate,
-                            summary: update.summary,
-                            updated_at: update.updated_at
-                        };
-                        updateConversationInList(updatedConv);
-                    }
-                }
-            },
             () => {
                 // Handle stream errors gracefully
                 setIsLoading(false);
@@ -282,7 +265,12 @@ function GenerateContent() {
         });
     };
 
-    // ─── 5) new‐conversation reset handler ────────────────────────
+    // Poll for conversation summary until available
+    useConversationSummary(convId!, (updatedConv) => {
+        updateConversationInList(updatedConv);
+    });
+
+    // ─── New‐conversation reset handler ────────────────────────
     const startNewConversation = () => {
         // Abort any existing stream when starting a new conversation
         if (abortRef.current) {
