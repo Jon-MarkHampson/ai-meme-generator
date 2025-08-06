@@ -12,7 +12,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSession, apiRefreshSession, apiLogout, type User } from '@/services/auth';
+import { getSession, apiRefreshSession, apiLogout } from '@/services/auth';
+import { type User } from '@/types/auth';
 import { SESSION_TIMING, ACTIVITY_EVENTS } from '@/constants/sessionConfig';
 import { showSessionWarning, updateSessionWarning, dismissSessionWarning } from '@/utils/sessionToasts';
 import { HOME_ROUTE } from '@/config/routes';
@@ -90,7 +91,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         }
 
         refreshInProgressRef.current = true;
-        
+
         try {
             await apiRefreshSession();
             console.log('[Session] Token refreshed successfully');
@@ -133,7 +134,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         if (state.isAuthenticated) {
             inactivityTimerRef.current = setTimeout(() => {
                 console.log('[Session] Inactivity detected, showing session warning');
-                
+
                 // Start warning countdown
                 let seconds = SESSION_TIMING.WARNING_DURATION / 1000;
                 warningToastIdRef.current = showSessionWarning(seconds);
@@ -161,7 +162,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
             const user = await getSession();
             console.log('[Session] Revalidation result:', user);
-            
+
             setState({
                 user,
                 isAuthenticated: !!user,
@@ -229,7 +230,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // Set up inactivity timer
         inactivityTimerRef.current = setTimeout(() => {
             console.log('[Session] Inactivity detected, showing session warning');
-            
+
             // Start warning countdown
             let seconds = SESSION_TIMING.WARNING_DURATION / 1000;
             warningToastIdRef.current = showSessionWarning(seconds);
