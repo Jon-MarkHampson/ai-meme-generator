@@ -1,7 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
-from entities.user_memes import UserMeme
 
 
 class UserMemeCreate(BaseModel):

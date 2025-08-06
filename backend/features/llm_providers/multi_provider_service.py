@@ -7,7 +7,7 @@ import time
 from typing import Dict
 from .providers.openai import OpenAIProvider
 from .providers.anthropic import AnthropicProvider
-from .models import LLMProvidersResponse, ModelAvailabilityResponse
+from .schema import LLMProvidersResponse, ModelAvailabilityResponse
 
 logger = logging.getLogger(__name__)
 

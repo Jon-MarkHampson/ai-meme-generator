@@ -7,6 +7,8 @@ from sqlmodel import SQLModel, Session, create_engine, text
 from sqlalchemy.exc import OperationalError
 
 from config import settings
+# Import models registry to ensure all models are registered before creating tables
+import models_registry
 
 logger = logging.getLogger(__name__)
 

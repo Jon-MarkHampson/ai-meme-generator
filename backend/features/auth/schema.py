@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from ..users.models import UserRead
+from ..users.schema import UserRead
 
 
 # Maybe unused

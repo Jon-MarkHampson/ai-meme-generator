@@ -25,13 +25,13 @@ from database.core import Session as SessionClass, engine
 from openai import OpenAI
 from pydantic_ai.messages import ModelMessagesTypeAdapter
 
-from entities.messages import Message as MessageEntity
-from entities.conversations import Conversation as ConversationEntity
-from entities.user import User
-from features.messages.models import ChatMessage, MessageCreate
+from features.messages.model import Message as MessageEntity
+from features.conversations.model import Conversation as ConversationEntity
+from features.users.model import User
+from features.messages.schema import ChatMessage, MessageCreate
 from features.messages.service import create_message
 from .agent import create_manager_agent
-from .models import Deps
+from .schema import Deps
 
 logger = logging.getLogger(__name__)
 client = OpenAI()

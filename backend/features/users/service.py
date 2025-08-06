@@ -15,8 +15,8 @@ import logging
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from entities.user import User
-from .models import UserUpdate, UserDelete
+from features.users.model import User
+from .schema import UserUpdate, UserDelete
 from utils.security import get_password_hash, verify_password
 
 

@@ -21,9 +21,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 from database.core import get_session
-from entities.user import User
+from features.users.model import User
 from features.auth.service import get_current_user
-from .models import UserMemeCreate, UserMemeRead, UserMemeUpdate, UserMemeList
+from .schema import UserMemeCreate, UserMemeRead, UserMemeUpdate, UserMemeList
 from .service import (
     create_user_meme as service_create,
     read_user_meme as service_read,

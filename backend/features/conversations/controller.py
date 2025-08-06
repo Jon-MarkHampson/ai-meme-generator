@@ -31,8 +31,8 @@ from sqlmodel import Session
 
 from database.core import get_session
 from features.auth.service import get_current_user
-from entities.user import User
-from .models import ConversationRead, ConversationUpdate
+from features.users.model import User
+from .schema import ConversationRead, ConversationUpdate
 from .service import (
     list_conversations,
     create_conversation,

@@ -29,7 +29,7 @@ import time
 from typing import Dict
 from openai import OpenAI
 
-from .models import ModelAvailabilityResponse
+from .schema import ModelAvailabilityResponse
 
 logger = logging.getLogger(__name__)
 

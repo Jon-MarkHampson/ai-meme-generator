@@ -17,7 +17,7 @@ import logging
 from fastapi import HTTPException, status
 from storage3.exceptions import StorageApiError
 from database.supabase_client import supabase
-from entities.user import User
+from features.users.model import User
 
 logger = logging.getLogger(__name__)
 

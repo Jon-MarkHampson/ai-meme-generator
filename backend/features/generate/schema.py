@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from openai import OpenAI
 from pydantic import BaseModel
 from typing import Dict, Optional
-from entities.user import User
+from features.users.model import User
 from sqlmodel import Session
 
 
