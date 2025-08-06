@@ -10,7 +10,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getAvailableModels, getModelById, getModelWithStatus, getDataSourceInfo } from "@/config/models";
+import { getAvailableModels, getModelById, getModelWithStatus, getDataSourceInfo } from "@/services/models";
 
 interface ModelSelectorProps {
     selectedModel: string;

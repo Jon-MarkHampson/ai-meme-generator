@@ -7,7 +7,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import {
     FavouriteMemeRead,
     listFavourites,
-} from "@/lib/gallery";
+} from "@/services/gallery";
 import { Card, CardContent } from "@/components/ui/card"
 import {
     Carousel,

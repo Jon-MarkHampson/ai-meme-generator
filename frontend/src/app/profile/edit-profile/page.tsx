@@ -9,7 +9,7 @@ import * as z from "zod";
 
 import { AuthGuard } from "@/components/AuthGuard";
 import { useSession } from "@/contexts/SessionContext";
-import { apiUpdateProfile, apiDeleteAccount } from "@/lib/auth";
+import { apiUpdateProfile, apiDeleteAccount } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";

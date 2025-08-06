@@ -5,7 +5,7 @@ import {
   HOME_ROUTE,
   DEFAULT_PROTECTED_ROUTE,
   AUTH_ROUTES,
-} from "@/lib/authRoutes";
+} from "@/config/routes";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

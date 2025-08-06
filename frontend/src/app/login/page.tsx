@@ -7,8 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { DEFAULT_PROTECTED_ROUTE } from '@/lib/authRoutes';
-import { apiLogin } from '@/lib/auth';
+import { DEFAULT_PROTECTED_ROUTE } from '@/config/routes';
+import { apiLogin } from '@/services/auth';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
