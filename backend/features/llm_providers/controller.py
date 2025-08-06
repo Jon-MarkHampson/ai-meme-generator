@@ -33,13 +33,13 @@ from typing import Dict
 from fastapi import APIRouter, Depends, HTTPException
 import logging
 
-from entities.user import User
+from features.users.model import User
 from features.auth.service import get_current_user
 from .multi_provider_service import (
     get_model_availability,
     get_all_providers_availability,
 )
-from .models import ModelAvailabilityResponse, LLMProvidersResponse
+from .schema import ModelAvailabilityResponse, LLMProvidersResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/llm_providers", tags=["llm_providers"])

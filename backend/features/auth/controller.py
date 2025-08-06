@@ -17,8 +17,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 from config import settings
 from database.core import get_session
-from entities.user import User
-from ..users.models import UserCreate, UserRead
+from features.users.model import User
+from ..users.schema import UserCreate, UserRead
 from .service import (
     create_user_account,
     authenticate_user,

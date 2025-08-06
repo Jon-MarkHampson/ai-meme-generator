@@ -32,8 +32,8 @@ from sqlmodel import Session
 
 from database.core import get_session
 from features.auth.service import get_current_user
-from entities.user import User
-from .models import MessageCreate, MessageRead, ChatMessage
+from features.users.model import User
+from .schema import MessageCreate, MessageRead, ChatMessage
 from .service import (
     list_messages_by_conversation,
     create_message,

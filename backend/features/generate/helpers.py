@@ -1,7 +1,7 @@
 import base64
 import mimetypes
 import uuid
-from .models import ConvertedImageResult
+from .schema import ConvertedImageResult
 from openai.types import ImagesResponse
 
 

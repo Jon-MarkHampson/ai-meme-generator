@@ -26,9 +26,9 @@ from pydantic_ai.messages import (
     TextPart,
 )
 
-from entities.messages import Message
-from entities.conversations import Conversation
-from .models import MessageCreate, ChatMessage
+from features.messages.model import Message
+from features.conversations.model import Conversation
+from .schema import MessageCreate, ChatMessage
 
 
 def list_messages_by_conversation(

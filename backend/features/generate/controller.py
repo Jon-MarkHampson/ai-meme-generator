@@ -13,8 +13,8 @@ from sqlmodel import Session
 
 from database.core import get_session
 from features.auth.service import get_current_user
-from entities.user import User
-from .models import GenerateMemeRequest
+from features.users.model import User
+from .schema import GenerateMemeRequest
 from .service import generate_meme_stream
 
 logger = logging.getLogger(__name__)

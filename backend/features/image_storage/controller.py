@@ -31,7 +31,7 @@ images and provide persistent URLs for user galleries and sharing.
 import logging
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
 from features.auth.service import get_current_user
-from entities.user import User
+from features.users.model import User
 from .service import (
     upload_image_to_supabase,
     get_image_url_from_supabase,

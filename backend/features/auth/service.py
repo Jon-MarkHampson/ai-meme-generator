@@ -25,8 +25,8 @@ from sqlmodel import Session, select
 
 from config import settings
 from database.core import get_session
-from entities.user import User
-from ..users.models import UserCreate, UserRead
+from features.users.model import User
+from ..users.schema import UserCreate, UserRead
 from utils.security import get_password_hash, verify_password
 
 logger = logging.getLogger(__name__)

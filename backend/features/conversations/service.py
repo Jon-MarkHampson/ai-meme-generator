@@ -20,8 +20,8 @@ Business logic:
 from datetime import datetime, timezone
 from typing import List, Optional
 from sqlmodel import Session, select
-from entities.conversations import Conversation
-from .models import ConversationUpdate
+from features.conversations.model import Conversation
+from .schema import ConversationUpdate
 
 
 def list_conversations(session: Session, user_id: str) -> List[Conversation]:

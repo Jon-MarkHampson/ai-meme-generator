@@ -19,7 +19,7 @@ from pydantic_ai.models.openai import (
     OpenAIResponsesModelSettings,
 )
 from pydantic_ai.models.anthropic import AnthropicModel
-from .models import MemeCaptionAndContext, ImageResult, Deps
+from .schema import MemeCaptionAndContext, ImageResult, Deps
 
 from features.image_storage.service import upload_image_to_supabase
 from features.user_memes.service import (
@@ -27,8 +27,8 @@ from features.user_memes.service import (
     update_user_meme,
     read_latest_conversation_meme,
 )
-from features.conversations.models import ConversationUpdate
-from features.user_memes.models import UserMemeCreate, UserMemeUpdate
+from features.conversations.schema import ConversationUpdate
+from features.user_memes.schema import UserMemeCreate, UserMemeUpdate
 from .helpers import convert_response_to_png
 
 from .agent_instructions.manager_agent import manager_agent_instructions

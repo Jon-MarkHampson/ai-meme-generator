@@ -16,9 +16,9 @@ Key features:
 import logging
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
-from entities.user_memes import UserMeme
-from entities.user import User
-from .models import (
+from features.user_memes.model import UserMeme
+from features.users.model import User
+from .schema import (
     UserMemeCreate,
     UserMemeRead,
     UserMemeList,
