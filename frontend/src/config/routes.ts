@@ -1,5 +1,3 @@
-// frontend/src/lib/authRoutes.ts
-
 /**
  * Core route definitions
  */
@@ -21,7 +19,7 @@ export function isProtectedRoute(pathname: string): boolean {
  * Check if a pathname is publicly accessible
  */
 export function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.includes(pathname as any);
+  return PUBLIC_ROUTES.some(route => route === pathname);
 }
 
 /**

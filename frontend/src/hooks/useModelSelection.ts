@@ -6,7 +6,7 @@ import {
   initializeModelAvailability,
   getDataSourceInfo,
   type ModelConfig,
-} from "@/config/models";
+} from "@/services/models";
 
 interface UseModelSelectionOptions {
   persistToLocalStorage?: boolean;

@@ -33,7 +33,7 @@ import {
     listConversations,
     deleteConversation,
     sortConversationsByUpdatedAt,
-} from "@/lib/generate";
+} from "@/services/generate";
 import { SquarePen } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";

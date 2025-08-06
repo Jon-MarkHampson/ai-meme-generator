@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Heart, Loader2 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
-import { toggleFavorite, getMemeByUrl } from "@/lib/gallery";
+import { toggleFavorite, getMemeByUrl } from "@/services/gallery";
 
 interface FavoriteToggleProps {
     imageUrl: string;

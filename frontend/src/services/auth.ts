@@ -1,19 +1,5 @@
-// frontend/src/lib/auth.ts
 import API from "./api";
-
-/** Matches FastAPI’s UserRead model exactly */
-export interface User {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-}
-
-export interface SignupResponse {
-  user: User;
-  access_token: string;
-  token_type: string;
-}
+import { User, SignupResponse } from "@/types/auth";
 
 export async function apiSignup(
   first_name: string,
@@ -51,7 +37,7 @@ export async function fetchProfile(): Promise<User> {
 export async function apiRefreshSession(): Promise<void> {
   try {
     await API.post("/auth/refresh");
-  } catch (error: any) {
+  } catch (error) {
     // Re-throw the error so SessionContext can handle it,
     // but don't add extra logging here to avoid noise
     throw error;

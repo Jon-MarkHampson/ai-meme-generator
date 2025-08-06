@@ -12,10 +12,10 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSession, apiRefreshSession, apiLogout, type User } from '@/lib/auth';
+import { getSession, apiRefreshSession, apiLogout, type User } from '@/services/auth';
 import { SESSION_TIMING, ACTIVITY_EVENTS } from '@/constants/sessionConfig';
-import { showSessionWarning, updateSessionWarning, dismissSessionWarning } from '@/components/sessionToasts';
-import { HOME_ROUTE } from '@/lib/authRoutes';
+import { showSessionWarning, updateSessionWarning, dismissSessionWarning } from '@/utils/sessionToasts';
+import { HOME_ROUTE } from '@/config/routes';
 
 interface SessionState {
     user: User | null;          // Current authenticated user data
@@ -94,9 +94,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         try {
             await apiRefreshSession();
             console.log('[Session] Token refreshed successfully');
-        } catch (error: any) {
+        } catch (error) {
             // Handle 401 gracefully - token already expired
-            if (error.response?.status === 401) {
+            const axiosError = error as { response?: { status?: number } };
+            if (axiosError.response?.status === 401) {
                 console.log('[Session] Token expired during refresh, logging out gracefully');
             } else {
                 console.error('[Session] Failed to refresh token:', error);

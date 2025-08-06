@@ -1,6 +1,5 @@
 // frontend/src/lib/api.ts
 import axios from "axios";
-import { HOME_ROUTE } from "@/lib/authRoutes";
 
 const API = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000",

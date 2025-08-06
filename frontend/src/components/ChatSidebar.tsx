@@ -1,6 +1,6 @@
 "use client";
 
-import { ConversationRead } from "@/lib/generate";
+import { ConversationRead } from "@/services/generate";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DeleteIcon } from "lucide-react";
 import {
