@@ -24,12 +24,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import { AuthGuard } from "@/components/AuthGuard";
+import { ConversationRead, ChatMessage } from "@/types/conversations";
 import {
     createConversation,
     streamChat,
     listMessages,
-    ChatMessage,
-    ConversationRead,
     listConversations,
     deleteConversation,
     sortConversationsByUpdatedAt,
