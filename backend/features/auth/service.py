@@ -14,11 +14,12 @@ Security considerations:
 - Failed authentications log attempts for monitoring
 - Race conditions handled during user registration
 """
+
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Cookie, Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from jose import JWTError, ExpiredSignatureError, jwt
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
@@ -35,11 +36,11 @@ logger = logging.getLogger(__name__)
 def create_access_token(subject: str, expires_delta: timedelta) -> str:
     """
     Create a JWT access token for user authentication.
-    
+
     Args:
         subject: The subject of the token (typically user ID)
         expires_delta: How long until the token expires
-        
+
     Returns:
         Encoded JWT token as a string
     """
@@ -57,14 +58,14 @@ def create_access_token(subject: str, expires_delta: timedelta) -> str:
 def create_user_account(user_in: UserCreate, session: Session) -> UserRead:
     """
     Create a new user account with hashed password.
-    
+
     Args:
         user_in: UserCreate model with registration data
         session: Database session for executing queries
-        
+
     Returns:
         UserRead model with the created user data
-        
+
     Raises:
         HTTPException: If email is already registered
     """
@@ -102,15 +103,15 @@ def create_user_account(user_in: UserCreate, session: Session) -> UserRead:
 def authenticate_user(email: str, password: str, session: Session) -> UserRead:
     """
     Authenticate user by verifying email and password.
-    
+
     Args:
         email: User's email address
         password: Plain text password to verify
         session: Database session for executing queries
-        
+
     Returns:
         UserRead model with authenticated user data
-        
+
     Raises:
         HTTPException: If credentials are invalid
     """
@@ -128,13 +129,13 @@ def authenticate_user(email: str, password: str, session: Session) -> UserRead:
 def create_session_token(user_id: str) -> str:
     """
     Create a new session token for authenticated user.
-    
+
     Generates a JWT with user ID as subject and configured expiration.
     Tokens are stateless, containing all necessary validation data.
-    
+
     Args:
         user_id: The ID of the authenticated user
-        
+
     Returns:
         JWT token string for cookie storage
     """
@@ -147,14 +148,14 @@ def create_session_token(user_id: str) -> str:
 def refresh_user_session(user_id: str) -> str:
     """
     Generate a fresh token to extend an active session.
-    
+
     Called when users are actively using the application to prevent
     disruption. The new token has a full expiration period from the
     current time.
-    
+
     Args:
         user_id: The ID of the user whose session to refresh
-        
+
     Returns:
         New JWT token with extended expiration
     """
@@ -168,18 +169,18 @@ def get_token_from_cookie_or_header(
 ) -> str:
     """
     Extract JWT token from HTTP request.
-    
-    Supports both cookie-based sessions (primary) and Authorization 
-    header (for API clients). Cookies are preferred for browser 
+
+    Supports both cookie-based sessions (primary) and Authorization
+    header (for API clients). Cookies are preferred for browser
     security, while headers support programmatic access.
-    
+
     Args:
         authorization: Optional Authorization header value
         access_token: Optional cookie containing JWT
-        
+
     Returns:
         Extracted JWT token string
-        
+
     Raises:
         HTTPException: 401 if no valid token found
     """
@@ -204,18 +205,18 @@ def get_current_user(
 ) -> User:
     """
     Validate token and retrieve authenticated user.
-    
+
     This dependency is injected into protected endpoints to ensure
     only authenticated users can access them. Validates token signature,
     expiration, and user existence.
-    
+
     Args:
         token: JWT token from cookie or header
         session: Database session for user lookup
-        
+
     Returns:
         User object if authentication successful
-        
+
     Raises:
         HTTPException: 401 for any authentication failure
     """
@@ -248,22 +249,51 @@ def get_current_user(
     return user
 
 
-def validate_session_status(user_id: str) -> dict:
+def validate_session_status(
+    request: Request,
+    token: str = Depends(get_token_from_cookie_or_header),
+) -> dict:
     """
     Check session validity and calculate remaining time.
-    
-    Used by frontend to display session warnings and coordinate
-    automatic logout. In production, this would decode the token
-    to check actual expiration time.
-    
+
+    Decodes the token to extract expiration timestamp, computes how much
+    time is left, and returns detailed session status info for frontend use.
+
     Args:
-        user_id: The ID of the user to check
-        
+        request: FastAPI request object (used for compatibility)
+        token: JWT token extracted from cookie or header
+
     Returns:
-        Dict with authentication status and timing info
-        
-    TODO: Implement actual token expiration checking when
-    frontend session timer integration is complete.
+        Dict with session status and timing info
     """
-    # Placeholder implementation - would check actual token expiry
-    return {"authenticated": True, "user_id": user_id, "message": "Session is valid"}
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+        )
+        exp_timestamp = payload.get("exp")
+        if not exp_timestamp:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+            )
+
+        now_ts = datetime.now(timezone.utc).timestamp()
+        time_remaining = int((exp_timestamp - now_ts) * 1000)  # in ms
+
+        return {
+            "authenticated": True,
+            "expires_at": datetime.fromtimestamp(
+                exp_timestamp, tz=timezone.utc
+            ).isoformat(),
+            "time_remaining_ms": max(0, time_remaining),
+        }
+
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired"
+        )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
