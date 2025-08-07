@@ -19,10 +19,12 @@ API.interceptors.response.use(
       if (!isAuthEndpoint && typeof window !== "undefined") {
         // Don't redirect automatically - let SessionContext handle it
         // This prevents the infinite reload loop
-        console.log('[API] 401 detected, session expired - triggering logout event');
-        
+        console.log(
+          "[API] 401 detected, session expired - triggering logout event"
+        );
+
         // Dispatch custom event to notify SessionContext
-        window.dispatchEvent(new CustomEvent('session-expired'));
+        window.dispatchEvent(new CustomEvent("session-expired"));
       }
     }
 
