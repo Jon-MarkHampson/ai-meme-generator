@@ -88,7 +88,7 @@ def signup(
 
     return _create_auth_response(
         content={
-            "user": UserRead.model_validate(user).model_dump(),
+            "user": UserRead.model_validate(user).model_dump(mode="json"),
             "message": "Account created successfully",
         },
         token=access_token,
