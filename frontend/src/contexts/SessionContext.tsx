@@ -12,7 +12,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSession, apiRefreshSession, apiLogout } from '@/services/auth';
+import { getSession, apiRefreshSession, apiLogout, getSessionStatus } from '@/services/auth';
 import { type User } from '@/types/auth';
 import { SESSION_TIMING, ACTIVITY_EVENTS } from '@/constants/sessionConfig';
 import { showSessionWarning, updateSessionWarning, dismissSessionWarning } from '@/utils/sessionToasts';
@@ -49,6 +49,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);     // Auto-refresh timer
     const lastActivityRef = useRef<number>(Date.now());              // Last user activity timestamp
     const warningToastIdRef = useRef<string | number | null>(null);   // Active warning toast ID
+    const sessionStatusIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const logout = useCallback(async () => {
         /**
@@ -264,6 +265,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             }
         }, SESSION_TIMING.REFRESH_INTERVAL);
 
+        // Poll backend for session status
+        sessionStatusIntervalRef.current = setInterval(async () => {
+            try {
+                const status = await getSessionStatus();
+                if (status && status.time_remaining <= 0) {
+                    console.log('[Session] Token expired on backend, logging out');
+                    logout();
+                }
+            } catch (err) {
+                console.error('[Session] Failed to fetch session status:', err);
+            }
+        }, 30000); // poll every 30 seconds
+
         // Cleanup
         return () => {
             events.forEach(event => {
@@ -282,6 +296,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             if (refreshTimerRef.current) {
                 clearInterval(refreshTimerRef.current);
                 refreshTimerRef.current = null;
+            }
+            if (sessionStatusIntervalRef.current) {
+                clearInterval(sessionStatusIntervalRef.current);
+                sessionStatusIntervalRef.current = null;
             }
             if (warningToastIdRef.current) {
                 dismissSessionWarning(warningToastIdRef.current);
