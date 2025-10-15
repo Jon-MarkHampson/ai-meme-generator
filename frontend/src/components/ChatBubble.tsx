@@ -76,7 +76,7 @@ export const ChatBubble: FC<{ text: string; isUser: boolean; isLoading?: boolean
                                 
                                 // Don't render if URL is not safe
                                 if (!sanitizedUrl) {
-                                    return <span className="text-red-500">[Invalid URL]</span>;
+                                    return <span className="text-destructive">[Invalid URL]</span>;
                                 }
                                 
                                 // Render images inline with rounded corners and favorite toggle
@@ -100,7 +100,7 @@ export const ChatBubble: FC<{ text: string; isUser: boolean; isLoading?: boolean
                                     <a
                                         {...props}
                                         href={sanitizedUrl}
-                                        className="text-blue-600 dark:text-blue-400 font-medium hover:underline underline-offset-2 transition-colors"
+                                        className="text-primary font-medium hover:underline underline-offset-2 transition-colors"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                     />
@@ -112,7 +112,7 @@ export const ChatBubble: FC<{ text: string; isUser: boolean; isLoading?: boolean
                                 
                                 // Don't render if URL is not safe
                                 if (!sanitizedUrl) {
-                                    return <span className="text-red-500">[Invalid image URL]</span>;
+                                    return <span className="text-destructive">[Invalid image URL]</span>;
                                 }
                                 
                                 return (
