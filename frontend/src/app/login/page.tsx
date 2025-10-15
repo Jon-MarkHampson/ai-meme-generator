@@ -86,7 +86,7 @@ export default function LoginPage() {
   if (state.isValidating) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-gray-100"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground"></div>
       </div>
     );
   }
@@ -106,7 +106,7 @@ export default function LoginPage() {
             <p
               role="alert"
               aria-live="assertive"
-              className="mb-4 text-center text-sm text-red-600"
+              className="mb-4 text-center text-sm text-destructive"
             >
               {formError}
             </p>
@@ -131,7 +131,7 @@ export default function LoginPage() {
                       />
                     </FormControl>
                     {form.formState.errors.email && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {form.formState.errors.email.message}
                       </p>
                     )}
@@ -156,7 +156,7 @@ export default function LoginPage() {
                       />
                     </FormControl>
                     {form.formState.errors.password && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-1 text-sm text-destructive">
                         {form.formState.errors.password.message}
                       </p>
                     )}
