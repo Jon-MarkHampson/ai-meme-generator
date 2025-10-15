@@ -1,9 +1,9 @@
 # ai-meme-generator
 
-
-## Install dependencies 
+## Install dependencies
 
 Use the following command
+
 ```bash
 uv pip install pyproject.toml
 ```
