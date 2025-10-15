@@ -12,14 +12,14 @@ All endpoints follow RESTful conventions and use HTTP-only cookies for
 secure token storage, preventing XSS attacks while maintaining usability.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 from config import settings
 from database.core import get_session
 from features.users.model import User
-from ..users.schema import UserCreate, UserRead
+from ..users.schema import UserCreate
 from .service import (
     create_user_account,
     authenticate_user,
@@ -27,6 +27,7 @@ from .service import (
     refresh_user_session,
     get_current_user,
     validate_session_status,
+    get_token_from_cookie_or_header,
 )
 
 
@@ -83,12 +84,12 @@ def signup(
     Returns:
         JSON response with user data and sets HTTP-only cookie
     """
-    user = create_user_account(user_in, session)
-    access_token = create_session_token(user.id)
+    user_read = create_user_account(user_in, session)  # returns UserRead
+    access_token = create_session_token(user_read.id)
 
     return _create_auth_response(
         content={
-            "user": UserRead.model_validate(user).model_dump(mode="json"),
+            "user": user_read.model_dump(mode="json"),
             "message": "Account created successfully",
         },
         token=access_token,
@@ -179,7 +180,7 @@ def logout():
 
 @router.get("/session-status")
 def get_session_status(
-    current_user: User = Depends(get_current_user),
+    token: str = Depends(get_token_from_cookie_or_header),
 ):
     """
     Validate session and return timing information.
@@ -197,4 +198,4 @@ def get_session_status(
         - time_remaining_ms: Milliseconds until expiration
         - expires_at: ISO timestamp of expiration
     """
-    return validate_session_status(current_user.id)
+    return validate_session_status(token)

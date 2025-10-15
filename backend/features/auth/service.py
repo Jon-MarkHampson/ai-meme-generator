@@ -19,7 +19,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Cookie, Depends, Header, HTTPException, Request, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 from jose import JWTError, ExpiredSignatureError, jwt
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
@@ -249,10 +249,7 @@ def get_current_user(
     return user
 
 
-def validate_session_status(
-    request: Request,
-    token: str = Depends(get_token_from_cookie_or_header),
-) -> dict:
+def validate_session_status(token: str) -> dict:
     """
     Check session validity and calculate remaining time.
 
@@ -260,12 +257,18 @@ def validate_session_status(
     time is left, and returns detailed session status info for frontend use.
 
     Args:
-        request: FastAPI request object (used for compatibility)
-        token: JWT token extracted from cookie or header
+        token: JWT token string
 
     Returns:
         Dict with session status and timing info
     """
+    # Defensive guard so we never see the original 'Depends' error again:
+    if not isinstance(token, str) or "." not in token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
     try:
         payload = jwt.decode(
             token,
