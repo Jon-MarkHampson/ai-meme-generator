@@ -11,5 +11,5 @@ export interface ConversationRead {
 export interface ChatMessage {
   role: "user" | "model"; // Message sender type
   content: string; // Message text content (supports markdown)
-  timestamp: string; // ISO timestamp of message
+  timestamp: Date; // ISO timestamp of message
 }
