@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str
     OPENAI_API_KEY: str
     ANTHROPIC_API_KEY: str
+    GEMINI_API_KEY: str
     LOGFIRE_TOKEN: str
 
     AI_IMAGE_BUCKET: str
