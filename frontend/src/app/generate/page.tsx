@@ -39,7 +39,8 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { ChatSidebar } from "@/components/ChatSidebar";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ChatInput } from "@/components/ChatInput";
-import { ModelSelector } from "@/components/ModelSelector";
+import { AgentSelector } from "@/components/AgentSelector";
+import { ImageAgentSelector } from "@/components/ImageAgentSelector";
 import { useModelSelection } from "@/hooks/useModelSelection";
 import { useConversationSummary } from "@/hooks/useConversationSummary";
 
@@ -264,8 +265,8 @@ function GenerateContent() {
         });
     };
 
-    // Poll for conversation summary until available
-    useConversationSummary(convId!, (updatedConv) => {
+    // Poll for conversation summary until available (only when convId exists)
+    useConversationSummary(convId || "", (updatedConv) => {
         updateConversationInList(updatedConv);
     });
 
@@ -320,7 +321,14 @@ function GenerateContent() {
                                     History
                                 </div>
                                 <div className="flex gap-2 justify-center items-center">
-                                    <ModelSelector
+                                    <AgentSelector
+                                        selectedModel={selectedModelId}
+                                        onModelChange={changeModel}
+                                        showMetadata={true}
+                                    />
+                                </div>
+                                <div className="flex gap-2 justify-center items-center">
+                                    <ImageAgentSelector
                                         selectedModel={selectedModelId}
                                         onModelChange={changeModel}
                                         showMetadata={true}
