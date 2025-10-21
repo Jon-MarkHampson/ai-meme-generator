@@ -1,4 +1,4 @@
-// components/ModelSelector.tsx
+// components/AgentSelector.tsx
 import React from 'react';
 import {
     Select,
@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAvailableModels, getModelById, getModelWithStatus, getDataSourceInfo } from "@/services/models";
 
-interface ModelSelectorProps {
+interface AgentSelectorProps {
     selectedModel: string;
     onModelChange: (modelId: string) => void;
     className?: string;
@@ -20,13 +20,13 @@ interface ModelSelectorProps {
     showDebugInfo?: boolean;
 }
 
-export function ModelSelector({
+export function AgentSelector({
     selectedModel,
     onModelChange,
     className = "",
     showMetadata = true,
     showDebugInfo = false
-}: ModelSelectorProps) {
+}: AgentSelectorProps) {
     const availableModels = getAvailableModels();
     const selectedModelConfig = getModelById(selectedModel);
     const dataSourceInfo = getDataSourceInfo();
@@ -35,7 +35,7 @@ export function ModelSelector({
         <TooltipProvider>
             <div className={`flex flex-col gap-2 ${className}`}>
                 <div className="flex gap-2 items-center">
-                    <span className="text-sm font-medium text-muted-foreground">Model:</span>
+                    <span className="text-sm font-medium text-muted-foreground">Main Agent:</span>
                     <Select value={selectedModel} onValueChange={onModelChange}>
                         <SelectTrigger className="w-[240px]">
                             <SelectValue>
@@ -56,7 +56,7 @@ export function ModelSelector({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectGroup>
-                                <SelectLabel>Choose AI Model</SelectLabel>
+                                <SelectLabel>Choose Agent Model</SelectLabel>
                                 {availableModels.map((model) => {
                                     const modelWithStatus = getModelWithStatus(model.id);
                                     const isAvailable = modelWithStatus?.isAvailable ?? true;
