@@ -54,13 +54,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const logout = useCallback(async () => {
         /**
          * Logout function that clears session and redirects to home.
-         * 
+         *
          * Process:
          * 1. Call backend logout API to clear server-side session
          * 2. Clear local session state
          * 3. Clear all timers
          * 4. Dismiss any warning toasts
          * 5. Redirect to home page
+         *
+         * Uses window.location.href for redirect to ensure it works even in background tabs.
+         * router.push() doesn't work reliably when the tab is not visible.
          */
         try {
             await apiLogout();
@@ -69,8 +72,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         }
 
         setState({ user: null, isAuthenticated: false, isValidating: false });
-        router.push(HOME_ROUTE);
-    }, [router]);
+
+        // Use window.location.href instead of router.push() for reliable redirect
+        // even when tab is in background
+        window.location.href = HOME_ROUTE;
+    }, []);
 
     // Track refresh attempts to prevent race conditions
     const refreshInProgressRef = useRef<boolean>(false);
@@ -111,8 +117,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         }
     }, [state.isAuthenticated, logout]);
 
+    // Track whether user is authenticated (for activity handler)
+    const isAuthenticatedRef = useRef(state.isAuthenticated);
+
+    useEffect(() => {
+        isAuthenticatedRef.current = state.isAuthenticated;
+    }, [state.isAuthenticated]);
+
     // Handle user activity - just reset timers, don't recreate them
+    // Use useCallback WITHOUT dependencies so event listeners stay stable
     const handleActivity = useCallback(() => {
+        // Only process activity if authenticated
+        if (!isAuthenticatedRef.current) return;
+
         lastActivityRef.current = Date.now();
 
         // Clear existing timers
@@ -131,31 +148,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             warningToastIdRef.current = null;
         }
 
-        // Reset inactivity timer (only if authenticated)
-        if (state.isAuthenticated) {
-            inactivityTimerRef.current = setTimeout(() => {
-                console.log('[Session] Inactivity detected, showing session warning');
+        // Reset inactivity timer
+        inactivityTimerRef.current = setTimeout(() => {
+            console.log('[Session] Inactivity detected, showing session warning');
 
-                // Start warning countdown
-                let seconds = SESSION_TIMING.WARNING_DURATION / 1000;
-                warningToastIdRef.current = showSessionWarning(seconds);
+            // Start warning countdown
+            let seconds = SESSION_TIMING.WARNING_DURATION / 1000;
+            warningToastIdRef.current = showSessionWarning(seconds);
 
-                warningTimerRef.current = setInterval(() => {
-                    seconds--;
-                    if (seconds > 0 && warningToastIdRef.current) {
-                        updateSessionWarning(warningToastIdRef.current, seconds);
-                    } else {
-                        if (warningTimerRef.current) {
-                            clearInterval(warningTimerRef.current);
-                            warningTimerRef.current = null;
-                        }
-                        console.log('[Session] Session expired due to inactivity');
-                        logout();
+            warningTimerRef.current = setInterval(() => {
+                seconds--;
+                if (seconds > 0 && warningToastIdRef.current) {
+                    updateSessionWarning(warningToastIdRef.current, seconds);
+                } else {
+                    if (warningTimerRef.current) {
+                        clearInterval(warningTimerRef.current);
+                        warningTimerRef.current = null;
                     }
-                }, 1000);
-            }, SESSION_TIMING.INACTIVITY_TIMEOUT);
-        }
-    }, [state.isAuthenticated, logout]);
+                    console.log('[Session] Session expired due to inactivity');
+                    logout();
+                }
+            }, 1000);
+        }, SESSION_TIMING.INACTIVITY_TIMEOUT);
+    }, [logout]); // Only depend on logout, which is stable
 
     // Revalidate session function for manual refresh
     const revalidateSession = useCallback(async () => {
@@ -219,6 +234,35 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         window.addEventListener('session-expired', handleSessionExpired);
         return () => window.removeEventListener('session-expired', handleSessionExpired);
     }, [logout]);
+
+    // Handle page visibility changes - check session when tab becomes visible
+    useEffect(() => {
+        if (!state.isAuthenticated) return;
+
+        const handleVisibilityChange = async () => {
+            // Only check when page becomes visible
+            if (document.visibilityState === 'visible') {
+                console.log('[Session] Tab became visible, checking session status');
+
+                try {
+                    const status = await getSessionStatus();
+                    if (status && status.time_remaining <= 0) {
+                        console.log('[Session] Session expired while tab was hidden, logging out');
+                        logout();
+                    } else {
+                        console.log('[Session] Session still valid after tab became visible');
+                    }
+                } catch (err) {
+                    console.error('[Session] Failed to check session status on visibility change:', err);
+                    // On error (likely 401), logout
+                    logout();
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [state.isAuthenticated, logout]);
 
     // Activity tracking
     useEffect(() => {
@@ -308,7 +352,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             // Reset refresh flag on cleanup
             refreshInProgressRef.current = false;
         };
-    }, [state.isAuthenticated, handleActivity, refreshSession]);
+    }, [state.isAuthenticated, handleActivity, refreshSession, logout]);
 
     const value: SessionContextValue = {
         state,
