@@ -30,6 +30,12 @@ export function FavoriteToggle({
             return;
         }
 
+        // Only fetch if we don't have a memeId (which would skip the fetch anyway)
+        if (memeId) {
+            setIsInitializing(false);
+            return;
+        }
+
         const fetchInitialStatus = async () => {
             try {
                 const meme = await getMemeByUrl(imageUrl);
@@ -44,7 +50,7 @@ export function FavoriteToggle({
         };
 
         fetchInitialStatus();
-    }, [imageUrl, initialIsFavorite]);
+    }, [imageUrl, initialIsFavorite, memeId]);
 
     const handleToggle = async () => {
         if (isLoading || isInitializing) return;
