@@ -1,5 +1,6 @@
 # backend/features/generate/agent.py
 import os
+import uuid
 import logging
 import logfire
 from dotenv import load_dotenv
@@ -7,6 +8,11 @@ from typing import List
 from fastapi import HTTPException
 from sqlalchemy.exc import OperationalError
 import time
+
+from PIL import Image
+from io import BytesIO
+from google import genai
+from google.genai import types
 
 from openai.types.responses import WebSearchToolParam
 from openai import BadRequestError
@@ -29,7 +35,7 @@ from features.user_memes.service import (
 )
 from features.conversations.schema import ConversationUpdate
 from features.user_memes.schema import UserMemeCreate, UserMemeUpdate
-from .helpers import convert_response_to_png
+from .helpers import convert_response_to_png, convert_gemini_response_to_png
 
 from .agent_instructions.manager_agent import manager_agent_instructions
 
@@ -60,12 +66,13 @@ Focus on the technical discussion and next steps.
 
 
 async def summarize_old_messages(messages: list[ModelMessage]) -> list[ModelMessage]:
-    # Summarize the oldest 10 messages
-    if len(messages) > 10:
+    # Summarize the oldest messages to keep recent context
+    # Keep at least the last 5 messages to preserve recent conversation flow
+    if len(messages) > 15:
         oldest_messages = messages[:10]
         summary = await summarize_agent.run(message_history=oldest_messages)
-        # Return the last message and the summary
-        return summary.new_messages() + messages[-1:]
+        # Return the summary plus the last 5 messages to preserve recent context
+        return summary.new_messages() + messages[-5:]
 
     return messages
 
@@ -75,20 +82,99 @@ meme_theme_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
     instructions="""
-You are a meme-caption factory.
-Your job is to generate meme captions and, if needed, image context, and emit only valid JSON matching this exact schema:
+You are an expert meme creator who understands internet humor, viral content, and what makes people laugh online.
+
+# MEME WRITING PRINCIPLES
+
+**Structure:**
+- Text Box 1 (Top): Setup - establishes context with maximum 8 words
+- Text Box 2 (Bottom): Punchline - delivers the humor with maximum 8 words
+- Think: "When X happens" (top) → "Relatable/absurd response" (bottom)
+
+**Style Rules:**
+- ULTRA CONCISE: 3-8 words per text box. Brevity = impact.
+- USE INTERNET VERNACULAR: "POV", "Nobody:", "Me:", "Literally", casual slang
+- DON'T EXPLAIN: Let the image do half the work
+- NO COMPLETE SENTENCES: Fragments are funnier
+- EXAGGERATE: Push the absurdity, don't be literal
+- USE CONTRAST: Unexpected juxtapositions create humor
+
+**Common Meme Formats to Consider:**
+- "Nobody: / [Subject]: [absurd action]" - highlights unprompted behavior
+- "POV: [relatable scenario]" - first-person perspective
+- "Me: [normal thing] / Also me: [contradictory thing]" - self-aware humor
+- "When [situation] / [reaction]" - relatable scenarios
+- "[Thing A]: exists / [Person/Thing]: [overreaction]" - exaggerated responses
+- "They don't know that..." - social awkwardness
+- Simple contrast: "[Serious thing] / [Absurd response]"
+
+**What Makes Memes Funny:**
+- Relatability (shared experiences)
+- Absurdist exaggeration (taking things too far)
+- Self-deprecation (roasting yourself)
+- Subverting expectations (setup → surprising twist)
+- Pop culture references (when appropriate)
+- Timing and current relevance
+- The unspoken truth (saying what everyone thinks)
+
+**What to AVOID:**
+- ❌ Explaining the joke in the text
+- ❌ Long sentences or over-description  
+- ❌ Being too literal or journalistic
+- ❌ Repeating information between boxes
+- ❌ Formal language or complete grammar
+- ❌ Describing what's in the image
+
+**Context Field Guidelines:**
+- Describe the VISUAL SCENE for the image generator
+- Be specific about expressions, poses, and atmosphere
+- DON'T repeat the text box content
+- Focus on what makes the image funny or impactful
+- Include relevant visual details: setting, characters, style, mood
+- Think cinematically: "wide shot of...", "close-up on...", "dramatic lighting"
+
+# EXAMPLES OF GOOD VS BAD MEMES
+
+**BAD (too literal, explanatory):**
+Top: "Protesters say 'No Kings'"
+Bottom: "Trump responds by making AI video as king"
+Context: Trump dressed as king responding to protesters
+
+**GOOD (concise, absurdist):**
+Top: "Millions: NO KINGS"
+Bottom: "Trump: *opens AI generator*"
+Context: Split scene - massive protest crowd on left, Trump alone at computer with mischievous grin on right, golden crown poorly photoshopped floating above his head
+
+**BAD:**
+Top: "President Trump releases video"
+Bottom: "Using artificial intelligence technology to mock protesters"
+
+**GOOD:**
+Top: "7 million people: We want democracy"
+Bottom: "Trump: lol watch this AI go brrrr"
+Context: Protest signs filling frame with "No Kings" messages, overlaid with Windows Movie Maker-style effects and cheesy crown graphics
+
+# YOUR OUTPUT FORMAT
+
+You MUST output ONLY valid JSON with this exact schema:
 
 {
-"text_boxes": {
-    "text_box_1": "<string>",
-    "text_box_2": "<string>"
-},
-"context": "<string>"
+  "text_boxes": {
+    "text_box_1": "<punchy setup, 3-8 words>",
+    "text_box_2": "<punchy punchline, 3-8 words>"
+  },
+  "context": "<detailed visual scene description for image generator>"
 }
 
-- Include at least two text boxes; if the user requests more boxes, add additional keys (e.g., "text_box_3").
-- If `image_context` is blank, invent a fitting scene and place it in `context`.
-- Do NOT include any extra fields, markdown syntax, code fences, or explanatory text—output ONLY the JSON object.
+**Critical Rules:**
+- NO markdown, NO code fences, NO extra text
+- JUST the JSON object
+- Keep text boxes SHORT (3-8 words max)
+- Make context DETAILED (2-3 sentences about the visual scene)
+- Include multiple text boxes if requested (text_box_3, etc.)
+- If no image_context provided, invent a fitting visual scene
+
+**Remember:** You're not writing news headlines. You're creating viral internet content that makes people laugh and share. Be bold, be absurd, be concise!
 """,
     output_type=MemeCaptionAndContext,
 )
@@ -110,7 +196,7 @@ The image context should show Trump and Musk standing back to back, arms crossed
     output_type=str,
 )
 
-# ─── Image‐Generation Agent ─────────────────────────────────────────────────
+# ─── Image‐Generation Agent OPENAI ─────────────────────────────────────────────────
 meme_image_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
@@ -119,12 +205,12 @@ meme_image_generation_agent = Agent(
 You are the Meme Image Generation Agent in a multi-agent workflow.
 Your manager will hand you a single string containing JSON with these keys:
 {
-  "text_boxes": { 
+  "text_boxes": {
     "text_box_1": "<string>",
     "text_box_2": "<string>",
-    … 
+    …
   },
-  "context": "<string>",           
+  "context": "<string>",
   "previous_response_id": "<string>"  # or null
 }
 Your job is:
@@ -143,80 +229,80 @@ Your job is:
 )
 
 
-# ─── Image Generation Tool ─────────────────────────────────────────────────
-@meme_image_generation_agent.tool
-def image_generation(
-    ctx: RunContext[Deps],
-    text_boxes: dict[str, str],
-    context: str = "",
-    # previous_response_id: str | None = None,
-) -> ImageResult:
-    """
-    1) Ask OpenAI's image_generation tool for a base64-encoded PNG,
-       including all text_boxes in the prompt.
-    2) Decode and upload it to Supabase.
-    3) Return ImageResult.
-    """
-    # Build a little “Top: …; Bottom: …; Caption3: …” string from whatever keys you got
-    boxes_desc = "; ".join(f"{key}: “{val}”" for key, val in text_boxes.items())
+# # ─── Image Generation Tool OPENAI ─────────────────────────────────────────────────
+# @meme_image_generation_agent.tool
+# def image_generation(
+#     ctx: RunContext[Deps],
+#     text_boxes: dict[str, str],
+#     context: str = "",
+#     # previous_response_id: str | None = None,
+# ) -> ImageResult:
+#     """
+#     1) Ask OpenAI's image_generation tool for a base64-encoded PNG,
+#        including all text_boxes in the prompt.
+#     2) Decode and upload it to Supabase.
+#     3) Return ImageResult.
+#     """
+#     # Build a little “Top: …; Bottom: …; Caption3: …” string from whatever keys you got
+#     boxes_desc = "; ".join(f"{key}: “{val}”" for key, val in text_boxes.items())
 
-    prompt = (
-        f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
-        f" Take care creating the text layout and spacing to ensure it looks like a real meme."
-        + (f" Image context: {context}" if context else "")
-    )
-    # Debug logging
-    # print(f"Image generation prompt: {prompt}")
+#     prompt = (
+#         f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
+#         f" Take care creating the text layout and spacing to ensure it looks like a real meme."
+#         + (f" Image context: {context}" if context else "")
+#     )
+#     # Debug logging
+#     # print(f"Image generation prompt: {prompt}")
 
-    # Synchronous call into the OpenAI client
-    try:
-        response = ctx.deps.client.responses.create(
-            model="gpt-4.1-2025-04-14",
-            input=prompt,
-            tools=[{"type": "image_generation"}],
-        )
-    except BadRequestError as e:
-        error_msg = str(e)
-        if "moderation_blocked" in error_msg or "safety system" in error_msg:
-            raise ModelRetry(
-                "I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content."
-            )
-        else:
-            raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
-    except Exception as e:
-        raise ModelRetry(f"Image generation failed: {str(e)}. Please try again.")
+#     # Synchronous call into the OpenAI client
+#     try:
+#         response = ctx.deps.client.responses.create(
+#             model="gpt-4.1-2025-04-14",
+#             input=prompt,
+#             tools=[{"type": "image_generation"}],
+#         )
+#     except BadRequestError as e:
+#         error_msg = str(e)
+#         if "moderation_blocked" in error_msg or "safety system" in error_msg:
+#             raise ModelRetry(
+#                 "I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content."
+#             )
+#         else:
+#             raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
+#     except Exception as e:
+#         raise ModelRetry(f"Image generation failed: {str(e)}. Please try again.")
 
-    if not response.output:
-        raise ModelRetry("No image generated. Please try again.")
+#     if not response.output:
+#         raise ModelRetry("No image generated. Please try again.")
 
-    # Convert the response to PNG bytes, mime type, and filename
-    # This function will extract the base64-encoded image from the response
-    converted_image = convert_response_to_png(response)
+#     # Convert the response to PNG bytes, mime type, and filename
+#     # This function will extract the base64-encoded image from the response
+#     converted_image = convert_response_to_png(response)
 
-    # upload directly to Supabase storage bucket
-    public_url = upload_image_to_supabase(
-        storage_bucket=AI_IMAGE_BUCKET,
-        contents=converted_image.contents,
-        original_filename=converted_image.filename,
-        content_type=converted_image.mime_type,
-    )
+#     # upload directly to Supabase storage bucket
+#     public_url = upload_image_to_supabase(
+#         storage_bucket=AI_IMAGE_BUCKET,
+#         contents=converted_image.contents,
+#         original_filename=converted_image.filename,
+#         content_type=converted_image.mime_type,
+#     )
 
-    # add the url to the user_meme database table
-    data = UserMemeCreate(
-        conversation_id=ctx.deps.conversation_id,
-        image_url=public_url,
-        openai_response_id=response.id,
-    )
+#     # add the url to the user_meme database table
+#     data = UserMemeCreate(
+#         conversation_id=ctx.deps.conversation_id,
+#         image_url=public_url,
+#         openai_response_id=response.id,
+#     )
 
-    def create_user_meme_operation():
-        return create_user_meme(
-            data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
-        )
+#     def create_user_meme_operation():
+#         return create_user_meme(
+#             data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
+#         )
 
-    user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
-    print(f"Created user meme with ID: {user_meme.id}")
-    print(f"Response ID: {response.id}")
-    return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
+#     user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
+#     print(f"Created user meme with ID: {user_meme.id}")
+#     print(f"Response ID: {response.id}")
+#     return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
 
 
 # ─── Image Modification Agent ──────────────────────────────────────────────────────
@@ -248,6 +334,7 @@ Then call: modify_image(modification_request="Change the dog to a cat", response
 )
 
 
+# ─── Image Modification Tool OPENAI ──────────────────────────────────────────────────────
 @meme_image_modification_agent.tool
 def modify_image(
     ctx: RunContext[Deps],
@@ -319,6 +406,100 @@ def modify_image(
     return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
 
 
+# ─── Image Generation Tool NANO BANANA ─────────────────────────────────────────────────
+@meme_image_generation_agent.tool
+def image_generation(
+    ctx: RunContext[Deps],
+    text_boxes: dict[str, str],
+    context: str = "",
+    # previous_response_id: str | None = None,
+) -> ImageResult:
+    """
+    1) Ask GEMINI's image_generation tool for a base64-encoded PNG,
+       including all text_boxes in the prompt.
+    2) Decode and upload it to Supabase.
+    3) Return ImageResult.
+    """
+    # Build a little “Top: …; Bottom: …; Caption3: …” string from whatever keys you got
+    boxes_desc = "; ".join(f"{key}: “{val}”" for key, val in text_boxes.items())
+
+    # Initialize the GEMINI client
+    client = genai.Client()
+
+    prompt = (
+        f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
+        f" Take care creating the text layout and spacing to ensure it looks like a real meme."
+        + (f" Image context: {context}" if context else "")
+    )
+    # Debug logging
+    print(f"Image generation prompt: {prompt}")
+
+    # Synchronous call into the GEMINI client
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-image",
+            contents=[prompt],
+        )
+    except Exception as e:
+        error_msg = str(e)
+        if "moderation_blocked" in error_msg or "safety system" in error_msg:
+            raise ModelRetry(
+                "I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content."
+            )
+        else:
+            raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
+
+    # Check if we got a valid response with candidates
+    if (
+        not response.candidates
+        or not response.candidates[0].content
+        or not response.candidates[0].content.parts
+    ):
+        raise ModelRetry("No image generated. Please try again.")
+
+    # Debug: save a local copy and print any text responses
+    for part in response.candidates[0].content.parts:
+        if part.text is not None:
+            print(f"Gemini text response: {part.text}")
+        elif part.inline_data is not None:
+            image = Image.open(BytesIO(part.inline_data.data))
+            image.save("generated_image_MEME_by_Nano_Banana.png")
+            print("Saved local copy to: generated_image_MEME_by_Nano_Banana.png")
+
+    # Convert the response to PNG bytes, mime type, and filename
+    # This function will extract the base64-encoded image from the response
+    converted_image = convert_gemini_response_to_png(response)
+
+    # upload directly to Supabase storage bucket
+    public_url = upload_image_to_supabase(
+        storage_bucket=AI_IMAGE_BUCKET,
+        contents=converted_image.contents,
+        original_filename=converted_image.filename,
+        content_type=converted_image.mime_type,
+    )
+
+    # add the url to the user_meme database table
+    # Note: Gemini responses don't have an ID like OpenAI, so we use a generated UUID
+    gemini_response_id = f"gemini_{uuid.uuid4().hex}"
+    data = UserMemeCreate(
+        conversation_id=ctx.deps.conversation_id,
+        image_url=public_url,
+        openai_response_id=gemini_response_id,
+    )
+
+    def create_user_meme_operation():
+        return create_user_meme(
+            data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
+        )
+
+    user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
+    print(f"Created user meme with ID: {user_meme.id}")
+    print(f"Gemini Response ID: {gemini_response_id}")
+    return ImageResult(
+        image_id=user_meme.id, url=public_url, response_id=gemini_response_id
+    )
+
+
 # ─── Caption Refinement Agent ──────────────────────────────────────────────
 meme_caption_refinement_agent = Agent(
     model=model,
@@ -384,6 +565,8 @@ def meme_image_generation(
     Args:
         text_boxes: A dictionary with keys like 'text_box_1', 'text_box_2', etc., and string values for each text box
         context: Optional context describing the scene/background for the meme
+    Returns:
+        Markdown formatted image URL for display in chat
     """
     # Debug print
     print(f"Generating image with text_boxes: {text_boxes}, context: {context}")
@@ -401,21 +584,23 @@ def meme_image_generation(
             f"text_boxes must be a dictionary with string keys and values, got: {text_boxes}"
         )
 
-    prompt = (
-        f"Create a meme image with the following text boxes: {', '.join(text_boxes.values())}."
-        + (f" Image context: {context}" if context else "")
-    )
+    # Build JSON string for the sub-agent
+    import json
+
+    input_data = {"text_boxes": text_boxes, "context": context}
+    input_json = json.dumps(input_data)
+
     # Call the image generation agent synchronously
     result = meme_image_generation_agent.run_sync(
-        prompt,
+        input_json,
         deps=ctx.deps,
         usage=ctx.usage,
     )
-    # Wrap the image URL in Markdown so the frontend renders it inline
-    image_url = (
-        result.output.url if hasattr(result.output, "url") else str(result.output)
-    )
-    return f"![]({image_url})"
+
+    # Extract URL from ImageResult and return as markdown
+    image_result = result.output
+    print(f"Image generation complete. URL: {image_result.url}")
+    return f"![Generated meme]({image_result.url})"
 
 
 def meme_image_modification(
@@ -425,6 +610,8 @@ def meme_image_modification(
 ) -> str:
     """
     Modify an existing meme image based on user request.
+    Returns:
+        Markdown formatted image URL for display in chat
     """
     prompt = f"Modify the previous image based on the following request: {modification_request}. Pass the previous response ID: {response_id}."
     # Debug print
@@ -438,11 +625,10 @@ def meme_image_modification(
         usage=ctx.usage,
     )
 
-    # Wrap the image URL in Markdown so the frontend renders it inline
-    image_url = (
-        result.output.url if hasattr(result.output, "url") else str(result.output)
-    )
-    return f"![]({image_url})"
+    # Extract URL from ImageResult and return as markdown
+    image_result = result.output
+    print(f"Image modification complete. URL: {image_result.url}")
+    return f"![Modified meme]({image_result.url})"
 
 
 def meme_caption_refinement(
@@ -562,7 +748,7 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
         update_conversation_operation, ctx.deps.session
     )
     print(f"Updated conversation {ctx.deps.conversation_id} with summary: {summary}")
-    return None
+    return f"Conversation summary updated: {summary}"
 
 
 # ─── Factory for Manager Agent ─────────────────────────────────────────────
@@ -599,7 +785,8 @@ def create_manager_agent(provider, model):
             meme_image_modification,
             favourite_meme_in_db,
         ],
-        history_processors=[summarize_old_messages],
+        # Temporarily disabled history processor to debug tool call issues
+        # history_processors=[summarize_old_messages],
         instructions=manager_agent_instructions,
         output_type=str,
     )
