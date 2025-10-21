@@ -39,7 +39,13 @@ from .multi_provider_service import (
     get_model_availability,
     get_all_providers_availability,
 )
-from .schema import ModelAvailabilityResponse, LLMProvidersResponse
+from .schema import (
+    ModelAvailabilityResponse,
+    LLMProvidersResponse,
+    ModelListResponse,
+    ModelDefinition,
+)
+from .models_config import get_raw_config
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/llm_providers", tags=["llm_providers"])
@@ -184,6 +190,97 @@ async def check_model_availability_simple(
         from .multi_provider_service import get_fallback_availability
 
         return get_fallback_availability()
+
+
+@router.get("/models", response_model=ModelListResponse)
+async def get_models_list(
+    current_user: User = Depends(get_current_user),
+) -> ModelListResponse:
+    """
+    Get the complete list of available AI models with metadata.
+
+    This endpoint serves the centralized model configuration from the
+    shared models-config.json file. The frontend uses this as the source
+    of truth for displaying model options in the UI.
+
+    Args:
+        current_user: Authenticated user from JWT token validation
+
+    Returns:
+        ModelListResponse containing:
+        - models: List of all model definitions with complete metadata
+        - total_count: Total number of models configured
+        - enabled_count: Number of models that are enabled
+        - default_model_id: ID of the default model (if configured)
+
+    Raises:
+        HTTPException: 500 if configuration file cannot be loaded
+
+    Usage context:
+        - Frontend model selection dropdowns
+        - Model configuration management
+        - UI displaying model metadata (pricing, speed, capabilities)
+
+    Technical details:
+        This endpoint provides static configuration from the JSON file.
+        For real-time availability checking, use /availability endpoints.
+    """
+    try:
+        # Load raw configuration from shared JSON file
+        config = get_raw_config()
+
+        # Convert to response models
+        models = []
+        default_model_id = None
+        enabled_count = 0
+
+        for model_data in config.get("models", []):
+            # Track default model
+            if model_data.get("isDefault", False):
+                default_model_id = model_data["id"]
+
+            # Count enabled models
+            if model_data.get("isEnabled", True):
+                enabled_count += 1
+
+            # Create model definition
+            model_def = ModelDefinition(
+                id=model_data["id"],
+                name=model_data["name"],
+                provider=model_data["provider"],
+                description=model_data["description"],
+                capabilities=model_data.get("capabilities", []),
+                pricing=model_data.get("pricing", "unknown"),
+                speed=model_data.get("speed", "unknown"),
+                is_enabled=model_data.get("isEnabled", True),
+                is_default=model_data.get("isDefault", False),
+                max_tokens=model_data.get("maxTokens"),
+                cost_per_1k_tokens=model_data.get("costPer1kTokens"),
+            )
+            models.append(model_def)
+
+        logger.info(
+            f"Serving model list to user {current_user.id}",
+            extra={
+                "total_models": len(models),
+                "enabled_models": enabled_count,
+                "default_model": default_model_id,
+            },
+        )
+
+        return ModelListResponse(
+            models=models,
+            total_count=len(models),
+            enabled_count=enabled_count,
+            default_model_id=default_model_id,
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to load models configuration: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load models configuration",
+        )
 
 
 @router.get("/debug/models", response_model=None)

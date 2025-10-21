@@ -39,3 +39,28 @@ class ModelConfigInfo(BaseModel):
     max_tokens: int | None = None
     cost_per_1k_tokens: float | None = None
     provider: str
+
+
+class ModelDefinition(BaseModel):
+    """Complete model definition from configuration."""
+
+    id: str
+    name: str
+    provider: str
+    description: str
+    capabilities: List[str]
+    pricing: str
+    speed: str
+    is_enabled: bool
+    is_default: bool
+    max_tokens: int | None = None
+    cost_per_1k_tokens: float | None = None
+
+
+class ModelListResponse(BaseModel):
+    """Response model for the models list endpoint."""
+
+    models: List[ModelDefinition]
+    total_count: int
+    enabled_count: int
+    default_model_id: str | None = None

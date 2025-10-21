@@ -8,6 +8,7 @@ from typing import List
 from openai import OpenAI
 
 from .base import BaseLLMProvider, ModelInfo, ProviderAvailability
+from ..models_config import get_models_by_provider
 
 logger = logging.getLogger(__name__)
 
@@ -35,58 +36,12 @@ class OpenAIProvider(BaseLLMProvider):
 
     @property
     def supported_models(self) -> List[ModelInfo]:
-        return [
-            ModelInfo(
-                id="openai:gpt-4o",
-                name="GPT-4o",
-                description="Latest OpenAI model with vision capabilities",
-                capabilities=["text", "vision", "reasoning"],
-                pricing="high",
-                speed="medium",
-                max_tokens=128000,
-                cost_per_1k_tokens=0.015,
-            ),
-            ModelInfo(
-                id="openai:gpt-4.1-2025-04-14",
-                name="GPT-4.1",
-                description="Advanced reasoning model (April 2025)",
-                capabilities=["text", "reasoning", "analysis"],
-                pricing="high",
-                speed="medium",
-                max_tokens=200000,
-                cost_per_1k_tokens=0.02,
-            ),
-            ModelInfo(
-                id="openai:gpt-4.1-mini",
-                name="GPT-4.1 Mini",
-                description="Faster, cost-effective version",
-                capabilities=["text", "reasoning"],
-                pricing="medium",
-                speed="fast",
-                max_tokens=128000,
-                cost_per_1k_tokens=0.008,
-            ),
-            ModelInfo(
-                id="openai:gpt-4.1-nano",
-                name="GPT-4.1 Nano",
-                description="Ultra-fast for simple tasks",
-                capabilities=["text"],
-                pricing="low",
-                speed="fast",
-                max_tokens=64000,
-                cost_per_1k_tokens=0.004,
-            ),
-            ModelInfo(
-                id="openai:o1-mini",
-                name="O1 Mini",
-                description="Reasoning-focused model",
-                capabilities=["reasoning", "analysis"],
-                pricing="medium",
-                speed="slow",
-                max_tokens=128000,
-                cost_per_1k_tokens=0.012,
-            ),
-        ]
+        """
+        Get OpenAI models from centralized configuration.
+
+        Models are loaded from the shared models-config.json file.
+        """
+        return get_models_by_provider("openai")
 
     def _is_cache_valid(self) -> bool:
         """Check if the current cache is still valid."""
