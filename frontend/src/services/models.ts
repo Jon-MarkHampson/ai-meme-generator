@@ -2,10 +2,113 @@ import API from "@/services/api";
 import { ModelConfig } from '@/types/models';
 import { AI_MODELS } from '@/config/ai-models';
 
+// Cache for model definitions from backend
+let modelsDefinitionCache: ModelConfig[] = [];
+let modelsDefinitionCacheTimestamp = 0;
+
 // Cache for dynamic model availability
 let modelAvailabilityCache: { [key: string]: boolean } = {};
 let lastCacheUpdate = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Backend response types
+interface ModelDefinition {
+  id: string;
+  name: string;
+  provider: string;
+  description: string;
+  capabilities: string[];
+  pricing: string;
+  speed: string;
+  is_enabled: boolean;
+  is_default: boolean;
+  max_tokens?: number;
+  cost_per_1k_tokens?: number;
+}
+
+interface ModelListResponse {
+  models: ModelDefinition[];
+  total_count: number;
+  enabled_count: number;
+  default_model_id?: string;
+}
+
+/**
+ * Fetch model definitions from backend.
+ *
+ * This fetches the centralized model configuration from the backend
+ * endpoint which reads from models-config.json. Falls back to local
+ * AI_MODELS if backend is unavailable.
+ */
+export async function fetchModelsFromBackend(): Promise<ModelConfig[]> {
+  const now = Date.now();
+  const cacheAge = now - modelsDefinitionCacheTimestamp;
+  const isCacheValid = cacheAge < CACHE_DURATION && modelsDefinitionCache.length > 0;
+
+  console.log("🔍 [ModelDefinitions] Fetching model definitions...", {
+    timestamp: new Date().toISOString(),
+    cacheAge: `${Math.round(cacheAge / 1000)}s`,
+    hasCachedData: modelsDefinitionCache.length > 0,
+    isCacheValid,
+  });
+
+  // Return cached result if still fresh
+  if (isCacheValid) {
+    console.log("✅ [ModelDefinitions] Using cached definitions", {
+      source: "cache",
+      count: modelsDefinitionCache.length,
+    });
+    return modelsDefinitionCache;
+  }
+
+  console.log("🌐 [ModelDefinitions] Fetching from backend /llm_providers/models...");
+
+  try {
+    const response = await API.get<ModelListResponse>("/llm_providers/models");
+    const backendModels = response.data.models;
+
+    console.log("✅ [ModelDefinitions] Backend response received:", {
+      totalModels: response.data.total_count,
+      enabledModels: response.data.enabled_count,
+      defaultModel: response.data.default_model_id,
+    });
+
+    // Convert backend format to frontend ModelConfig format
+    const modelConfigs: ModelConfig[] = backendModels.map((model) => ({
+      id: model.id,
+      name: model.name,
+      description: model.description,
+      capabilities: model.capabilities,
+      pricing: model.pricing as "low" | "medium" | "high",
+      speed: model.speed as "fast" | "medium" | "slow",
+      isEnabled: model.is_enabled,
+      isDefault: model.is_default,
+      maxTokens: model.max_tokens,
+      costPer1kTokens: model.cost_per_1k_tokens,
+    }));
+
+    // Update cache
+    modelsDefinitionCache = modelConfigs;
+    modelsDefinitionCacheTimestamp = now;
+
+    console.log("✅ [ModelDefinitions] Cached backend models:", {
+      count: modelConfigs.length,
+      models: modelConfigs.map((m) => m.name),
+    });
+
+    return modelConfigs;
+  } catch (error) {
+    console.warn("⚠️ [ModelDefinitions] Failed to fetch from backend, using fallback:", error);
+
+    // Fallback to local AI_MODELS
+    console.log("📋 [ModelDefinitions] Using local fallback configuration", {
+      source: "fallback",
+      count: AI_MODELS.length,
+    });
+
+    return AI_MODELS;
+  }
+}
 
 // Check if models are available via backend endpoint
 export async function checkModelAvailability(): Promise<{
@@ -138,8 +241,12 @@ export async function checkModelAvailability(): Promise<{
     }
   );
 
+  // Use backend models if available, otherwise fall back to AI_MODELS
+  const modelsToUse =
+    modelsDefinitionCache.length > 0 ? modelsDefinitionCache : AI_MODELS;
+
   const fallback: { [key: string]: boolean } = {};
-  AI_MODELS.forEach((model) => {
+  modelsToUse.forEach((model) => {
     fallback[model.id] = model.isEnabled ?? true;
   });
 
@@ -152,6 +259,10 @@ export async function checkModelAvailability(): Promise<{
 
 // Get available models (sync function with cached data)
 export function getAvailableModels(): ModelConfig[] {
+  // Use backend models if available, otherwise fall back to AI_MODELS
+  const modelsToUse =
+    modelsDefinitionCache.length > 0 ? modelsDefinitionCache : AI_MODELS;
+
   const availability = modelAvailabilityCache;
   const hasAvailabilityData = Object.keys(availability).length > 0;
   const cacheAge = Date.now() - lastCacheUpdate;
@@ -165,6 +276,8 @@ export function getAvailableModels(): ModelConfig[] {
     "📊 [ModelSelection] Getting available models with current data:",
     {
       dataSource,
+      modelSource: modelsDefinitionCache.length > 0 ? "backend" : "fallback",
+      totalModels: modelsToUse.length,
       cacheAge: `${Math.round(cacheAge / 1000)}s`,
       hasData: hasAvailabilityData,
       availability,
@@ -172,7 +285,7 @@ export function getAvailableModels(): ModelConfig[] {
     }
   );
 
-  const availableModels = AI_MODELS.filter((model) => {
+  const availableModels = modelsToUse.filter((model) => {
     const isConfigEnabled = model.isEnabled ?? true;
     const isBackendAvailable = availability[model.id] ?? true; // Default to available if unknown
     const isAvailable = isConfigEnabled && isBackendAvailable;
@@ -200,16 +313,21 @@ export function getAvailableModels(): ModelConfig[] {
 // Get default model (sync function)
 export function getDefaultModel(): ModelConfig {
   const availableModels = getAvailableModels();
+  const modelsToUse =
+    modelsDefinitionCache.length > 0 ? modelsDefinitionCache : AI_MODELS;
+
   return (
     availableModels.find((model) => model.isDefault) ||
     availableModels[0] ||
-    AI_MODELS[0]
+    modelsToUse[0]
   );
 }
 
 // Get model by ID (sync function)
 export function getModelById(id: string): ModelConfig | undefined {
-  return AI_MODELS.find((model) => model.id === id);
+  const modelsToUse =
+    modelsDefinitionCache.length > 0 ? modelsDefinitionCache : AI_MODELS;
+  return modelsToUse.find((model) => model.id === id);
 }
 
 // Initialize model availability check (call this on app startup)
@@ -219,8 +337,15 @@ export function initializeModelAvailability(): Promise<void> {
   );
   const startTime = Date.now();
 
-  return checkModelAvailability()
-    .then((availability) => {
+  // Fetch both model definitions and availability in parallel
+  return Promise.all([
+    fetchModelsFromBackend().catch((error) => {
+      console.warn("⚠️ [ModelDefinitions] Failed to fetch, using fallback:", error);
+      return AI_MODELS;
+    }),
+    checkModelAvailability(),
+  ])
+    .then(([models, availability]) => {
       const endTime = Date.now();
       const duration = endTime - startTime;
       const hasLiveData = lastCacheUpdate === endTime; // If cache was just updated, we got live data
@@ -229,6 +354,7 @@ export function initializeModelAvailability(): Promise<void> {
         timestamp: new Date().toISOString(),
         duration: `${duration}ms`,
         dataSource: hasLiveData ? "backend-live" : "fallback",
+        modelSource: modelsDefinitionCache.length > 0 ? "backend" : "fallback",
         isLiveData: hasLiveData,
         availability: availability,
         cacheUpdated: new Date(lastCacheUpdate).toISOString(),
@@ -239,7 +365,7 @@ export function initializeModelAvailability(): Promise<void> {
       // Log summary of what models are available
       const enabledModels = Object.entries(availability)
         .filter(([, available]) => available)
-        .map(([id]) => AI_MODELS.find((m) => m.id === id)?.name || id);
+        .map(([id]) => models.find((m) => m.id === id)?.name || id);
 
       console.log(
         `🎯 [ModelAvailability] Startup complete: ${enabledModels.length} models available:`,

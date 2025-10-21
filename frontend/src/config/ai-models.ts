@@ -1,5 +1,16 @@
 import { ModelConfig } from '@/types/models';
 
+/**
+ * AI Models Configuration - FALLBACK ONLY
+ *
+ * This configuration serves as a fallback when the backend is unavailable.
+ * The primary source of truth is models-config.json at the project root,
+ * which is served by the backend endpoint: GET /llm_providers/models
+ *
+ * This file should be kept in sync with models-config.json for consistency.
+ * Consider this a static backup of the centralized configuration.
+ */
+
 export const AI_MODELS: ModelConfig[] = [
   // OpenAI Models
   {
@@ -35,6 +46,17 @@ export const AI_MODELS: ModelConfig[] = [
     isEnabled: true,
     maxTokens: 128000,
     costPer1kTokens: 0.008,
+  },
+  {
+    id: "openai:gpt-4.1-nano",
+    name: "GPT-4.1 Nano",
+    description: "Ultra-fast for simple tasks",
+    capabilities: ["text"],
+    pricing: "low",
+    speed: "fast",
+    isEnabled: true,
+    maxTokens: 64000,
+    costPer1kTokens: 0.004,
   },
   {
     id: "openai:o1-mini",

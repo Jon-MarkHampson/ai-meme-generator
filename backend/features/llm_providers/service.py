@@ -26,10 +26,11 @@ Performance considerations:
 """
 import logging
 import time
-from typing import Dict
+from typing import Dict, List
 from openai import OpenAI
 
 from .schema import ModelAvailabilityResponse
+from .models_config import get_all_models
 
 logger = logging.getLogger(__name__)
 
@@ -46,24 +47,22 @@ _model_availability_cache: Dict[str, bool] = {}
 _cache_timestamp = 0
 CACHE_DURATION = 5 * 60  # 5 minutes in seconds
 
-# List of models to check (should match your frontend config - now includes Claude models)
-MODELS_TO_CHECK = [
-    # OpenAI Models
-    "openai:gpt-4o",
-    "openai:gpt-4.1-2025-04-14",
-    "openai:gpt-4.1-mini",
-    "openai:gpt-4.1-nano",
-    "openai:o1-mini",
-    # Anthropic Claude Models
-    "anthropic:claude-sonnet-4-20250514",
-    "anthropic:claude-3-7-sonnet-20250219",
-    "anthropic:claude-3-5-sonnet-latest",
-]
+
+def get_models_to_check() -> List[str]:
+    """
+    Get list of model IDs to check from centralized configuration.
+
+    Returns:
+        List of model IDs loaded from models-config.json
+    """
+    models = get_all_models()
+    return [model.id for model in models]
 
 
 def get_fallback_availability() -> Dict[str, bool]:
     """Return fallback model availability (all models enabled)."""
-    return {model_id: True for model_id in MODELS_TO_CHECK}
+    models_to_check = get_models_to_check()
+    return {model_id: True for model_id in models_to_check}
 
 
 def is_cache_valid() -> bool:
@@ -98,8 +97,9 @@ def fetch_model_availability_from_openai() -> Dict[str, bool]:
     logger.debug(f"OpenAI API returned {len(available_model_ids)} models")
 
     # Check availability for each model we care about
+    models_to_check = get_models_to_check()
     availability = {}
-    for model_id in MODELS_TO_CHECK:
+    for model_id in models_to_check:
         # Remove "openai:" prefix for OpenAI API check
         openai_model_id = model_id.replace("openai:", "")
         is_available = openai_model_id in available_model_ids

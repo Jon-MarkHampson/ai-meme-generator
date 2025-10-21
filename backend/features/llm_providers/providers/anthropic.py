@@ -8,6 +8,7 @@ from typing import List
 import anthropic
 
 from .base import BaseLLMProvider, ModelInfo, ProviderAvailability
+from ..models_config import get_models_by_provider
 
 logger = logging.getLogger(__name__)
 
@@ -37,38 +38,12 @@ class AnthropicProvider(BaseLLMProvider):
 
     @property
     def supported_models(self) -> List[ModelInfo]:
-        return [
-            ModelInfo(
-                id="anthropic:claude-sonnet-4-20250514",
-                name="Claude Sonnet 4",
-                description="Latest Claude model with enhanced reasoning",
-                capabilities=["text", "reasoning", "analysis", "vision"],
-                pricing="high",
-                speed="medium",
-                max_tokens=200000,
-                cost_per_1k_tokens=0.015,
-            ),
-            ModelInfo(
-                id="anthropic:claude-3-7-sonnet-20250219",
-                name="Claude Sonnet 3.7",
-                description="Enhanced version of Claude 3.5 Sonnet",
-                capabilities=["text", "reasoning", "analysis", "vision"],
-                pricing="high",
-                speed="medium",
-                max_tokens=200000,
-                cost_per_1k_tokens=0.012,
-            ),
-            ModelInfo(
-                id="anthropic:claude-3-5-sonnet-latest",
-                name="Claude Sonnet 3.5",
-                description="Latest Claude 3.5 Sonnet with improvements",
-                capabilities=["text", "reasoning", "analysis", "vision"],
-                pricing="medium",
-                speed="medium",
-                max_tokens=200000,
-                cost_per_1k_tokens=0.008,
-            ),
-        ]
+        """
+        Get Anthropic models from centralized configuration.
+
+        Models are loaded from the shared models-config.json file.
+        """
+        return get_models_by_provider("anthropic")
 
     def _is_cache_valid(self) -> bool:
         """Check if the current cache is still valid."""

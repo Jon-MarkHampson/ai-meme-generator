@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AI Models Configuration",
+  "description": "Centralized configuration for all available AI models in the meme generator application",
+  "version": "1.0.0",
+  "models": [
+    {
+      "id": "openai:gpt-4o",
+      "name": "GPT-4o",
+      "provider": "openai",
+      "description": "Latest OpenAI model with vision capabilities",
+      "capabilities": ["text", "vision", "reasoning"],
+      "pricing": "high",
+      "speed": "medium",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": 128000,
+      "costPer1kTokens": 0.015
+    },
+    {
+      "id": "openai:gpt-4.1-2025-04-14",
+      "name": "GPT-4.1",
+      "provider": "openai",
+      "description": "Advanced reasoning model (April 2025)",
+      "capabilities": ["text", "reasoning", "analysis"],
+      "pricing": "high",
+      "speed": "medium",
+      "isEnabled": true,
+      "isDefault": true,
+      "maxTokens": 200000,
+      "costPer1kTokens": 0.02
+    },
+    {
+      "id": "openai:gpt-4.1-mini",
+      "name": "GPT-4.1 Mini",
+      "provider": "openai",
+      "description": "Faster, cost-effective version",
+      "capabilities": ["text", "reasoning"],
+      "pricing": "medium",
+      "speed": "fast",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": 128000,
+      "costPer1kTokens": 0.008
+    },
+    {
+      "id": "openai:gpt-4.1-nano",
+      "name": "GPT-4.1 Nano",
+      "provider": "openai",
+      "description": "Ultra-fast for simple tasks",
+      "capabilities": ["text"],
+      "pricing": "low",
+      "speed": "fast",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": 64000,
+      "costPer1kTokens": 0.004
+    },
+    {
+      "id": "openai:o1-mini",
+      "name": "O1 Mini",
+      "provider": "openai",
+      "description": "Reasoning-focused model",
+      "capabilities": ["reasoning", "analysis"],
+      "pricing": "medium",
+      "speed": "slow",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": 128000,
+      "costPer1kTokens": 0.012
+    },
+    {
+      "id": "anthropic:claude-sonnet-4-20250514",
+      "name": "Claude Sonnet 4",
+      "provider": "anthropic",
+      "description": "Latest Claude model with enhanced reasoning",
+      "capabilities": ["text", "reasoning", "analysis", "vision"],
+      "pricing": "high",
+      "speed": "medium",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": 200000,
+      "costPer1kTokens": 0.015
+    },
+    {
+      "id": "anthropic:claude-3-7-sonnet-20250219",
+      "name": "Claude Sonnet 3.7",
+      "provider": "anthropic",
+      "description": "Enhanced version of Claude 3.5 Sonnet",
+      "capabilities": ["text", "reasoning", "analysis", "vision"],
+      "pricing": "high",
+      "speed": "medium",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": 200000,
+      "costPer1kTokens": 0.012
+    },
+    {
+      "id": "anthropic:claude-3-5-sonnet-latest",
+      "name": "Claude Sonnet 3.5",
+      "provider": "anthropic",
+      "description": "Latest Claude 3.5 Sonnet with improvements",
+      "capabilities": ["text", "reasoning", "analysis", "vision"],
+      "pricing": "medium",
+      "speed": "medium",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": 200000,
+      "costPer1kTokens": 0.008
+    }
+  ]
+}
