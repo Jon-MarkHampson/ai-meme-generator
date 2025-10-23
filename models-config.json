@@ -107,6 +107,32 @@
       "isDefault": false,
       "maxTokens": 200000,
       "costPer1kTokens": 0.008
+    },
+    {
+      "id": "gemini:gemini-2.5-flash-image",
+      "name": "Nano Banana (Gemini)",
+      "provider": "gemini",
+      "description": "Gemini's fast image generation model (Nano Banana)",
+      "capabilities": ["image-generation"],
+      "pricing": "low",
+      "speed": "fast",
+      "isEnabled": true,
+      "isDefault": true,
+      "maxTokens": null,
+      "costPer1kTokens": 0.001
+    },
+    {
+      "id": "openai:gpt-4.1-image",
+      "name": "OpenAI Image Generation",
+      "provider": "openai",
+      "description": "OpenAI's image generation via Responses API",
+      "capabilities": ["image-generation"],
+      "pricing": "high",
+      "speed": "medium",
+      "isEnabled": true,
+      "isDefault": false,
+      "maxTokens": null,
+      "costPer1kTokens": 0.02
     }
   ]
 }
