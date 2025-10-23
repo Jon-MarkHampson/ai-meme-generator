@@ -104,4 +104,29 @@ export const AI_MODELS: ModelConfig[] = [
     maxTokens: 200000,
     costPer1kTokens: 0.008,
   },
+
+  // Image Generation Models
+  {
+    id: "gemini:gemini-2.5-flash-image",
+    name: "Nano Banana (Gemini)",
+    description: "Gemini's fast image generation model (Nano Banana)",
+    capabilities: ["image-generation"],
+    pricing: "low",
+    speed: "fast",
+    isEnabled: true,
+    isDefault: true,
+    maxTokens: undefined,
+    costPer1kTokens: 0.001,
+  },
+  {
+    id: "openai:gpt-4.1-image",
+    name: "OpenAI Image Generation",
+    description: "OpenAI's image generation via Responses API",
+    capabilities: ["image-generation"],
+    pricing: "high",
+    speed: "medium",
+    isEnabled: true,
+    maxTokens: undefined,
+    costPer1kTokens: 0.02,
+  },
 ];

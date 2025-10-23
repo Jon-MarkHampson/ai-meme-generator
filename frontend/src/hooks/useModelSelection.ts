@@ -5,12 +5,13 @@ import {
   getModelById,
   initializeModelAvailability,
   getDataSourceInfo,
-  type ModelConfig,
 } from "@/services/models";
+import type { ModelConfig } from "@/types/models";
 
 interface UseModelSelectionOptions {
   persistToLocalStorage?: boolean;
   storageKey?: string;
+  getDefaultModel?: () => ModelConfig;
   onModelChange?: (model: ModelConfig) => void;
 }
 
@@ -18,6 +19,7 @@ export function useModelSelection(options: UseModelSelectionOptions = {}) {
   const {
     persistToLocalStorage = true,
     storageKey = "ai-meme-generator-selected-model",
+    getDefaultModel: customGetDefaultModel,
     onModelChange,
   } = options;
 
@@ -70,10 +72,11 @@ export function useModelSelection(options: UseModelSelectionOptions = {}) {
         }
       }
     }
-    const defaultModel = getDefaultModel();
+    const defaultModel = customGetDefaultModel?.() || getDefaultModel();
     console.log("🏁 [useModelSelection] Using default model:", {
       modelId: defaultModel.id,
       modelName: defaultModel.name,
+      usingCustomDefault: !!customGetDefaultModel,
     });
     return defaultModel.id;
   });
