@@ -10,7 +10,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getAvailableModels, getModelById, getModelWithStatus, getDataSourceInfo } from "@/services/models";
+import { getImageGenerationModels, getModelById, getModelWithStatus, getDataSourceInfo } from "@/services/models";
 
 interface ImageAgentSelectorProps {
     selectedModel: string;
@@ -27,7 +27,8 @@ export function ImageAgentSelector({
     showMetadata = true,
     showDebugInfo = false
 }: ImageAgentSelectorProps) {
-    const availableModels = getAvailableModels();
+    // Only show image generation models
+    const availableModels = getImageGenerationModels();
     const selectedModelConfig = getModelById(selectedModel);
     const dataSourceInfo = getDataSourceInfo();
 

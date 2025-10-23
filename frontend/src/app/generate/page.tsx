@@ -43,6 +43,7 @@ import { AgentSelector } from "@/components/AgentSelector";
 import { ImageAgentSelector } from "@/components/ImageAgentSelector";
 import { useModelSelection } from "@/hooks/useModelSelection";
 import { useConversationSummary } from "@/hooks/useConversationSummary";
+import { getDefaultImageModel } from "@/services/models";
 
 
 // Welcome message displayed when starting a new conversation
@@ -71,10 +72,19 @@ function GenerateContent() {
     const [convos, setConvos] = useState<ConversationRead[] | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // AI model selection with persistent preference
+    // AI manager/orchestrator model selection with persistent preference
     const { selectedModelId, changeModel } = useModelSelection({
         onModelChange: (model) => {
-            console.log(`Model changed to: ${model.name} (${model.id})`);
+            console.log(`Manager model changed to: ${model.name} (${model.id})`);
+        }
+    });
+
+    // Image generation model selection with persistent preference (separate from manager)
+    const { selectedModelId: selectedImageModelId, changeModel: changeImageModel } = useModelSelection({
+        storageKey: 'selectedImageModel',
+        getDefaultModel: () => getDefaultImageModel(),
+        onModelChange: (model) => {
+            console.log(`Image model changed to: ${model.name} (${model.id})`);
         }
     });
 
@@ -180,7 +190,8 @@ function GenerateContent() {
         // Start streaming AI response
         abortRef.current = streamChat(
             id,
-            selectedModelId,
+            selectedModelId,        // Manager/orchestrator model
+            selectedImageModelId,   // Image generation model
             text,
             (msg: ChatMessage, streamConvId: string) => {
                 // Prevent race conditions by validating stream source
@@ -329,8 +340,8 @@ function GenerateContent() {
                                 </div>
                                 <div className="flex gap-2 justify-center items-center">
                                     <ImageAgentSelector
-                                        selectedModel={selectedModelId}
-                                        onModelChange={changeModel}
+                                        selectedModel={selectedImageModelId}
+                                        onModelChange={changeImageModel}
                                         showMetadata={true}
                                     />
                                 </div>

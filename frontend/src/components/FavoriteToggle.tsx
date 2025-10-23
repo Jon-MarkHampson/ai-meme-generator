@@ -22,17 +22,23 @@ export function FavoriteToggle({
     const [isFavorite, setIsFavorite] = useState(initialIsFavorite ?? false);
     const [isLoading, setIsLoading] = useState(false);
     const [isInitializing, setIsInitializing] = useState(initialIsFavorite === undefined);
+    const [hasFetched, setHasFetched] = useState(false);
 
     // Fetch initial favorite status if not provided
     useEffect(() => {
+        // Skip if already fetched
+        if (hasFetched) return;
+
         if (initialIsFavorite !== undefined) {
             setIsInitializing(false);
+            setHasFetched(true);
             return;
         }
 
         // Only fetch if we don't have a memeId (which would skip the fetch anyway)
         if (memeId) {
             setIsInitializing(false);
+            setHasFetched(true);
             return;
         }
 
@@ -46,11 +52,14 @@ export function FavoriteToggle({
                 console.error("Error fetching initial favorite status:", error);
             } finally {
                 setIsInitializing(false);
+                setHasFetched(true);
             }
         };
 
         fetchInitialStatus();
-    }, [imageUrl, initialIsFavorite, memeId]);
+        // Only depend on imageUrl - other values are stable or checked inside
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [imageUrl]);
 
     const handleToggle = async () => {
         if (isLoading || isInitializing) return;

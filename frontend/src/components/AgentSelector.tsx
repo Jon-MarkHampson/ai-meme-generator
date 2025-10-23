@@ -10,7 +10,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getAvailableModels, getModelById, getModelWithStatus, getDataSourceInfo } from "@/services/models";
+import { getTextGenerationModels, getModelById, getModelWithStatus, getDataSourceInfo } from "@/services/models";
 
 interface AgentSelectorProps {
     selectedModel: string;
@@ -27,7 +27,7 @@ export function AgentSelector({
     showMetadata = true,
     showDebugInfo = false
 }: AgentSelectorProps) {
-    const availableModels = getAvailableModels();
+    const availableModels = getTextGenerationModels();
     const selectedModelConfig = getModelById(selectedModel);
     const dataSourceInfo = getDataSourceInfo();
 

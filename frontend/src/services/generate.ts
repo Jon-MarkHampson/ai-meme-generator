@@ -87,6 +87,7 @@ export async function listMessages(
  *
  * @param conversationId - Target conversation ID
  * @param manager_model - AI model selection (e.g., "openai:gpt-4")
+ * @param image_agent_model - Image generation model selection (e.g., "gemini:gemini-2.5-flash-image")
  * @param prompt - User's meme generation request
  * @param onMessage - Callback for chat message updates
  * @param onError - Callback for error handling
@@ -95,6 +96,7 @@ export async function listMessages(
 export function streamChat(
   conversationId: string,
   manager_model: string,
+  image_agent_model: string,
   prompt: string,
   onMessage: (msg: ChatMessage, streamConvId: string) => void,
   onError: (err: Error) => void
@@ -112,6 +114,7 @@ export function streamChat(
           prompt,
           conversation_id: conversationId,
           manager_model,
+          image_agent_model,
         }),
         signal: controller.signal,
         // this tells fetch to include HttpOnly cookie

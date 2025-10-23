@@ -330,6 +330,68 @@ export function getModelById(id: string): ModelConfig | undefined {
   return modelsToUse.find((model) => model.id === id);
 }
 
+// Get image generation models only (sync function)
+export function getImageGenerationModels(): ModelConfig[] {
+  const modelsToUse =
+    modelsDefinitionCache.length > 0 ? modelsDefinitionCache : AI_MODELS;
+
+  const imageModels = modelsToUse.filter((model) => {
+    const isImageGen = model.capabilities?.includes('image-generation');
+    const isEnabled = model.isEnabled ?? true;
+    return isImageGen && isEnabled;
+  });
+
+  console.log(
+    "🖼️ [ImageModels] Available image generation models:",
+    imageModels.map((m) => `${m.name} (${m.id})`)
+  );
+
+  return imageModels;
+}
+
+// Get text generation models only (excludes image generation models)
+export function getTextGenerationModels(): ModelConfig[] {
+  const modelsToUse =
+    modelsDefinitionCache.length > 0 ? modelsDefinitionCache : AI_MODELS;
+  const availability = modelAvailabilityCache;
+
+  const textModels = modelsToUse.filter((model) => {
+    const isImageGen = model.capabilities?.includes('image-generation');
+    const isConfigEnabled = model.isEnabled ?? true;
+    const isBackendAvailable = availability[model.id] ?? true;
+    const isAvailable = isConfigEnabled && isBackendAvailable;
+
+    // Include only non-image-generation models that are available
+    return !isImageGen && isAvailable;
+  });
+
+  console.log(
+    "💬 [TextModels] Available text generation models:",
+    textModels.map((m) => `${m.name} (${m.id})`)
+  );
+
+  return textModels;
+}
+
+// Get default image generation model (sync function)
+export function getDefaultImageModel(): ModelConfig {
+  const imageModels = getImageGenerationModels();
+  return (
+    imageModels.find((model) => model.isDefault) ||
+    imageModels[0] ||
+    {
+      id: "gemini:gemini-2.5-flash-image",
+      name: "Nano Banana (Gemini)",
+      description: "Gemini's fast image generation model",
+      capabilities: ["image-generation"],
+      pricing: "low",
+      speed: "fast",
+      isEnabled: true,
+      isDefault: true,
+    }
+  );
+}
+
 // Initialize model availability check (call this on app startup)
 export function initializeModelAvailability(): Promise<void> {
   console.log(
