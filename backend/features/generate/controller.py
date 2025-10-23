@@ -7,6 +7,7 @@ The streaming approach enhances user experience by showing progress
 during the multi-step generation process.
 """
 import logging
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session
@@ -14,6 +15,7 @@ from sqlmodel import Session
 from database.core import get_session
 from features.auth.service import get_current_user
 from features.users.model import User
+
 from .schema import GenerateMemeRequest
 from .service import generate_meme_stream
 
@@ -62,6 +64,7 @@ def generate_meme(
         prompt=request.prompt,
         conversation_id=request.conversation_id,
         manager_model=request.manager_model,
+        image_agent_model=request.image_agent_model,
         session=session,
         current_user=current_user,
     )

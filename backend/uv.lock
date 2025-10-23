@@ -201,6 +201,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "google" },
     { name = "google-genai" },
+    { name = "isort" },
     { name = "logfire", extra = ["fastapi", "httpx", "psycopg2", "sqlalchemy"] },
     { name = "openai" },
     { name = "passlib" },
@@ -227,6 +228,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "google", specifier = ">=3.0.0" },
     { name = "google-genai", specifier = ">=1.43.0" },
+    { name = "isort", specifier = ">=7.0.0" },
     { name = "logfire", extras = ["fastapi", "httpx", "psycopg2", "sqlalchemy"], specifier = ">=3.19.0" },
     { name = "openai", specifier = ">=1.86.0" },
     { name = "passlib", specifier = ">=1.7.4" },
@@ -1177,6 +1179,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/de/bd/b461d3424a24c80490313fd77feeb666ca4f6a28c7e72713e3d9095719b4/invoke-2.2.1.tar.gz", hash = "sha256:515bf49b4a48932b79b024590348da22f39c4942dff991ad1fb8b8baea1be707", size = 304762, upload-time = "2025-10-11T00:36:35.172Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/4b/b99e37f88336009971405cbb7630610322ed6fbfa31e1d7ab3fbf3049a2d/invoke-2.2.1-py3-none-any.whl", hash = "sha256:2413bc441b376e5cd3f55bb5d364f973ad8bdd7bf87e53c79de3c11bf3feecc8", size = 160287, upload-time = "2025-10-11T00:36:33.703Z" },
+]
+
+[[package]]
+name = "isort"
+version = "7.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/53/4f3c058e3bace40282876f9b553343376ee687f3c35a525dc79dbd450f88/isort-7.0.0.tar.gz", hash = "sha256:5513527951aadb3ac4292a41a16cbc50dd1642432f5e8c20057d414bdafb4187", size = 805049, upload-time = "2025-10-11T13:30:59.107Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/ed/e3705d6d02b4f7aea715a353c8ce193efd0b5db13e204df895d38734c244/isort-7.0.0-py3-none-any.whl", hash = "sha256:1bcabac8bc3c36c7fb7b98a76c8abb18e0f841a3ba81decac7691008592499c1", size = 94672, upload-time = "2025-10-11T13:30:57.665Z" },
 ]
 
 [[package]]

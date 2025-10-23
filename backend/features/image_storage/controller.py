@@ -29,14 +29,13 @@ Works closely with the meme generation service to store AI-generated
 images and provide persistent URLs for user galleries and sharing.
 """
 import logging
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, status
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+
 from features.auth.service import get_current_user
 from features.users.model import User
-from .service import (
-    upload_image_to_supabase,
-    get_image_url_from_supabase,
-)
 
+from .service import get_image_url_from_supabase, upload_image_to_supabase
 
 logger = logging.getLogger(__name__)
 

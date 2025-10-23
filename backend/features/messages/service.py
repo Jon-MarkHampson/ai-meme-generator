@@ -17,18 +17,15 @@ timestamps, message parts, and role information. This service transforms
 those complex structures into simple chat messages for the frontend.
 """
 from typing import List, Optional
-from sqlmodel import Session, select
-from pydantic_ai.messages import (
-    ModelMessagesTypeAdapter,
-    ModelRequest,
-    ModelResponse,
-    UserPromptPart,
-    TextPart,
-)
 
-from features.messages.model import Message
+from pydantic_ai.messages import (ModelMessagesTypeAdapter, ModelRequest,
+                                  ModelResponse, TextPart, UserPromptPart)
+from sqlmodel import Session, select
+
 from features.conversations.model import Conversation
-from .schema import MessageCreate, ChatMessage
+from features.messages.model import Message
+
+from .schema import ChatMessage, MessageCreate
 
 
 def list_messages_by_conversation(

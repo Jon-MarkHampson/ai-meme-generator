@@ -1,43 +1,39 @@
 # backend/features/generate/agent.py
-import os
-import uuid
 import logging
+import os
+import time
+import uuid
+from io import BytesIO
+from typing import List
+
 import logfire
 from dotenv import load_dotenv
-from typing import List
 from fastapi import HTTPException
-from sqlalchemy.exc import OperationalError
-import time
-
-from PIL import Image
-from io import BytesIO
 from google import genai
 from google.genai import types
-
-from openai.types.responses import WebSearchToolParam
 from openai import BadRequestError
-from pydantic_ai import Agent, RunContext, ModelRetry
-from pydantic_ai.settings import ModelSettings
+from openai.types.responses import WebSearchToolParam
+from PIL import Image
+from pydantic_ai import Agent, ModelRetry, RunContext
 from pydantic_ai.messages import ModelMessage
-from pydantic_ai.usage import UsageLimits
-from pydantic_ai.models.openai import (
-    OpenAIResponsesModel,
-    OpenAIResponsesModelSettings,
-)
 from pydantic_ai.models.anthropic import AnthropicModel
-from .schema import MemeCaptionAndContext, ImageResult, Deps
+from pydantic_ai.models.openai import (OpenAIResponsesModel,
+                                       OpenAIResponsesModelSettings)
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
+from sqlalchemy.exc import OperationalError
 
-from features.image_storage.service import upload_image_to_supabase
-from features.user_memes.service import (
-    create_user_meme,
-    update_user_meme,
-    read_latest_conversation_meme,
-)
 from features.conversations.schema import ConversationUpdate
+from features.image_storage.service import (download_image_from_supabase,
+                                            upload_image_to_supabase)
 from features.user_memes.schema import UserMemeCreate, UserMemeUpdate
-from .helpers import convert_response_to_png, convert_gemini_response_to_png
+from features.user_memes.service import (create_user_meme,
+                                         read_latest_conversation_meme,
+                                         read_user_meme, update_user_meme)
 
 from .agent_instructions.manager_agent import manager_agent_instructions
+from .helpers import convert_gemini_response_to_png, convert_response_to_png
+from .schema import Deps, ImageResult, MemeCaptionAndContext
 
 load_dotenv()
 
@@ -46,16 +42,14 @@ logger = logging.getLogger(__name__)
 logfire.configure()
 logfire.instrument_pydantic_ai()
 
-AI_IMAGE_BUCKET = os.getenv("AI_IMAGE_BUCKET", "memes")  # Default bucket name
+AI_IMAGE_BUCKET = os.getenv("AI_IMAGE_BUCKET", "memes")
 
 model_settings = OpenAIResponsesModelSettings(
     openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
 )
 model = OpenAIResponsesModel("gpt-4.1-2025-04-14")
 
-
-# This is used to summarize the oldest messages in a conversation to keep the context manageable.
-# Use a cheaper model to summarize old messages for keeping token usage down
+# Summarize agent for conversation history management
 summarize_agent = Agent(
     "openai:gpt-4o-mini",
     instructions="""
@@ -77,7 +71,7 @@ async def summarize_old_messages(messages: list[ModelMessage]) -> list[ModelMess
     return messages
 
 
-# ─── Meme Theme Generation Agent ────────────────────────────────────────────
+# ─── Meme Theme Generation Agent ──────────────────────────────────────────
 meme_theme_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
@@ -179,7 +173,7 @@ You MUST output ONLY valid JSON with this exact schema:
     output_type=MemeCaptionAndContext,
 )
 
-# ─── User Request Summary Agent ─────────────────────────────────────────────────
+# ─── User Request Summary Agent ──────────────────────────────────────────
 user_request_summary_agent = Agent(
     model="openai:gpt-4o-mini",
     model_settings=model_settings,
@@ -196,7 +190,7 @@ The image context should show Trump and Musk standing back to back, arms crossed
     output_type=str,
 )
 
-# ─── Image‐Generation Agent OPENAI ─────────────────────────────────────────────────
+# ─── Image Generation Agent ──────────────────────────────────────────────
 meme_image_generation_agent = Agent(
     model=model,
     model_settings=model_settings,
@@ -229,84 +223,198 @@ Your job is:
 )
 
 
-# # ─── Image Generation Tool OPENAI ─────────────────────────────────────────────────
-# @meme_image_generation_agent.tool
-# def image_generation(
-#     ctx: RunContext[Deps],
-#     text_boxes: dict[str, str],
-#     context: str = "",
-#     # previous_response_id: str | None = None,
-# ) -> ImageResult:
-#     """
-#     1) Ask OpenAI's image_generation tool for a base64-encoded PNG,
-#        including all text_boxes in the prompt.
-#     2) Decode and upload it to Supabase.
-#     3) Return ImageResult.
-#     """
-#     # Build a little “Top: …; Bottom: …; Caption3: …” string from whatever keys you got
-#     boxes_desc = "; ".join(f"{key}: “{val}”" for key, val in text_boxes.items())
+# ─── Image Generation Tool (UNIFIED) ─────────────────────────────────────
+@meme_image_generation_agent.tool
+def image_generation(
+    ctx: RunContext[Deps],
+    text_boxes: dict[str, str],
+    context: str = "",
+) -> ImageResult:
+    """
+    Generate image using either OpenAI or Gemini based on image_agent_model setting.
+    Routes to the appropriate provider automatically.
+    """
+    # Parse the image_agent_model to determine provider
+    provider, model_name = ctx.deps.image_agent_model.split(":")
+    provider = provider.lower()
 
-#     prompt = (
-#         f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
-#         f" Take care creating the text layout and spacing to ensure it looks like a real meme."
-#         + (f" Image context: {context}" if context else "")
-#     )
-#     # Debug logging
-#     # print(f"Image generation prompt: {prompt}")
+    print(f"Image generation with provider: {provider}, model: {model_name}")
+    print(f"Text boxes: {text_boxes}, context: {context}")
 
-#     # Synchronous call into the OpenAI client
-#     try:
-#         response = ctx.deps.client.responses.create(
-#             model="gpt-4.1-2025-04-14",
-#             input=prompt,
-#             tools=[{"type": "image_generation"}],
-#         )
-#     except BadRequestError as e:
-#         error_msg = str(e)
-#         if "moderation_blocked" in error_msg or "safety system" in error_msg:
-#             raise ModelRetry(
-#                 "I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content."
-#             )
-#         else:
-#             raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
-#     except Exception as e:
-#         raise ModelRetry(f"Image generation failed: {str(e)}. Please try again.")
-
-#     if not response.output:
-#         raise ModelRetry("No image generated. Please try again.")
-
-#     # Convert the response to PNG bytes, mime type, and filename
-#     # This function will extract the base64-encoded image from the response
-#     converted_image = convert_response_to_png(response)
-
-#     # upload directly to Supabase storage bucket
-#     public_url = upload_image_to_supabase(
-#         storage_bucket=AI_IMAGE_BUCKET,
-#         contents=converted_image.contents,
-#         original_filename=converted_image.filename,
-#         content_type=converted_image.mime_type,
-#     )
-
-#     # add the url to the user_meme database table
-#     data = UserMemeCreate(
-#         conversation_id=ctx.deps.conversation_id,
-#         image_url=public_url,
-#         openai_response_id=response.id,
-#     )
-
-#     def create_user_meme_operation():
-#         return create_user_meme(
-#             data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
-#         )
-
-#     user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
-#     print(f"Created user meme with ID: {user_meme.id}")
-#     print(f"Response ID: {response.id}")
-#     return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
+    if provider == "openai":
+        return _generate_image_openai(ctx, text_boxes, context)
+    elif provider == "gemini":
+        return _generate_image_gemini(ctx, text_boxes, context)
+    else:
+        raise ValueError(f"Unsupported image generation provider: {provider}")
 
 
-# ─── Image Modification Agent ──────────────────────────────────────────────────────
-# This agent modifies existing meme images based on user requests
+def _generate_image_openai(
+    ctx: RunContext[Deps],
+    text_boxes: dict[str, str],
+    context: str = "",
+) -> ImageResult:
+    """
+    Generate image using OpenAI's image generation API.
+    """
+    boxes_desc = "; ".join(f"{key}: '{val}'" for key, val in text_boxes.items())
+
+    prompt = (
+        f"Create a meme image with the following text boxes using Impact font "
+        f"(white, with black outline): {boxes_desc}."
+        f" Take care creating the text layout and spacing to ensure it looks like a real meme."
+        + (f" Image context: {context}" if context else "")
+    )
+
+    print(f"OpenAI image generation prompt: {prompt}")
+
+    try:
+        response = ctx.deps.client.responses.create(
+            model="gpt-4.1-2025-04-14",
+            input=prompt,
+            tools=[{"type": "image_generation"}],
+        )
+    except BadRequestError as e:
+        error_msg = str(e)
+        if "moderation_blocked" in error_msg or "safety system" in error_msg:
+            raise ModelRetry(
+                "I'm sorry, but I can't create that meme as it was flagged by the "
+                "content safety system. Please try a different caption or theme."
+            )
+        else:
+            raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
+    except Exception as e:
+        raise ModelRetry(f"Image generation failed: {str(e)}. Please try again.")
+
+    if not response.output:
+        raise ModelRetry("No image generated. Please try again.")
+
+    # Convert OpenAI response to PNG
+    converted_image = convert_response_to_png(response)
+
+    # Upload to Supabase
+    public_url = upload_image_to_supabase(
+        storage_bucket=AI_IMAGE_BUCKET,
+        contents=converted_image.contents,
+        original_filename=converted_image.filename,
+        content_type=converted_image.mime_type,
+    )
+
+    # Save to database
+    data = UserMemeCreate(
+        conversation_id=ctx.deps.conversation_id,
+        image_url=public_url,
+        openai_response_id=response.id,
+    )
+
+    def create_user_meme_operation():
+        return create_user_meme(
+            data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
+        )
+
+    user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
+    print(f"Created user meme with ID: {user_meme.id}")
+    print(f"OpenAI Response ID: {response.id}")
+
+    return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
+
+
+def _generate_image_gemini(
+    ctx: RunContext[Deps],
+    text_boxes: dict[str, str],
+    context: str = "",
+) -> ImageResult:
+    """
+    Generate image using Gemini's image generation API (Nano Banana).
+    Creates a fresh chat session for each generation.
+    """
+    boxes_desc = "; ".join(f"{key}: '{val}'" for key, val in text_boxes.items())
+
+    prompt = (
+        f"Create a meme image with the following text boxes using Impact font "
+        f"(white, with black outline): {boxes_desc}."
+        f" Take care creating the text layout and spacing to ensure it looks like a real meme."
+        + (f" Image context: {context}" if context else "")
+    )
+
+    print(f"Gemini image generation prompt: {prompt}")
+
+    try:
+        # Create fresh Gemini client and chat for this generation
+        gemini_client = genai.Client()
+        gemini_chat = gemini_client.chats.create(
+            model="gemini-2.5-flash-image",
+            config=types.GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"]
+            ),
+        )
+
+        # Send message to generate image
+        response = gemini_chat.send_message(prompt)
+
+    except Exception as e:
+        error_msg = str(e)
+        if "moderation_blocked" in error_msg or "safety system" in error_msg:
+            raise ModelRetry(
+                "I'm sorry, but I can't create that meme as it was flagged by the "
+                "content safety system. Please try a different caption or theme."
+            )
+        else:
+            raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
+
+    # Validate response structure
+    if (
+        not response.candidates
+        or not response.candidates[0].content
+        or not response.candidates[0].content.parts
+    ):
+        raise ModelRetry("No image generated. Please try again.")
+
+    # Debug: log text responses and save local copy
+    for part in response.candidates[0].content.parts:
+        if part.text is not None:
+            print(f"Gemini text response: {part.text}")
+        elif part.inline_data is not None:
+            image = Image.open(BytesIO(part.inline_data.data))
+            image.save("generated_image_MEME_by_Nano_Banana.png")
+            print("Saved local copy to: generated_image_MEME_by_Nano_Banana.png")
+
+    # Convert Gemini response to PNG
+    converted_image = convert_gemini_response_to_png(response)
+
+    # Upload to Supabase
+    public_url = upload_image_to_supabase(
+        storage_bucket=AI_IMAGE_BUCKET,
+        contents=converted_image.contents,
+        original_filename=converted_image.filename,
+        content_type=converted_image.mime_type,
+    )
+
+    # Generate UUID for Gemini (no native response ID)
+    gemini_response_id = f"gemini_{uuid.uuid4().hex}"
+
+    # Save to database
+    data = UserMemeCreate(
+        conversation_id=ctx.deps.conversation_id,
+        image_url=public_url,
+        openai_response_id=gemini_response_id,
+    )
+
+    def create_user_meme_operation():
+        return create_user_meme(
+            data=data, session=ctx.deps.session, current_user=ctx.deps.current_user
+        )
+
+    user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
+    print(f"Created user meme with ID: {user_meme.id}")
+    print(f"Gemini Response ID: {gemini_response_id}")
+
+    return ImageResult(
+        image_id=user_meme.id, url=public_url, response_id=gemini_response_id
+    )
+
+
+# ─── Image Modification Agent ────────────────────────────────────────────
 meme_image_modification_agent = Agent(
     model=model,
     model_settings=model_settings,
@@ -334,7 +442,7 @@ Then call: modify_image(modification_request="Change the dog to a cat", response
 )
 
 
-# ─── Image Modification Tool OPENAI ──────────────────────────────────────────────────────
+# ─── Image Modification Tool (UNIFIED) ───────────────────────────────────
 @meme_image_modification_agent.tool
 def modify_image(
     ctx: RunContext[Deps],
@@ -342,17 +450,36 @@ def modify_image(
     response_id: str,
 ) -> ImageResult:
     """
-    Modify an existing meme image based on user request.
+    Modify existing image using either OpenAI or Gemini based on image_agent_model.
+    Routes to the appropriate provider automatically.
     """
-    # Debug print
-    print(
-        f"Modification request from meme_image_modification_agent.tool: {modification_request}, response_id: {response_id}"
-    )
+    # Parse the image_agent_model to determine provider
+    provider, model_name = ctx.deps.image_agent_model.split(":")
+    provider = provider.lower()
 
-    # Build the prompt for modification
+    print(f"Image modification with provider: {provider}")
+    print(f"Modification request: {modification_request}, response_id: {response_id}")
+
+    if provider == "openai":
+        return _modify_image_openai(ctx, modification_request, response_id)
+    elif provider == "gemini":
+        return _modify_image_gemini(ctx, modification_request, response_id)
+    else:
+        raise ValueError(f"Unsupported image modification provider: {provider}")
+
+
+def _modify_image_openai(
+    ctx: RunContext[Deps],
+    modification_request: str,
+    response_id: str,
+) -> ImageResult:
+    """
+    Modify image using OpenAI's previous_response_id feature.
+    """
     prompt = f"Modify the image based on the following request: {modification_request}."
 
-    # Synchronous call into the OpenAI client
+    print(f"OpenAI modification prompt: {prompt}")
+
     try:
         response = ctx.deps.client.responses.create(
             model="gpt-4.1-2025-04-14",
@@ -364,7 +491,8 @@ def modify_image(
         error_msg = str(e)
         if "moderation_blocked" in error_msg or "safety system" in error_msg:
             raise ModelRetry(
-                "I'm sorry, but I can't modify that image as the request was flagged by the content safety system. Please try a different modification that doesn't contain potentially harmful content."
+                "I'm sorry, but I can't modify that image as the request was flagged "
+                "by the content safety system."
             )
         else:
             raise ModelRetry(
@@ -376,11 +504,10 @@ def modify_image(
     if not response.output:
         raise ModelRetry("No image generated. Please try again.")
 
-    # Convert the response to PNG bytes, mime type, and filename
-    # This function will extract the base64-encoded image from the response
+    # Convert OpenAI response to PNG
     converted_image = convert_response_to_png(response)
 
-    # upload directly to Supabase storage bucket
+    # Upload to Supabase
     public_url = upload_image_to_supabase(
         storage_bucket=AI_IMAGE_BUCKET,
         contents=converted_image.contents,
@@ -388,7 +515,7 @@ def modify_image(
         content_type=converted_image.mime_type,
     )
 
-    # add the url to the user_meme database table
+    # Save to database
     data = UserMemeCreate(
         conversation_id=ctx.deps.conversation_id,
         image_url=public_url,
@@ -401,76 +528,109 @@ def modify_image(
         )
 
     user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
-    print(f"Created user meme with ID: {user_meme.id}")
-    print(f"Response ID: {response.id}")
+    print(f"Created modified meme with ID: {user_meme.id}")
+    print(f"OpenAI Response ID: {response.id}")
+
     return ImageResult(image_id=user_meme.id, url=public_url, response_id=response.id)
 
 
-# ─── Image Generation Tool NANO BANANA ─────────────────────────────────────────────────
-@meme_image_generation_agent.tool
-def image_generation(
+def _modify_image_gemini(
     ctx: RunContext[Deps],
-    text_boxes: dict[str, str],
-    context: str = "",
-    # previous_response_id: str | None = None,
+    modification_request: str,
+    response_id: str,
 ) -> ImageResult:
     """
-    1) Ask GEMINI's image_generation tool for a base64-encoded PNG,
-       including all text_boxes in the prompt.
-    2) Decode and upload it to Supabase.
-    3) Return ImageResult.
+    Modify image using Gemini by fetching and passing the previous image explicitly.
+    Gemini requires the actual image data to perform modifications.
     """
-    # Build a little “Top: …; Bottom: …; Caption3: …” string from whatever keys you got
-    boxes_desc = "; ".join(f"{key}: “{val}”" for key, val in text_boxes.items())
+    prompt = f"Modify the previous image based on this request: {modification_request}"
 
-    # Initialize the GEMINI client
-    client = genai.Client()
+    print(f"Gemini modification prompt: {prompt}")
+    print(f"Fetching previous image with response_id: {response_id}")
 
-    prompt = (
-        f"Create a meme image with the following text boxes using Impact font (white, with black outline): {boxes_desc}."
-        f" Take care creating the text layout and spacing to ensure it looks like a real meme."
-        + (f" Image context: {context}" if context else "")
-    )
-    # Debug logging
-    print(f"Image generation prompt: {prompt}")
-
-    # Synchronous call into the GEMINI client
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash-image",
-            contents=[prompt],
+        # Step 1: Find the previous meme by looking for the meme with this response_id
+        def find_previous_meme_operation():
+            # Get the latest meme from this conversation
+            latest_meme = read_latest_conversation_meme(
+                conversation_id=ctx.deps.conversation_id,
+                session=ctx.deps.session,
+                current_user=ctx.deps.current_user,
+            )
+            if not latest_meme or latest_meme.openai_response_id != response_id:
+                raise ModelRetry(
+                    f"Could not find previous image with response_id: {response_id}"
+                )
+            return latest_meme
+
+        previous_meme = safe_db_operation(find_previous_meme_operation, ctx.deps.session)
+        print(f"Found previous meme: {previous_meme.id}, URL: {previous_meme.image_url}")
+
+        # Step 2: Extract filename from the public URL
+        # URL format: https://...supabase.co/storage/v1/object/public/memes/filename.png
+        image_url = previous_meme.image_url
+        filename = image_url.split("/")[-1]  # Extract filename from URL
+        print(f"Extracted filename: {filename}")
+
+        # Step 3: Download the image from Supabase
+        image_bytes = download_image_from_supabase(
+            storage_bucket=AI_IMAGE_BUCKET,
+            filename=filename,
         )
+        print(f"Downloaded {len(image_bytes)} bytes")
+
+        # Step 4: Load image as PIL.Image for Gemini
+        previous_image = Image.open(BytesIO(image_bytes))
+        print(f"Loaded PIL Image: {previous_image.size}, mode: {previous_image.mode}")
+
+        # Step 5: Create fresh Gemini client and chat, then pass both prompt and image
+        gemini_client = genai.Client()
+        gemini_chat = gemini_client.chats.create(
+            model="gemini-2.5-flash-image",
+            config=types.GenerateContentConfig(
+                response_modalities=["TEXT", "IMAGE"]
+            ),
+        )
+
+        # Send modification request WITH the previous image
+        response = gemini_chat.send_message([prompt, previous_image])
+
+    except ModelRetry:
+        # Re-raise ModelRetry exceptions
+        raise
     except Exception as e:
         error_msg = str(e)
         if "moderation_blocked" in error_msg or "safety system" in error_msg:
             raise ModelRetry(
-                "I'm sorry, but I can't create that meme as it was flagged by the content safety system. Please try a different caption or theme that doesn't contain potentially harmful content."
+                "I'm sorry, but I can't modify that image as the request was flagged "
+                "by the content safety system."
             )
         else:
-            raise ModelRetry(f"Image generation failed: {error_msg}. Please try again.")
+            raise ModelRetry(
+                f"Image modification failed: {error_msg}. Please try again."
+            )
 
-    # Check if we got a valid response with candidates
+    # Validate response structure
     if (
         not response.candidates
         or not response.candidates[0].content
         or not response.candidates[0].content.parts
     ):
-        raise ModelRetry("No image generated. Please try again.")
+        raise ModelRetry("No modified image generated. Please try again.")
 
-    # Debug: save a local copy and print any text responses
+    # Debug: log responses
     for part in response.candidates[0].content.parts:
         if part.text is not None:
             print(f"Gemini text response: {part.text}")
         elif part.inline_data is not None:
             image = Image.open(BytesIO(part.inline_data.data))
-            image.save("generated_image_MEME_by_Nano_Banana.png")
-            print("Saved local copy to: generated_image_MEME_by_Nano_Banana.png")
+            image.save("modified_image_MEME_by_Nano_Banana.png")
+            print("Saved modified copy to: modified_image_MEME_by_Nano_Banana.png")
 
-    # Convert the response to PNG bytes, mime type, and filename
-    # This function will extract the base64-encoded image from the response
+    # Convert Gemini response to PNG
     converted_image = convert_gemini_response_to_png(response)
 
-    # upload directly to Supabase storage bucket
+    # Upload to Supabase
     public_url = upload_image_to_supabase(
         storage_bucket=AI_IMAGE_BUCKET,
         contents=converted_image.contents,
@@ -478,9 +638,10 @@ def image_generation(
         content_type=converted_image.mime_type,
     )
 
-    # add the url to the user_meme database table
-    # Note: Gemini responses don't have an ID like OpenAI, so we use a generated UUID
+    # Generate UUID for Gemini
     gemini_response_id = f"gemini_{uuid.uuid4().hex}"
+
+    # Save to database
     data = UserMemeCreate(
         conversation_id=ctx.deps.conversation_id,
         image_url=public_url,
@@ -493,14 +654,15 @@ def image_generation(
         )
 
     user_meme = safe_db_operation(create_user_meme_operation, ctx.deps.session)
-    print(f"Created user meme with ID: {user_meme.id}")
+    print(f"Created modified meme with ID: {user_meme.id}")
     print(f"Gemini Response ID: {gemini_response_id}")
+
     return ImageResult(
         image_id=user_meme.id, url=public_url, response_id=gemini_response_id
     )
 
 
-# ─── Caption Refinement Agent ──────────────────────────────────────────────
+# ─── Caption Refinement Agent ────────────────────────────────────────────
 meme_caption_refinement_agent = Agent(
     model=model,
     model_settings=model_settings,
@@ -522,7 +684,7 @@ Output only valid JSON matching this schema:
     output_type=MemeCaptionAndContext,
 )
 
-# ─── Random Inspiration Agent ──────────────────────────────────────────────
+# ─── Random Inspiration Agent ────────────────────────────────────────────
 meme_random_inspiration_agent = Agent(
     model=model,
     model_settings=model_settings,
@@ -541,13 +703,12 @@ Do not include any extra text, markdown, or explanations—output ONLY the JSON 
     output_type=MemeCaptionAndContext,
 )
 
-# ─── Manager Tools as Plain Functions ──────────────────────────────────────
+# ─── Manager Tools as Plain Functions ────────────────────────────────────
 
 
 async def meme_theme_factory(
     ctx: RunContext[Deps], keywords: List[str], image_context: str = ""
 ) -> MemeCaptionAndContext:
-    # simply forward to the theme agent, preserving usage tracking
     r = await meme_theme_generation_agent.run(
         f"Themes: {', '.join(keywords)}; Context: {image_context}",
         usage=ctx.usage,
@@ -568,7 +729,6 @@ def meme_image_generation(
     Returns:
         Markdown formatted image URL for display in chat
     """
-    # Debug print
     print(f"Generating image with text_boxes: {text_boxes}, context: {context}")
 
     # Validate input types
@@ -614,10 +774,10 @@ def meme_image_modification(
         Markdown formatted image URL for display in chat
     """
     prompt = f"Modify the previous image based on the following request: {modification_request}. Pass the previous response ID: {response_id}."
-    # Debug print
     print(
-        f"Modification request from manager_agent.tool meme_image_modification: {modification_request}, response_id: {response_id}"
+        f"Modification request from manager: {modification_request}, response_id: {response_id}"
     )
+
     # Call the image modification agent synchronously
     result = meme_image_modification_agent.run_sync(
         prompt,
@@ -635,7 +795,7 @@ def meme_caption_refinement(
     ctx: RunContext[Deps], caption: str, image_context: str = ""
 ) -> MemeCaptionAndContext:
     """
-    Refine or rewrite a user-supplied meme caption (and optional context) into perfect meme caption(s) and context.
+    Refine or rewrite a user-supplied meme caption into perfect meme format.
     """
     prompt = f"Caption: {caption}; Context: {image_context}"
     r = meme_caption_refinement_agent.run_sync(prompt, usage=ctx.usage)
@@ -653,9 +813,7 @@ def meme_random_inspiration(ctx: RunContext[Deps]) -> MemeCaptionAndContext:
 
 def favourite_meme_in_db(ctx: RunContext[Deps]) -> str:
     """
-    Mark a meme as favourite in the database.
-    This function updates the `is_favorite` field of the UserMeme model.
-    If the meme is not found, it returns a friendly message.
+    Mark the most recent meme in this conversation as favourite.
     """
     try:
 
@@ -691,8 +849,7 @@ def favourite_meme_in_db(ctx: RunContext[Deps]) -> str:
 
 def fetch_previous_image_id(ctx: RunContext[Deps]) -> str:
     """
-    Fetch the previous image ID for a given meme.
-    This function retrieves the image ID from the UserMeme model.
+    Fetch the response ID of the most recent image in this conversation.
     """
 
     def read_latest_conversation_meme_operation():
@@ -706,34 +863,27 @@ def fetch_previous_image_id(ctx: RunContext[Deps]) -> str:
         read_latest_conversation_meme_operation, ctx.deps.session
     )
 
-    # Add validation to ensure we have a valid response ID
     if not user_meme:
         raise ModelRetry("No previous meme found in this conversation.")
 
     if not user_meme.openai_response_id:
-        raise ModelRetry("Previous meme does not have a valid OpenAI response ID.")
+        raise ModelRetry("Previous meme does not have a valid response ID.")
 
-    # Debug logging to help identify the issue
     print(f"Retrieved response ID: {user_meme.openai_response_id}")
-
     return user_meme.openai_response_id
 
 
 def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     """
-    Summarise the current user request and update the conversation with the summary.
-    This also triggers a streaming update to notify the frontend.
+    Summarise the current user request and update the conversation.
     """
-    # Import locally to avoid circular import
     from features.conversations.service import update_conversation
 
-    # Debug logging to help identify the issue
     print(f"Summarising user request: {user_request}")
     prompt = f"Summarise the following user request: {user_request}"
     r = user_request_summary_agent.run_sync(prompt, usage=ctx.usage)
     summary = r.output
 
-    # Debug logging to help identify the issue
     print(f"Summarised request: {summary}")
 
     def update_conversation_operation():
@@ -751,10 +901,10 @@ def summarise_request(ctx: RunContext[Deps], user_request: str) -> str:
     return f"Conversation summary updated: {summary}"
 
 
-# ─── Factory for Manager Agent ─────────────────────────────────────────────
+# ─── Factory for Manager Agent ───────────────────────────────────────────
 def create_manager_agent(provider, model):
-    # Debug print incoming model and provider
     print(f"Creating manager agent with model: {model} and provider: {provider}")
+
     if provider == "openai":
         settings = OpenAIResponsesModelSettings(
             openai_builtin_tools=[WebSearchToolParam(type="web_search_preview")]
@@ -770,7 +920,7 @@ def create_manager_agent(provider, model):
         model_typed = AnthropicModel(model)
     else:
         raise ValueError(f"Unsupported provider: {provider}")
-    # Create the agent with the specified model and settings
+
     agent = Agent(
         model=model_typed,
         model_settings=settings,
@@ -785,19 +935,16 @@ def create_manager_agent(provider, model):
             meme_image_modification,
             favourite_meme_in_db,
         ],
-        # Temporarily disabled history processor to debug tool call issues
-        # history_processors=[summarize_old_messages],
         instructions=manager_agent_instructions,
         output_type=str,
     )
     return agent
 
 
-# Helper function to safely handle database operations in agent context
+# Helper function for safe database operations
 def safe_db_operation(operation, session, max_retries=3):
     """
     Safely execute database operations with retry logic and proper error handling.
-    This helps prevent connection pool exhaustion in long-running agent operations.
     """
     for attempt in range(max_retries):
         try:
@@ -807,7 +954,7 @@ def safe_db_operation(operation, session, max_retries=3):
                 print(
                     f"Database operation failed (attempt {attempt + 1}), retrying: {e}"
                 )
-                time.sleep(0.5 * (attempt + 1))  # Exponential backoff
+                time.sleep(0.5 * (attempt + 1))
                 continue
             else:
                 print(f"Database operation failed after {max_retries} attempts: {e}")

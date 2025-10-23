@@ -26,20 +26,18 @@ Security considerations:
 """
 import logging
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from database.core import get_session
 from features.auth.service import get_current_user
 from features.users.model import User
+
 from .schema import ConversationRead, ConversationUpdate
-from .service import (
-    list_conversations,
-    create_conversation,
-    get_conversation,
-    update_conversation,
-    delete_conversation,
-)
+from .service import (create_conversation, delete_conversation,
+                      get_conversation, list_conversations,
+                      update_conversation)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/conversations", tags=["conversations"])

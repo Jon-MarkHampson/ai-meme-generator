@@ -14,16 +14,14 @@ Key features:
 """
 
 import logging
+
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
+
 from features.user_memes.model import UserMeme
 from features.users.model import User
-from .schema import (
-    UserMemeCreate,
-    UserMemeRead,
-    UserMemeList,
-    UserMemeUpdate,
-)
+
+from .schema import UserMemeCreate, UserMemeList, UserMemeRead, UserMemeUpdate
 
 logger = logging.getLogger(__name__)
 

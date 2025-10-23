@@ -2,10 +2,11 @@
 SQLModel ORM table for User entity.
 Defines the database schema for user accounts.
 """
-from uuid import uuid4
 from datetime import datetime, timezone
-from sqlmodel import SQLModel, Field
+from uuid import uuid4
+
 from sqlalchemy import Column, DateTime
+from sqlmodel import Field, SQLModel
 
 
 class User(SQLModel, table=True):

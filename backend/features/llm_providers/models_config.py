@@ -8,9 +8,9 @@ truth for all AI model definitions.
 
 import json
 import logging
-from pathlib import Path
-from typing import List, Dict
 from functools import lru_cache
+from pathlib import Path
+from typing import Dict, List
 
 from .providers.base import ModelInfo
 

@@ -20,15 +20,16 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import Cookie, Depends, Header, HTTPException, status
-from jose import JWTError, ExpiredSignatureError, jwt
+from jose import ExpiredSignatureError, JWTError, jwt
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from config import settings
 from database.core import get_session
 from features.users.model import User
-from ..users.schema import UserCreate, UserRead
 from utils.security import get_password_hash, verify_password
+
+from ..users.schema import UserCreate, UserRead
 
 logger = logging.getLogger(__name__)
 

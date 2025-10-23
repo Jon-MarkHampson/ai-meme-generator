@@ -1,10 +1,11 @@
+import argparse
+import logging
+import mimetypes
 import os
 import sys
-import logging
-import argparse
-import mimetypes
+
 import requests
-from requests.exceptions import ReadTimeout, ConnectionError
+from requests.exceptions import ConnectionError, ReadTimeout
 
 logger = logging.getLogger(__name__)
 

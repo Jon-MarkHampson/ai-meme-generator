@@ -29,23 +29,19 @@ Security considerations:
 - Debug endpoints provide safe troubleshooting information
 """
 
-from typing import Dict
-from fastapi import APIRouter, Depends, HTTPException
 import logging
+from typing import Dict
 
-from features.users.model import User
+from fastapi import APIRouter, Depends, HTTPException
+
 from features.auth.service import get_current_user
-from .multi_provider_service import (
-    get_model_availability,
-    get_all_providers_availability,
-)
-from .schema import (
-    ModelAvailabilityResponse,
-    LLMProvidersResponse,
-    ModelListResponse,
-    ModelDefinition,
-)
+from features.users.model import User
+
 from .models_config import get_raw_config
+from .multi_provider_service import (get_all_providers_availability,
+                                     get_model_availability)
+from .schema import (LLMProvidersResponse, ModelAvailabilityResponse,
+                     ModelDefinition, ModelListResponse)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/llm_providers", tags=["llm_providers"])
@@ -321,11 +317,9 @@ async def debug_models(
         - Model availability debugging
     """
     try:
-        from .multi_provider_service import (
-            get_fallback_availability,
-            _openai_provider,
-            _anthropic_provider,
-        )
+        from .multi_provider_service import (_anthropic_provider,
+                                             _openai_provider,
+                                             get_fallback_availability)
 
         # Get all supported models from providers
         openai_models = [

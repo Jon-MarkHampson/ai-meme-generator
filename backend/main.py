@@ -2,17 +2,18 @@
 Main FastAPI application entry point for the AI Meme Generator.
 Handles app startup, database initialization, monitoring setup, and routing.
 """
-import os
 import logging
+import os
+from contextlib import asynccontextmanager
+
 import logfire
 from dotenv import load_dotenv
 from fastapi import FastAPI
-from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
-from logging_config import configure_logging, LogLevels
-from database.core import create_db_and_tables, check_db_connection
 from api import register_routers
+from database.core import check_db_connection, create_db_and_tables
+from logging_config import LogLevels, configure_logging
 
 load_dotenv()
 

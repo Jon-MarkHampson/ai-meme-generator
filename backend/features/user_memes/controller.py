@@ -18,20 +18,21 @@ Security considerations:
 - Proper HTTP status codes provide clear API responses
 """
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
+
 from database.core import get_session
-from features.users.model import User
 from features.auth.service import get_current_user
-from .schema import UserMemeCreate, UserMemeRead, UserMemeUpdate, UserMemeList
-from .service import (
-    create_user_meme as service_create,
-    read_user_meme as service_read,
-    update_user_meme as service_update,
-    delete_user_meme as service_delete,
-    list_user_memes as service_list,
-    get_favorite_memes as service_get_favorite_memes,
-)
+from features.users.model import User
+
+from .schema import UserMemeCreate, UserMemeList, UserMemeRead, UserMemeUpdate
+from .service import create_user_meme as service_create
+from .service import delete_user_meme as service_delete
+from .service import get_favorite_memes as service_get_favorite_memes
+from .service import list_user_memes as service_list
+from .service import read_user_meme as service_read
+from .service import update_user_meme as service_update
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/user_memes", tags=["user_memes"])

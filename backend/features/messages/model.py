@@ -2,12 +2,13 @@
 SQLModel ORM table for Message entity.
 Defines the database schema for conversation messages.
 """
-from uuid import uuid4
-from typing import List, Dict
 from datetime import datetime, timezone
-from sqlmodel import SQLModel, Field
+from typing import Dict, List
+from uuid import uuid4
+
 from sqlalchemy import Column, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlmodel import Field, SQLModel
 
 
 class Message(SQLModel, table=True):

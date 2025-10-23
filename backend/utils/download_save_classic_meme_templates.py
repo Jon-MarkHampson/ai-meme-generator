@@ -1,8 +1,9 @@
 import os
 import re
-import requests
-from urllib.parse import urlparse
 from pathlib import Path
+from urllib.parse import urlparse
+
+import requests
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 

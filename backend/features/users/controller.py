@@ -26,18 +26,17 @@ delegate business logic to service layers, maintaining clean separation
 of concerns and testability.
 """
 import logging
-from fastapi import APIRouter, Depends, Body, status
+
+from fastapi import APIRouter, Body, Depends, status
 from sqlmodel import Session
 
 from database.core import get_session
-from features.users.model import User
 from features.auth.service import get_current_user
-from .schema import UserUpdate, UserRead, UserDelete
-from .service import (
-    read_current_user,
-    update_current_user,
-    delete_current_user,
-)
+from features.users.model import User
+
+from .schema import UserDelete, UserRead, UserUpdate
+from .service import (delete_current_user, read_current_user,
+                      update_current_user)
 
 logger = logging.getLogger(__name__)
 
