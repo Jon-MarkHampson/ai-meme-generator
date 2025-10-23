@@ -5,8 +5,9 @@ Multi-provider LLM service that consolidates OpenAI and Anthropic availability.
 import logging
 import time
 from typing import Dict
-from .providers.openai import OpenAIProvider
+
 from .providers.anthropic import AnthropicProvider
+from .providers.openai import OpenAIProvider
 from .schema import LLMProvidersResponse, ModelAvailabilityResponse
 
 logger = logging.getLogger(__name__)

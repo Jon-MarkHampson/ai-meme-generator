@@ -2,10 +2,12 @@ import base64
 import logging
 import mimetypes
 import uuid
-from PIL import Image
 from io import BytesIO
-from .schema import ConvertedImageResult
+
 from openai.types import ImagesResponse
+from PIL import Image
+
+from .schema import ConvertedImageResult
 
 logger = logging.getLogger(__name__)
 

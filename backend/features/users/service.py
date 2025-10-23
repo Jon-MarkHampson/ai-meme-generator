@@ -12,13 +12,14 @@ Key security features:
 - Atomic database transactions
 """
 import logging
+
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
 from features.users.model import User
-from .schema import UserUpdate, UserDelete
 from utils.security import get_password_hash, verify_password
 
+from .schema import UserDelete, UserUpdate
 
 logger = logging.getLogger(__name__)
 

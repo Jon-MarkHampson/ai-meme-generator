@@ -3,12 +3,13 @@ Database connection and session management for the AI Meme Generator.
 Provides SQLModel engine configuration with connection pooling and retry logic.
 """
 import logging
-from sqlmodel import SQLModel, Session, create_engine, text
-from sqlalchemy.exc import OperationalError
 
-from config import settings
+from sqlalchemy.exc import OperationalError
+from sqlmodel import Session, SQLModel, create_engine, text
+
 # Import models registry to ensure all models are registered before creating tables
 import models_registry
+from config import settings
 
 logger = logging.getLogger(__name__)
 

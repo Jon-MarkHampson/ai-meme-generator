@@ -16,19 +16,16 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
+
 from config import settings
 from database.core import get_session
 from features.users.model import User
+
 from ..users.schema import UserCreate
-from .service import (
-    create_user_account,
-    authenticate_user,
-    create_session_token,
-    refresh_user_session,
-    get_current_user,
-    validate_session_status,
-    get_token_from_cookie_or_header,
-)
+from .service import (authenticate_user, create_session_token,
+                      create_user_account, get_current_user,
+                      get_token_from_cookie_or_header, refresh_user_session,
+                      validate_session_status)
 
 
 def _set_auth_cookie(response: JSONResponse, token: str) -> None:

@@ -14,22 +14,25 @@ Key responsibilities:
 - Content moderation compliance
 """
 
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
+
 import httpx
-import asyncio
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
-from database.core import Session as SessionClass, engine
 from openai import OpenAI
 from pydantic_ai.messages import ModelMessagesTypeAdapter
+from sqlmodel import Session, select
 
-from features.messages.model import Message as MessageEntity
+from database.core import Session as SessionClass
+from database.core import engine
 from features.conversations.model import Conversation as ConversationEntity
-from features.users.model import User
+from features.messages.model import Message as MessageEntity
 from features.messages.schema import ChatMessage, MessageCreate
 from features.messages.service import create_message
+from features.users.model import User
+
 from .agent import create_manager_agent
 from .schema import Deps
 
@@ -41,6 +44,7 @@ def generate_meme_stream(
     prompt: str,
     conversation_id: str,
     manager_model: str,
+    image_agent_model: str,
     session: Session,
     current_user: User,
 ) -> StreamingResponse:
@@ -54,6 +58,7 @@ def generate_meme_stream(
         prompt: User's meme generation request
         conversation_id: ID of the conversation to add messages to
         manager_model: AI model to use in format "provider:model"
+        image_agent_model: Image generation model to use in format "provider:model"
         session: Database session for queries
         current_user: Authenticated user making the request
 
@@ -66,7 +71,8 @@ def generate_meme_stream(
 
     # Parse model selection format (e.g., "openai:gpt-4")
     provider, model = manager_model.split(":")
-    logger.info(f"Using model: {model} from provider: {provider}")
+    logger.info(f"Using manager model: {model} from provider: {provider}")
+    logger.info(f"Using image generation model: {image_agent_model}")
 
     # Verify conversation ownership for security
     conversation = session.get(ConversationEntity, conversation_id)
@@ -119,6 +125,7 @@ def generate_meme_stream(
                     current_user=stream_current_user,
                     session=stream_session,
                     conversation_id=conversation_id,
+                    image_agent_model=image_agent_model,
                 )
 
                 # Create agent with selected AI model

@@ -12,10 +12,12 @@ Key features:
 - Integration with Supabase Storage API
 - Support for various image formats
 """
-import uuid
 import logging
+import uuid
+
 from fastapi import HTTPException, status
 from storage3.exceptions import StorageApiError
+
 from database.supabase_client import supabase
 from features.users.model import User
 
@@ -94,23 +96,60 @@ def upload_image_to_supabase(
     return public_url
 
 
+def download_image_from_supabase(
+    storage_bucket: str,
+    filename: str,
+) -> bytes:
+    """
+    Download image bytes from Supabase Storage.
+
+    Used for retrieving previously generated images for modification workflows.
+    Essential for Gemini image editing which requires passing the actual image data.
+
+    Args:
+        storage_bucket: Name of the Supabase storage bucket
+        filename: Filename/path of the image in storage
+
+    Returns:
+        Raw image data as bytes
+
+    Raises:
+        HTTPException: 404 if image not found, 500 for storage errors
+    """
+    logger.info(f"Downloading {filename} from Supabase bucket {storage_bucket}")
+
+    try:
+        # Download file bytes from storage
+        image_bytes = supabase.storage.from_(storage_bucket).download(filename)
+        logger.info(f"Downloaded {len(image_bytes)} bytes for {filename}")
+        return image_bytes
+
+    except StorageApiError as e:
+        message = str(e)
+        logger.error(f"Failed to download image: {message}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to download image from storage: {message}",
+        )
+
+
 def get_image_url_from_supabase(
     image_id: str, storage_bucket: str, current_user: User
 ) -> str:
     """
     Retrieve public URL for an existing image in storage.
-    
+
     Used for accessing previously uploaded images without re-uploading.
     Includes user context for audit logging and potential future access control.
-    
+
     Args:
         image_id: Filename/key of the image in storage
         storage_bucket: Name of the Supabase storage bucket
         current_user: User requesting the image URL (for logging)
-        
+
     Returns:
         Public URL string for the requested image
-        
+
     Raises:
         HTTPException: 404 if image not found, 500 for storage errors
     """
@@ -119,7 +158,7 @@ def get_image_url_from_supabase(
     try:
         # Request public URL from Supabase Storage
         url_response = supabase.storage.from_(storage_bucket).get_public_url(image_id)
-        
+
         # Handle response format variations
         if isinstance(url_response, str):
             public_url = url_response

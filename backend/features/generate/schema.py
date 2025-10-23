@@ -7,11 +7,14 @@ models ensure type safety and clear contracts between components.
 """
 
 from dataclasses import dataclass
+from typing import Dict, Optional
+
+from google import genai
 from openai import OpenAI
 from pydantic import BaseModel
-from typing import Dict, Optional
-from features.users.model import User
 from sqlmodel import Session
+
+from features.users.model import User
 
 
 @dataclass
@@ -28,12 +31,17 @@ class Deps:
         current_user: Authenticated user making the request
         session: Database session for persistence
         conversation_id: Current conversation context
+        image_agent_model: Selected image generation model (e.g., "gemini:gemini-2.5-flash-image")
     """
 
     client: OpenAI
     current_user: User
     session: Session
     conversation_id: str
+    image_agent_model: str
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 @dataclass
@@ -67,11 +75,13 @@ class GenerateMemeRequest(BaseModel):
         prompt: User's natural language request for meme creation
         conversation_id: UUID linking to conversation history
         manager_model: AI model selection in 'provider:model' format
+        image_agent_model: Image generation model selection in 'provider:model' format
     """
 
     prompt: str
     conversation_id: str
     manager_model: str = "openai:gpt-4.1-2025-04-14"
+    image_agent_model: str = "gemini:gemini-2.5-flash-image"
 
 
 class MemeCaptionAndContext(BaseModel):

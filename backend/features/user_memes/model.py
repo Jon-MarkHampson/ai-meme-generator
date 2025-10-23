@@ -2,10 +2,11 @@
 SQLModel ORM table for UserMeme entity.
 Defines the database schema for user-generated memes.
 """
-from uuid import uuid4
 from datetime import datetime, timezone
-from sqlmodel import SQLModel, Field
+from uuid import uuid4
+
 from sqlalchemy import Column, ForeignKey
+from sqlmodel import Field, SQLModel
 
 
 class UserMeme(SQLModel, table=True):

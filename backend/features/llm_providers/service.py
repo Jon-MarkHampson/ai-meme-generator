@@ -27,10 +27,11 @@ Performance considerations:
 import logging
 import time
 from typing import Dict, List
+
 from openai import OpenAI
 
-from .schema import ModelAvailabilityResponse
 from .models_config import get_all_models
+from .schema import ModelAvailabilityResponse
 
 logger = logging.getLogger(__name__)
 

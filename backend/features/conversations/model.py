@@ -2,12 +2,12 @@
 SQLModel ORM table for Conversation entity.
 Defines the database schema for chat conversations.
 """
-from uuid import uuid4
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import uuid4
 
-from sqlmodel import SQLModel, Field
 from sqlalchemy import Column, DateTime, ForeignKey
+from sqlmodel import Field, SQLModel
 
 
 class Conversation(SQLModel, table=True):

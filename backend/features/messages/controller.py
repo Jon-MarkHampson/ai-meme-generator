@@ -27,18 +27,17 @@ Security considerations:
 """
 import logging
 from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from database.core import get_session
 from features.auth.service import get_current_user
 from features.users.model import User
-from .schema import MessageCreate, MessageRead, ChatMessage
-from .service import (
-    list_messages_by_conversation,
-    create_message,
-    convert_messages_to_chat_format,
-)
+
+from .schema import ChatMessage, MessageCreate, MessageRead
+from .service import (convert_messages_to_chat_format, create_message,
+                      list_messages_by_conversation)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/messages", tags=["messages"])

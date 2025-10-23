@@ -1,8 +1,8 @@
-import os
-import logging
-from PIL import Image, ImageDraw, ImageFont
 import datetime
+import logging
+import os
 
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
