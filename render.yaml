@@ -23,26 +23,18 @@ services:
         value: production
       - key: LOG_LEVEL
         value: info
-      - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: ai-meme-generator-frontend
-          property: url
-      - key: DATABASE_URL
-      - key: JWT_SECRET
       - key: JWT_ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "5"
-      - key: SUPABASE_URL
-      - key: SUPABASE_PASSWORD
-      - key: SUPABASE_API_KEY
-      - key: SUPABASE_SERVICE_ROLE_KEY
-      - key: OPENAI_API_KEY
-      - key: ANTHROPIC_API_KEY
-      - key: GEMINI_API_KEY
-      - key: LOGFIRE_TOKEN
       - key: AI_IMAGE_BUCKET
+        value: memes
+      - key: FRONTEND_URL
+        value: https://ai-meme-generator-frontend.onrender.com
+      # Add these secrets via Render Dashboard:
+      # - JWT_SECRET (required for authentication)
+      # - AI_SERVICE_API_KEY (if using external AI APIs)
+      # - DATABASE_URL (if using a database)
 
   # ── Frontend: Next.js ─────────────────────────────────────────────────────
   - type: web
@@ -61,8 +53,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NEXT_PUBLIC_API_BASE_URL
-        fromService:
-          type: web
-          name: ai-meme-generator-backend
-          property: url
+      - key: NEXT_PUBLIC_API_URL
+        value: https://ai-meme-generator-backend.onrender.com

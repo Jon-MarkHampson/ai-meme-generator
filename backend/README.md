@@ -27,17 +27,41 @@ Steps:
 - Render will detect `render.yaml` and create two Web Services:
   - `ai-meme-generator-backend` (Python/FastAPI)
   - `ai-meme-generator-frontend` (Node/Next.js)
-- Populate the backend service environment variables (secrets live in this service or an Environment Group):
-  - `DATABASE_URL` (Supabase Postgres connection)
-  - `JWT_SECRET`, `JWT_ALGORITHM` (HS256), `ACCESS_TOKEN_EXPIRE_MINUTES`
-  - `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `LOGFIRE_TOKEN`
-  - `SUPABASE_URL`, `SUPABASE_PASSWORD`, `SUPABASE_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-  - `AI_IMAGE_BUCKET`
-- Health check endpoint: `/health/`
+- After Render creates both services, add the required secrets via each service → Settings → Environment:
+  - **Backend secrets**: `JWT_SECRET`, `AI_SERVICE_API_KEY`, `DATABASE_URL`
+  - **Frontend secrets**: (none required beyond what's in render.yaml)
 
-Notes:
+### Backend Configuration
 
-- `FRONTEND_URL` and `NEXT_PUBLIC_API_BASE_URL` are auto-populated via `fromService` references inside `render.yaml`. Override them if you need additional origins (e.g., localhost).
-- Backend build uses `pip install -e .` against `pyproject.toml`; Python runtime is pinned with `runtime.txt`.
-- Frontend build runs `npm install && npm run build`; start command is `npm run start` for Next.js.
-- Both services bind to Render’s `$PORT`, and SSE streaming from `/generate/meme` works on Render Web Services.
+The backend service is configured with:
+- Runtime: Python (starter plan)
+- Root directory: `backend`
+- Health check: `/health/`
+- Build: `pip install -U pip && pip install -e .`
+- Start: `uvicorn main:app --host 0.0.0.0 --port $PORT --app-dir .`
+
+Environment variables (predefined in render.yaml):
+- `ENVIRONMENT`: production
+- `LOG_LEVEL`: info
+- `JWT_ALGORITHM`: HS256
+- `ACCESS_TOKEN_EXPIRE_MINUTES`: 5
+- `AI_IMAGE_BUCKET`: memes
+- `FRONTEND_URL`: https://ai-meme-generator-frontend.onrender.com
+
+### Frontend Configuration
+
+The frontend service is configured with:
+- Runtime: Node (starter plan)
+- Root directory: `frontend`
+- Build: `npm install && npm run build`
+- Start: `npm run start`
+
+Environment variables (predefined in render.yaml):
+- `NODE_ENV`: production
+- `NEXT_PUBLIC_API_URL`: https://ai-meme-generator-backend.onrender.com
+
+### Notes
+
+- Only non-secret defaults are defined in `render.yaml`. Secrets must be added manually in the Render dashboard to keep them out of git.
+- Both services automatically bind to Render's `$PORT`.
+- SSE streaming from `/generate/meme` works on Render Web Services.
