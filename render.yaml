@@ -1,34 +1,33 @@
-# Render blueprint to deploy the FastAPI backend.
+# Render blueprint deploying both FastAPI backend and Next.js frontend.
 # Docs: https://render.com/docs/blueprint-spec
 
 services:
+  # ── Backend: FastAPI ──────────────────────────────────────────────────────
   - type: web
     name: ai-meme-generator-backend
-    env: python
+    runtime: python
     rootDir: backend
     plan: starter
     autoDeploy: true
 
-    # Health check for Render
     healthCheckPath: /health/
 
     buildCommand: |
       pip install -U pip
-      # Install the project and its dependencies from backend/pyproject.toml
       pip install -e .
 
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --app-dir .
 
     envVars:
-      # Required runtime configuration. Set actual secrets in Render dashboard or Env Groups.
       - key: ENVIRONMENT
         value: production
       - key: LOG_LEVEL
         value: info
       - key: FRONTEND_URL
-        # Update to your Vercel frontend URL (e.g., https://yourapp.vercel.app)
-        value: http://localhost:3000
-      # The following must be set in Render (no defaults here):
+        fromService:
+          type: web
+          name: ai-meme-generator-frontend
+          property: url
       - key: DATABASE_URL
       - key: JWT_SECRET
       - key: JWT_ALGORITHM
@@ -45,3 +44,25 @@ services:
       - key: LOGFIRE_TOKEN
       - key: AI_IMAGE_BUCKET
 
+  # ── Frontend: Next.js ─────────────────────────────────────────────────────
+  - type: web
+    name: ai-meme-generator-frontend
+    runtime: node
+    rootDir: frontend
+    plan: starter
+    autoDeploy: true
+
+    buildCommand: |
+      npm install
+      npm run build
+
+    startCommand: npm run start
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_BASE_URL
+        fromService:
+          type: web
+          name: ai-meme-generator-backend
+          property: url
