@@ -2,7 +2,7 @@
 name = "backend"
 version = "0.1.0"
 description = "AI Meme Generator Backend"
-authors = ["Jon-Mark Hampson"]
+authors = [{ name = "Jon-Mark Hampson" }]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
