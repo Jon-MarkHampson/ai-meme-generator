@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 5  # Production: 5 minutes
 
     # Environment settings
-    ENVIRONMENT: str = "development"  # Set to "production" in production
+    ENVIRONMENT: str = "production"  # Set to "production" in production
 
     # Load the database URL from .env
     DATABASE_URL: str
@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     LOGFIRE_TOKEN: str
 
     AI_IMAGE_BUCKET: str
+
+    FRONTEND_URL: str
 
 
 settings = Settings()
