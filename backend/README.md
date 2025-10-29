@@ -34,6 +34,7 @@ Steps:
 ### Backend Configuration
 
 The backend service is configured with:
+
 - Runtime: Python (starter plan)
 - Root directory: `backend`
 - Health check: `/health/`
@@ -41,24 +42,27 @@ The backend service is configured with:
 - Start: `uvicorn main:app --host 0.0.0.0 --port $PORT --app-dir .`
 
 Environment variables (predefined in render.yaml):
+
 - `ENVIRONMENT`: production
 - `LOG_LEVEL`: info
 - `JWT_ALGORITHM`: HS256
 - `ACCESS_TOKEN_EXPIRE_MINUTES`: 5
 - `AI_IMAGE_BUCKET`: memes
-- `FRONTEND_URL`: https://ai-meme-generator-frontend.onrender.com
+- `FRONTEND_URL`: <https://ai-meme-generator-frontend.onrender.com>
 
 ### Frontend Configuration
 
 The frontend service is configured with:
+
 - Runtime: Node (starter plan)
 - Root directory: `frontend`
 - Build: `npm install && npm run build`
 - Start: `npm run start`
 
 Environment variables (predefined in render.yaml):
+
 - `NODE_ENV`: production
-- `NEXT_PUBLIC_API_URL`: https://ai-meme-generator-backend.onrender.com
+- `NEXT_PUBLIC_API_URL`: <https://ai-meme-generator-backend.onrender.com>
 
 ### Notes
 
