@@ -41,7 +41,7 @@ def _set_auth_cookie(response: JSONResponse, token: str) -> None:
         value=token,
         httponly=True,
         secure=settings.ENVIRONMENT == "production",
-        samesite="lax",
+        samesite="none" if settings.ENVIRONMENT == "production" else "lax",
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
