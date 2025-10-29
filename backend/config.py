@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     AI_IMAGE_BUCKET: str
 
-    FRONTEND_URL: str
+    RENDER_API_KEY: str
 
 
 settings = Settings()
