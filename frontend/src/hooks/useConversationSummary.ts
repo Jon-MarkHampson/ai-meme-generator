@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { getConversation } from "@/services/generate";
-import type { ConversationRead } from "@/services/generate";
+import type { ConversationRead } from "@/types/conversations";
 
 /**
  * Poll /api/conversations/:id until a summary appears, then fires onUpdate and stops.

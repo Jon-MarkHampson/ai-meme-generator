@@ -202,7 +202,7 @@ function EditProfileContent() {
     }
 
     try {
-      const updatedUser = await apiUpdateProfile(payload);
+      await apiUpdateProfile(payload);
 
       // Immediately set success and stop loading
       setUpdateSuccess(true);

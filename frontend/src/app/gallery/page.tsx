@@ -4,10 +4,8 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/contexts/SessionContext";
 import * as React from "react"
 import { AuthGuard } from "@/components/AuthGuard";
-import {
-    FavouriteMemeRead,
-    listFavourites,
-} from "@/services/gallery";
+import { FavouriteMemeRead } from "@/types/gallery";
+import { listFavourites } from "@/services/gallery";
 import { Card, CardContent } from "@/components/ui/card"
 import {
     Carousel,

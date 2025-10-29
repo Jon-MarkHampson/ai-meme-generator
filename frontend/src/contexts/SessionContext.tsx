@@ -11,7 +11,6 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { getSession, apiRefreshSession, apiLogout, getSessionStatus } from '@/services/auth';
 import { type User } from '@/types/auth';
 import { SESSION_TIMING, ACTIVITY_EVENTS } from '@/constants/sessionConfig';
@@ -40,7 +39,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         isValidating: true,
     });
 
-    const router = useRouter();
     const [isInitialized, setIsInitialized] = useState(false);
 
     // Timer management for session lifecycle
