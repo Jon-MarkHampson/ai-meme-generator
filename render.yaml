@@ -7,7 +7,7 @@ services:
     name: ai-meme-generator-backend
     runtime: python
     rootDir: backend
-    plan: starter
+    plan: free
     autoDeploy: true
 
     healthCheckPath: /health/
@@ -41,7 +41,7 @@ services:
     name: ai-meme-generator-frontend
     runtime: node
     rootDir: frontend
-    plan: starter
+    plan: free
     autoDeploy: true
 
     buildCommand: |
