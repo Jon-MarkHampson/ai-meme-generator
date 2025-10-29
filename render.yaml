@@ -53,5 +53,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NEXT_PUBLIC_API_URL
+      - key: NEXT_PUBLIC_API_BASE_URL
         value: https://ai-meme-generator-backend.onrender.com
