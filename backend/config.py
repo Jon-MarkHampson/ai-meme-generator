@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     AI_IMAGE_BUCKET: str
 
-    RENDER_API_KEY: str
+    RENDER_API_KEY: str | None = None
 
 
 settings = Settings()

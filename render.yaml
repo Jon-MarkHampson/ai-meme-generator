@@ -45,7 +45,7 @@ services:
     autoDeploy: true
 
     buildCommand: |
-      npm ci
+      NODE_ENV=development npm ci
       npm run build
 
     startCommand: npm run start
