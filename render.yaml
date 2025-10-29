@@ -1,0 +1,47 @@
+# Render blueprint to deploy the FastAPI backend.
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: ai-meme-generator-backend
+    env: python
+    rootDir: backend
+    plan: starter
+    autoDeploy: true
+
+    # Health check for Render
+    healthCheckPath: /health/
+
+    buildCommand: |
+      pip install -U pip
+      # Install the project and its dependencies from backend/pyproject.toml
+      pip install -e .
+
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --app-dir .
+
+    envVars:
+      # Required runtime configuration. Set actual secrets in Render dashboard or Env Groups.
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: FRONTEND_URL
+        # Update to your Vercel frontend URL (e.g., https://yourapp.vercel.app)
+        value: http://localhost:3000
+      # The following must be set in Render (no defaults here):
+      - key: DATABASE_URL
+      - key: JWT_SECRET
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "5"
+      - key: SUPABASE_URL
+      - key: SUPABASE_PASSWORD
+      - key: SUPABASE_API_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY
+      - key: OPENAI_API_KEY
+      - key: ANTHROPIC_API_KEY
+      - key: GEMINI_API_KEY
+      - key: LOGFIRE_TOKEN
+      - key: AI_IMAGE_BUCKET
+
