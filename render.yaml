@@ -45,7 +45,7 @@ services:
     autoDeploy: true
 
     buildCommand: |
-      npm install
+      npm ci
       npm run build
 
     startCommand: npm run start
