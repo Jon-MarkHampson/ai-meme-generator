@@ -180,3 +180,7 @@ meme-output/
 backend/classic_meme_templates/
 
 *.png
+
+.claude
+
+.qodo
