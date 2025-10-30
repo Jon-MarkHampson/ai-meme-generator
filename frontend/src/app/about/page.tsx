@@ -22,7 +22,7 @@ export default function AboutPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                🤖 AI-Powered Generation
+                AI-Powered Generation
               </CardTitle>
               <CardDescription>
                 Intelligent meme creation at your fingertips
@@ -40,7 +40,7 @@ export default function AboutPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                🎭 Multiple AI Models
+                Multiple AI Models
               </CardTitle>
               <CardDescription>
                 Choose from different AI providers
@@ -48,9 +48,10 @@ export default function AboutPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
-                Select between OpenAI and Anthropic models to find the AI voice that best matches
-                your humor style. Each model brings its own unique approach to understanding
-                context and generating witty meme content.
+                Select between OpenAI and Anthropic models for text generation to find the AI voice
+                that best matches your humor style. For image generation, choose between OpenAI's
+                GTP Image 1 and Google's Nano Banana. Each model brings its own unique approach to understanding
+                context and generating creative meme content.
               </p>
             </CardContent>
           </Card>
@@ -58,7 +59,7 @@ export default function AboutPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                💬 Interactive Chat
+                Interactive Chat
               </CardTitle>
               <CardDescription>
                 Conversational meme creation
@@ -76,7 +77,7 @@ export default function AboutPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                🖼️ Personal Gallery
+                Personal Gallery
               </CardTitle>
               <CardDescription>
                 Save and organize your creations
