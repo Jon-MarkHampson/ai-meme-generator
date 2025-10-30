@@ -49,8 +49,8 @@ export default function AboutPage() {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Select between OpenAI and Anthropic models for text generation to find the AI voice
-                that best matches your humor style. For image generation, choose between OpenAI's
-                GTP Image 1 and Google's Nano Banana. Each model brings its own unique approach to understanding
+                that best matches your humor style. For image generation, choose between OpenAI&apos;s
+                GTP Image 1 and Google&apos;s Nano Banana. Each model brings its own unique approach to understanding
                 context and generating creative meme content.
               </p>
             </CardContent>
