@@ -12,6 +12,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   title: "AI Meme Generator",
   description: "Interactively create memes powered by AI",
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico' }
+    ],
+  },
   openGraph: {
     title: "AI Meme Generator",
     description: "Interactively create memes powered by AI",

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 256 256">
+  <!-- Generator: Adobe Illustrator 29.8.2, SVG Export Plug-In . SVG Version: 2.1.1 Build 3)  -->
+  <defs>
+    <style>
+      .st0 {
+        stroke-width: 21px;
+      }
+
+      .st0, .st1, .st2, .st3 {
+        stroke: #fff;
+        stroke-miterlimit: 10;
+      }
+
+      .st0, .st3 {
+        fill: none;
+      }
+
+      .st1 {
+        stroke-width: 10px;
+      }
+
+      .st1, .st2 {
+        fill: #fff;
+      }
+
+      .st2 {
+        stroke-width: 5px;
+      }
+
+      .st4, .st3 {
+        display: none;
+      }
+
+      .st3 {
+        stroke-width: .5px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1" class="st4">
+    <g id="_x31_I7jl0.tif">
+      <image id="Layer_0" width="30" height="33" transform="translate(0 -.4) scale(.5)" xlink:href="favicon-1.png"/>
+    </g>
+  </g>
+  <g id="Layer_2">
+    <rect y="0" width="256" height="256"/>
+    <g>
+      <path class="st0" d="M158.9,51.7H54.7c-10.7,0-19.4,8.7-19.4,19.4v75.4c0,10.7,8.7,19.4,19.4,19.4h0c15,0,24.4,16.4,16.7,29.3l-5,8.4,57.7-34.9c3-1.8,6.5-2.8,10-2.8h66.3c10.7,0,19.4-8.7,19.4-19.4v-18.8"/>
+      <line class="st3" x1="118.5" y1="93.8" x2="118.5" y2="124.5"/>
+      <line class="st3" x1="103.1" y1="109.1" x2="133.9" y2="109.1"/>
+      <line class="st3" x1="197.5" y1="40.9" x2="197.5" y2="100.1"/>
+      <line class="st3" x1="167.9" y1="70.5" x2="227.1" y2="70.5"/>
+      <path class="st1" d="M229.8,60.7c-17.3,0-31.3,14.6-31.3,32.7,0-18.1-14.6-32.7-32.7-32.7,18.1,0,32.7-14.6,32.7-32.7,0,18.1,14.6,32.7,32.7,32.7"/>
+      <path class="st2" d="M208.7,99.1c9.6,0,17.3,7.7,17.3,17.3,0-9.6,7.7-17.3,17.3-17.3-9.6,0-17.3-7.7-17.3-17.3,0,9.6-7.7,17.3-17.3,17.3Z"/>
+    </g>
+  </g>
+</svg>
