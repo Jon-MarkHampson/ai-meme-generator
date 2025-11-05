@@ -135,7 +135,7 @@ export default function AboutPage() {
         <div className="text-center space-y-4">
           <h2 className="text-2xl font-bold">Ready to Create Some Memes?</h2>
           <p className="text-muted-foreground">
-            Join thousands of users who are already creating hilarious content with AI
+            Join the community of users who are already creating hilarious content with AI
           </p>
           <div className="flex gap-4 justify-center">
             <Button asChild size="lg">
