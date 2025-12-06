@@ -184,3 +184,5 @@ backend/classic_meme_templates/
 .claude
 
 .qodo
+
+node_modules/
